@@ -1,0 +1,54 @@
+{
+  "auth": {
+    "loginTitle": "Welcome to ParkIQ",
+    "emailPlaceholder": "Enter your email",
+    "loginButton": "Sign In",
+    "appleSignIn": "Continue with Apple"
+  },
+  "home": {
+    "title": "ParkIQ",
+    "startParking": "Start Parking",
+    "viewMap": "View Map",
+    "viewHistory": "Parking History",
+    "noActiveParking": "No active parking session"
+  },
+  "parking": {
+    "startButton": "Start Parking",
+    "endButton": "End Parking",
+    "notePlaceholder": "Add a note (optional)",
+    "photoButton": "Add Photo",
+    "photoPremium": "Premium feature",
+    "activeParking": "Active Parking",
+    "timeRemaining": "Time Remaining",
+    "nextTariffChange": "Next tariff change"
+  },
+  "map": {
+    "title": "Map",
+    "filters": "Filters"
+  },
+  "history": {
+    "title": "Parking History",
+    "duration": "Duration",
+    "location": "Location"
+  },
+  "settings": {
+    "title": "Settings",
+    "theme": "Theme",
+    "themeSystem": "System",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "reminderOffset": "Reminder Offset",
+    "language": "Language",
+    "languageEnglish": "English",
+    "subscription": "Subscription"
+  },
+  "subscription": {
+    "title": "Subscription",
+    "currentStatus": "Current Status",
+    "free": "Free",
+    "premium": "Premium",
+    "purchasePremium": "Purchase Premium",
+    "restorePurchases": "Restore Purchases"
+  }
+}
+
