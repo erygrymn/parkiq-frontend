@@ -5,7 +5,7 @@ import { ScreenContainer } from "@/components/layout/ScreenContainer";
 import { TextInputField } from "@/components/ui/TextInputField";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { useTheme } from "@/theme";
-import { supabase } from "@/services/supabaseClient";
+import { supabase } from "@/services/supabase";
 import { useAuthStore } from "@/store/useAuthStore";
 import { validateEmail } from "@/utils/validation";
 

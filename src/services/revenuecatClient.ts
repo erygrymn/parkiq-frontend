@@ -1,11 +1,16 @@
 import Purchases from "react-native-purchases";
 import { useAuthStore } from "@/store/useAuthStore";
+import { env } from "../env";
 
 let isConfigured = false;
 
 async function configureIfNeeded() {
   if (isConfigured) return;
-  const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY || "";
+  const apiKey = env.revenueCatApiKey || "";
+  if (!apiKey) {
+    console.warn("RevenueCat API key not configured");
+    return;
+  }
   await Purchases.configure({ apiKey });
   const userId = useAuthStore.getState().userId;
   if (userId) {

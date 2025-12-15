@@ -9,12 +9,14 @@ import { AuthNavigator } from "./AuthNavigator";
 import { MainNavigator } from "./MainNavigator";
 import { SplashScreen } from "../../ui/components/SplashScreen";
 import { OnboardingScreen, hasSeenOnboarding } from "../../screens/Onboarding/OnboardingScreen";
+import { loadConfigFromBackend } from "../../env";
 
 export const RootNavigator: React.FC = () => {
   const theme = useTheme();
   const user = useAuthStore((state) => state.user);
   const loading = useAuthStore((state) => state.loading);
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
+  const [configLoaded, setConfigLoaded] = useState(false);
   const loadSessionFromSecureStore = useAuthStore(
     (state) => state.loadSessionFromSecureStore
   );
@@ -24,6 +26,16 @@ export const RootNavigator: React.FC = () => {
 
   useEffect(() => {
     const initialize = async () => {
+      try {
+        // Load config from backend first
+        await loadConfigFromBackend();
+        setConfigLoaded(true);
+      } catch (error) {
+        console.error("Failed to load config from backend, using defaults:", error);
+        // Continue with defaults if config load fails
+        setConfigLoaded(true);
+      }
+      
       await loadSessionFromSecureStore();
       await loadSettings();
       
@@ -58,7 +70,7 @@ export const RootNavigator: React.FC = () => {
     };
   }, [user, refreshSession]);
 
-  if (loading || showOnboarding === null) {
+  if (loading || showOnboarding === null || !configLoaded) {
     return (
       <>
         <StatusBar style={theme.isDark ? "light" : "dark"} />

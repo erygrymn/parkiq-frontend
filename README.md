@@ -2,9 +2,40 @@
 
 iOS mobile application for ParkIQ, built with Expo and React Native.
 
-## Environment
+## Production Configuration
 
-This app expects `EXPO_PUBLIC_*` environment variables to be provided by EAS/Expo at build time. All runtime configuration is injected during the build process through EAS project settings.
+This app is configured for production use. All configuration is fetched from the backend at runtime.
 
-For the complete list of required environment variables, see [../PARKIQ_ENV.md](../PARKIQ_ENV.md).
+### Backend Connection
 
+The app automatically connects to the production backend:
+- **Backend URL**: `https://parkiq-backend-msjw9o619-erayguraymans-projects.vercel.app`
+- **Config Endpoint**: `/api/config` (public, no auth required)
+
+### How It Works
+
+1. On app startup, the app fetches configuration from the backend `/api/config` endpoint
+2. Configuration includes:
+   - API base URL
+   - Supabase URL and anon key
+   - RevenueCat API key
+   - App environment
+3. Configuration is cached in SecureStore for 24 hours
+4. All sensitive data is stored securely and never exposed in the app bundle
+
+### Building for Production
+
+```bash
+cd parkiq-frontend
+eas build --platform ios --profile production
+```
+
+No environment variables or secrets are needed - everything is fetched from the backend at runtime.
+
+### Security
+
+- No environment variables in the app bundle
+- All configuration fetched securely from backend
+- Sensitive data stored in SecureStore
+- No `.env` files required
+- No hardcoded secrets

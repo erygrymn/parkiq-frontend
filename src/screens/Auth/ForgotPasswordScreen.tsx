@@ -32,7 +32,7 @@ export const ForgotPasswordScreen: React.FC = () => {
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${process.env.EXPO_PUBLIC_APP_URL || "parkiq://reset-password"}`,
+        redirectTo: "parkiq://reset-password",
       });
 
       if (error) throw error;
