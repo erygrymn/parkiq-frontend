@@ -7,6 +7,8 @@ export const en = {
     loginButton: "Sign In",
     registerButton: "Sign Up",
     appleLogin: "Continue with Apple",
+    googleLogin: "Continue with Google",
+    facebookLogin: "Continue with Facebook",
     backToLogin: "Back to Login",
     noAccount: "Don't have an account?",
     hasAccount: "Already have an account?",
@@ -33,6 +35,12 @@ export const en = {
     loginSubtitle: "Welcome back! Please sign in to continue.",
     registerSubtitle: "Create your account to get started",
     optional: "Optional",
+    emailConfirmationRequired: "Email confirmation required",
+    emailConfirmationMessage: "Registration successful! Please click the confirmation link sent to your email. You can sign in after confirming your email.",
+    emailConfirmationProfileMessage: "Registration successful! Please click the confirmation link sent to your email. Your profile information will be saved after email confirmation.",
+    completeProfile: "Complete Profile",
+    completeProfileDescription: "Please complete your profile information to continue",
+    profileIncomplete: "Your profile is incomplete",
   },
   onboarding: {
     skip: "Skip",
@@ -165,6 +173,7 @@ export const en = {
     yesterday: "Yesterday",
     daysAgo: "{{count}} day ago",
     daysAgo_plural: "{{count}} days ago",
+    personalInfo: "Personal Information",
   },
   settings: {
     title: "Settings",
@@ -213,6 +222,8 @@ export const en = {
     ongoing: "Ongoing",
     today: "Today",
     yesterday: "Yesterday",
+    info: "Info",
+    ok: "OK",
   },
 };
 

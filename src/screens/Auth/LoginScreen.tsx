@@ -27,7 +27,6 @@ export const LoginScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const signInWithEmail = useAuthStore((state) => state.signInWithEmail);
-  const signInWithApple = useAuthStore((state) => state.signInWithApple);
 
   const handleLogin = async () => {
     if (!email.trim()) {
@@ -52,16 +51,6 @@ export const LoginScreen: React.FC = () => {
     }
   };
 
-  const handleAppleLogin = async () => {
-    setLoading(true);
-    try {
-      await signInWithApple();
-    } catch (error) {
-      Alert.alert(t("common.error"), "Apple login failed");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <Screen variant="default" scroll keyboardAvoiding>
@@ -206,16 +195,6 @@ export const LoginScreen: React.FC = () => {
             />
           </Card>
 
-          {Platform.OS === "ios" && (
-            <Card style={{ marginBottom: theme.spacing.s16 }}>
-              <SecondaryButton
-                title={t("auth.appleLogin")}
-                onPress={handleAppleLogin}
-                disabled={loading}
-                loading={loading}
-              />
-            </Card>
-          )}
 
           <View style={styles.registerLink}>
             <Text

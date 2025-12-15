@@ -11,10 +11,10 @@ interface AppEnv {
 }
 
 // Hardcoded backend URL - only this needs to be known upfront
-const BACKEND_BASE_URL = "https://parkiq-backend-msjw9o619-erayguraymans-projects.vercel.app";
+const BACKEND_BASE_URL = "https://parkiq-backend.vercel.app";
 
 const CONFIG_CACHE_KEY = "parkiq_app_config";
-const CONFIG_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+const CONFIG_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes (reduced for easier debugging)
 
 interface CachedConfig {
   config: AppEnv;
@@ -24,6 +24,7 @@ interface CachedConfig {
 // Fetch config from backend
 async function fetchConfigFromBackend(): Promise<AppEnv> {
   try {
+    console.log(`Fetching config from: ${BACKEND_BASE_URL}/api/config`);
     const response = await fetch(`${BACKEND_BASE_URL}/api/config`, {
       method: "GET",
       headers: {
@@ -34,14 +35,17 @@ async function fetchConfigFromBackend(): Promise<AppEnv> {
     if (!response.ok) {
       const errorText = await response.text().catch(() => "");
       console.error(`Config fetch failed: ${response.status} ${response.statusText}`, errorText);
-      throw new Error(`Failed to fetch config: ${response.status}`);
+      throw new Error(`Failed to fetch config: ${response.status} ${response.statusText}`);
     }
     
     const data = await response.json();
+    console.log("Config response:", data);
+    
     if (!data.success || !data.data) {
       throw new Error("Invalid config response");
     }
-    return {
+    
+    const config = {
       apiBaseUrl: data.data.apiBaseUrl || BACKEND_BASE_URL,
       supabaseUrl: data.data.supabaseUrl || "",
       supabaseAnonKey: data.data.supabaseAnonKey || "",
@@ -49,6 +53,13 @@ async function fetchConfigFromBackend(): Promise<AppEnv> {
       adminEmail: undefined,
       revenueCatApiKey: data.data.revenueCatApiKey || "",
     };
+    
+    if (!config.supabaseUrl || !config.supabaseAnonKey) {
+      throw new Error("Supabase configuration missing from backend response");
+    }
+    
+    console.log("Config loaded successfully");
+    return config;
   } catch (error) {
     console.error("Failed to fetch config from backend:", error);
     throw error;
@@ -122,8 +133,22 @@ function getEnvSync(): AppEnv {
 // Export sync version for immediate use
 export const env: AppEnv = getEnvSync();
 
+// Clear config cache (useful for debugging or after backend updates)
+export async function clearConfigCache(): Promise<void> {
+  try {
+    await SecureStore.deleteItemAsync(CONFIG_CACHE_KEY);
+    console.log("Config cache cleared");
+  } catch (error) {
+    console.error("Failed to clear config cache:", error);
+  }
+}
+
 // Export async function to refresh config
-export async function loadConfigFromBackend(): Promise<AppEnv> {
+export async function loadConfigFromBackend(forceRefresh = false): Promise<AppEnv> {
+  if (forceRefresh) {
+    await clearConfigCache();
+  }
+  
   const config = await getConfig();
   // Update the exported env object
   Object.assign(env, config);

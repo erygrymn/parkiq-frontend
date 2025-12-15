@@ -35,13 +35,18 @@ export const MapMarker: React.FC<MapMarkerProps> = ({
   const theme = useTheme();
 
   const getMarkerStyle = () => {
+    // Convert theme colors to rgb format
+    const accentRgb = theme.isDark ? "rgb(48, 209, 88)" : "rgb(52, 199, 89)";
+    const surfaceRgb = theme.isDark ? "rgb(20, 21, 26)" : "rgb(255, 255, 255)";
+    const textSecondaryRgb = theme.isDark ? "rgba(255, 255, 255, 0.70)" : "rgba(11, 12, 16, 0.62)";
+
     switch (variant) {
       case "user":
         return {
           backgroundColor: "rgb(52, 199, 89)",
           borderColor: "rgb(18, 80, 33)",
           iconName: "person" as const,
-          barColor: theme.colors.accent,
+          barColor: accentRgb,
         };
       case "car":
         return {
@@ -52,24 +57,24 @@ export const MapMarker: React.FC<MapMarkerProps> = ({
         };
       case "location":
         return {
-          backgroundColor: theme.colors.accent,
+          backgroundColor: accentRgb,
           borderColor: "rgb(18, 80, 33)",
           iconName: "location" as const,
-          barColor: theme.colors.accent,
+          barColor: accentRgb,
         };
       case "parking":
         return {
-          backgroundColor: "#007AFF",
-          borderColor: "#0051D5",
+          backgroundColor: "rgb(0, 122, 255)",
+          borderColor: "rgb(0, 81, 213)",
           iconName: "pricetag" as const,
-          barColor: "#007AFF",
+          barColor: "rgb(0, 122, 255)",
         };
       default:
         return {
-          backgroundColor: theme.colors.textSecondary,
+          backgroundColor: textSecondaryRgb,
           borderColor: "rgb(51, 51, 51)",
           iconName: "car" as const,
-          barColor: theme.colors.textSecondary,
+          barColor: textSecondaryRgb,
         };
     }
   };
@@ -100,7 +105,7 @@ export const MapMarker: React.FC<MapMarkerProps> = ({
           <Ionicons
             name={markerStyle.iconName}
             size={16}
-            color={theme.colors.surface}
+            color={"rgb(255, 255, 255)"}
           />
         </View>
         <View

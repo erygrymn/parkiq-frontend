@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import * as SecureStore from "expo-secure-store";
 import { supabase } from "../services/supabase";
+import * as Linking from "expo-linking";
+import { Alert } from "react-native";
 
 interface User {
   id: string;
@@ -14,6 +16,8 @@ interface AuthState {
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string) => Promise<void>;
   signInWithApple: () => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+  signInWithFacebook: () => Promise<void>;
   signOut: () => Promise<void>;
   loadSessionFromSecureStore: () => Promise<void>;
   refreshSession: () => Promise<boolean>;
@@ -67,23 +71,43 @@ export const useAuthStore = create<AuthState>((set) => ({
       });
 
       if (error) throw error;
-      if (!data.session) throw new Error("No session returned");
+      
+      // If email confirmation is required, session might be null
+      // In that case, we still save the user ID but don't set session
+      if (data.session) {
+        const token = data.session.access_token;
+        const userId = data.user.id;
+        const userEmail = data.user.email;
 
-      const token = data.session.access_token;
-      const userId = data.user.id;
-      const userEmail = data.user.email;
+        await SecureStore.setItemAsync(TOKEN_KEY, token);
+        await SecureStore.setItemAsync(USER_ID_KEY, userId);
+        if (userEmail) {
+          await SecureStore.setItemAsync(USER_EMAIL_KEY, userEmail);
+        }
 
-      await SecureStore.setItemAsync(TOKEN_KEY, token);
-      await SecureStore.setItemAsync(USER_ID_KEY, userId);
-      if (userEmail) {
-        await SecureStore.setItemAsync(USER_EMAIL_KEY, userEmail);
+        set({
+          user: { id: userId, email: userEmail },
+          sessionToken: token,
+          loading: false,
+        });
+      } else {
+        // Email confirmation required - don't set user state, just save email for reference
+        const userEmail = data.user.email;
+        
+        if (userEmail) {
+          await SecureStore.setItemAsync(USER_EMAIL_KEY, userEmail);
+        }
+
+        // Don't set user state - user should stay on login screen
+        set({
+          user: null,
+          sessionToken: null,
+          loading: false,
+        });
+        
+        // Return a special indicator that email confirmation is needed
+        throw new Error("EMAIL_CONFIRMATION_REQUIRED");
       }
-
-      set({
-        user: { id: userId, email: userEmail },
-        sessionToken: token,
-        loading: false,
-      });
     } catch (error) {
       set({ loading: false });
       throw error;
@@ -92,11 +116,73 @@ export const useAuthStore = create<AuthState>((set) => ({
   signInWithApple: async () => {
     set({ loading: true });
     try {
+      const redirectUrl = Linking.createURL("/auth/callback");
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "apple",
+        options: {
+          redirectTo: redirectUrl,
+          skipBrowserRedirect: false,
+        },
       });
 
       if (error) throw error;
+      
+      // OAuth URL will open in browser, deep link will handle callback
+      // We'll listen for the deep link in RootNavigator
+      if (data.url) {
+        await Linking.openURL(data.url);
+      }
+      
+      set({ loading: false });
+    } catch (error) {
+      set({ loading: false });
+      throw error;
+    }
+  },
+  signInWithGoogle: async () => {
+    set({ loading: true });
+    try {
+      const redirectUrl = Linking.createURL("/auth/callback");
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: redirectUrl,
+          skipBrowserRedirect: false,
+        },
+      });
+
+      if (error) throw error;
+      
+      // OAuth URL will open in browser, deep link will handle callback
+      if (data.url) {
+        await Linking.openURL(data.url);
+      }
+      
+      set({ loading: false });
+    } catch (error) {
+      set({ loading: false });
+      throw error;
+    }
+  },
+  signInWithFacebook: async () => {
+    set({ loading: true });
+    try {
+      const redirectUrl = Linking.createURL("/auth/callback");
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "facebook",
+        options: {
+          redirectTo: redirectUrl,
+          skipBrowserRedirect: false,
+        },
+      });
+
+      if (error) throw error;
+      
+      // OAuth URL will open in browser, deep link will handle callback
+      if (data.url) {
+        await Linking.openURL(data.url);
+      }
+      
       set({ loading: false });
     } catch (error) {
       set({ loading: false });

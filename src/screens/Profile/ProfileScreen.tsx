@@ -60,6 +60,13 @@ export const ProfileScreen: React.FC = () => {
   }>>([]);
   const [savedModalVisible, setSavedModalVisible] = useState(false);
   const [savedSessions, setSavedSessions] = useState<SavedSession[]>([]);
+  const [userProfile, setUserProfile] = useState<{
+    firstName?: string | null;
+    lastName?: string | null;
+    phone?: string | null;
+    bloodType?: string | null;
+    licensePlate?: string | null;
+  } | null>(null);
   const lastFetchTimeRef = useRef<number | null>(null);
   const cachedStatsRef = useRef<{
     totalSessions: number;
@@ -77,6 +84,38 @@ export const ProfileScreen: React.FC = () => {
   const handleSettingsPress = () => {
     const nav = navigation as any;
     nav.navigate("Profile", { screen: "SettingsMain" });
+  };
+
+  const fetchUserProfile = async () => {
+    try {
+      const profile = await apiGet<{
+        firstName?: string | null;
+        lastName?: string | null;
+        phone?: string | null;
+        bloodType?: string | null;
+        licensePlate?: string | null;
+      }>("/api/user/profile");
+      setUserProfile(profile);
+    } catch (error) {
+      // Silently fail - profile might not exist yet or will be created automatically
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const isUserNotFound = errorMessage.toLowerCase().includes("user not found");
+      const is404 = errorMessage.includes("404");
+      
+      // Only log non-404 and non-user-not-found errors
+      if (!is404 && !isUserNotFound) {
+        console.error("Failed to fetch user profile:", error);
+      }
+      
+      // Set empty profile - backend will create it automatically on next access
+      setUserProfile({
+        firstName: null,
+        lastName: null,
+        phone: null,
+        bloodType: null,
+        licensePlate: null,
+      });
+    }
   };
 
   const fetchProfileData = async (forceRefresh = false) => {
@@ -98,6 +137,9 @@ export const ProfileScreen: React.FC = () => {
     }
     try {
       setLoading(true);
+      
+      // Fetch user profile data
+      await fetchUserProfile();
       const sessions = await apiGet<ParkSession[]>(
         "/api/park-sessions/history?limit=100&offset=0"
       );
@@ -370,8 +412,14 @@ export const ProfileScreen: React.FC = () => {
     }
   };
 
-  // Get user display name from email
+  // Get user display name from profile or email
   const getUserDisplayName = () => {
+    if (userProfile?.firstName && userProfile?.lastName) {
+      return `${userProfile.firstName} ${userProfile.lastName}`;
+    }
+    if (userProfile?.firstName) {
+      return userProfile.firstName;
+    }
     if (!user?.email) return t("profile.user");
     const emailParts = user.email.split("@");
     const name = emailParts[0].split(".").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
@@ -503,6 +551,150 @@ export const ProfileScreen: React.FC = () => {
               </View>
             </View>
           </Card>
+
+          {/* Profile Details Card */}
+          {(userProfile?.firstName || userProfile?.lastName || userProfile?.phone || userProfile?.bloodType || userProfile?.licensePlate) && (
+            <Card style={{ marginBottom: theme.spacing.s16 }}>
+              <Text
+                style={[
+                  textStyles.section,
+                  {
+                    color: theme.colors.textPrimary,
+                    marginBottom: theme.spacing.s16,
+                  },
+                ]}
+              >
+                {t("profile.personalInfo")}
+              </Text>
+              <View style={styles.profileDetails}>
+                {userProfile.firstName && (
+                  <View style={styles.profileDetailRow}>
+                    <Text
+                      style={[
+                        textStyles.caption,
+                        {
+                          color: theme.colors.textSecondary,
+                          marginBottom: theme.spacing.s4,
+                        },
+                      ]}
+                    >
+                      {t("auth.firstName")}
+                    </Text>
+                    <Text
+                      style={[
+                        textStyles.body,
+                        {
+                          color: theme.colors.textPrimary,
+                        },
+                      ]}
+                    >
+                      {userProfile.firstName}
+                    </Text>
+                  </View>
+                )}
+                {userProfile.lastName && (
+                  <View style={styles.profileDetailRow}>
+                    <Text
+                      style={[
+                        textStyles.caption,
+                        {
+                          color: theme.colors.textSecondary,
+                          marginBottom: theme.spacing.s4,
+                        },
+                      ]}
+                    >
+                      {t("auth.lastName")}
+                    </Text>
+                    <Text
+                      style={[
+                        textStyles.body,
+                        {
+                          color: theme.colors.textPrimary,
+                        },
+                      ]}
+                    >
+                      {userProfile.lastName}
+                    </Text>
+                  </View>
+                )}
+                {userProfile.phone && (
+                  <View style={styles.profileDetailRow}>
+                    <Text
+                      style={[
+                        textStyles.caption,
+                        {
+                          color: theme.colors.textSecondary,
+                          marginBottom: theme.spacing.s4,
+                        },
+                      ]}
+                    >
+                      {t("auth.phone")}
+                    </Text>
+                    <Text
+                      style={[
+                        textStyles.body,
+                        {
+                          color: theme.colors.textPrimary,
+                        },
+                      ]}
+                    >
+                      {userProfile.phone}
+                    </Text>
+                  </View>
+                )}
+                {userProfile.bloodType && (
+                  <View style={styles.profileDetailRow}>
+                    <Text
+                      style={[
+                        textStyles.caption,
+                        {
+                          color: theme.colors.textSecondary,
+                          marginBottom: theme.spacing.s4,
+                        },
+                      ]}
+                    >
+                      {t("auth.bloodType")}
+                    </Text>
+                    <Text
+                      style={[
+                        textStyles.body,
+                        {
+                          color: theme.colors.textPrimary,
+                        },
+                      ]}
+                    >
+                      {userProfile.bloodType}
+                    </Text>
+                  </View>
+                )}
+                {userProfile.licensePlate && (
+                  <View style={styles.profileDetailRow}>
+                    <Text
+                      style={[
+                        textStyles.caption,
+                        {
+                          color: theme.colors.textSecondary,
+                          marginBottom: theme.spacing.s4,
+                        },
+                      ]}
+                    >
+                      {t("auth.licensePlate")}
+                    </Text>
+                    <Text
+                      style={[
+                        textStyles.body,
+                        {
+                          color: theme.colors.textPrimary,
+                        },
+                      ]}
+                    >
+                      {userProfile.licensePlate}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </Card>
+          )}
 
           {/* Stats Card */}
           <Card style={{ marginBottom: theme.spacing.s16 }}>
@@ -1086,6 +1278,12 @@ const styles = StyleSheet.create({
   },
   savedDetails: {
     flexDirection: "row",
+  },
+  profileDetails: {
+    gap: 16,
+  },
+  profileDetailRow: {
+    marginBottom: 12,
   },
 });
 

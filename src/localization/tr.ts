@@ -7,6 +7,8 @@ export const tr = {
     loginButton: "Giriş Yap",
     registerButton: "Kayıt Ol",
     appleLogin: "Apple ile Devam Et",
+    googleLogin: "Google ile Devam Et",
+    facebookLogin: "Facebook ile Devam Et",
     backToLogin: "Girişe Dön",
     noAccount: "Hesabınız yok mu?",
     hasAccount: "Zaten hesabınız var mı?",
@@ -33,6 +35,12 @@ export const tr = {
     loginSubtitle: "Hoş geldiniz! Devam etmek için lütfen giriş yapın.",
     registerSubtitle: "Başlamak için hesabınızı oluşturun",
     optional: "Opsiyonel",
+    emailConfirmationRequired: "E-posta onayı gerekli",
+    emailConfirmationMessage: "Kayıt başarılı! Lütfen e-posta adresinize gelen onay linkine tıklayın. E-posta onaylandıktan sonra giriş yapabilirsiniz.",
+    emailConfirmationProfileMessage: "Kayıt başarılı! Lütfen e-posta adresinize gelen onay linkine tıklayın. E-posta onaylandıktan sonra profil bilgileriniz kaydedilecek.",
+    completeProfile: "Profil Bilgilerini Tamamla",
+    completeProfileDescription: "Devam etmek için lütfen profil bilgilerinizi tamamlayın",
+    profileIncomplete: "Profil bilgileriniz eksik",
   },
   onboarding: {
     skip: "Atla",
@@ -165,6 +173,7 @@ export const tr = {
     yesterday: "Dün",
     daysAgo: "{{count}} gün önce",
     daysAgo_plural: "{{count}} gün önce",
+    personalInfo: "Kişisel Bilgiler",
   },
   settings: {
     title: "Ayarlar",
@@ -213,6 +222,8 @@ export const tr = {
     ongoing: "Devam Ediyor",
     today: "Bugün",
     yesterday: "Dün",
+    info: "Bilgi",
+    ok: "Tamam",
   },
 };
 

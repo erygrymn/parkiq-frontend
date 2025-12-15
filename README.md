@@ -9,7 +9,7 @@ This app is configured for production use. All configuration is fetched from the
 ### Backend Connection
 
 The app automatically connects to the production backend:
-- **Backend URL**: `https://parkiq-backend-msjw9o619-erayguraymans-projects.vercel.app`
+- **Backend URL**: `https://parkiq-backend-git-main-erayguraymans-projects.vercel.app`
 - **Config Endpoint**: `/api/config` (public, no auth required)
 
 ### How It Works

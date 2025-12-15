@@ -7,14 +7,13 @@ import {
   Alert,
   ScrollView,
   TouchableOpacity,
-  Platform,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../../state/authStore";
 import { Screen } from "../../ui/components/Screen";
 import { Card } from "../../ui/components/Card";
-import { PrimaryButton, SecondaryButton } from "../../ui/components/Button";
+import { PrimaryButton } from "../../ui/components/Button";
 import { StringPicker } from "../../ui/components/StringPicker";
 import { useTheme } from "../../ui/theme/theme";
 import { textStyles } from "../../ui/typography";
@@ -23,24 +22,19 @@ import { apiPatch } from "../../services/api";
 
 const BLOOD_TYPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 
-export const RegisterScreen: React.FC = () => {
+export const CompleteProfileScreen: React.FC = () => {
   const theme = useTheme();
   const navigation = useNavigation();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [bloodType, setBloodType] = useState("");
   const [licensePlate, setLicensePlate] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const signUpWithEmail = useAuthStore((state) => state.signUpWithEmail);
+  const user = useAuthStore((state) => state.user);
 
-  const handleRegister = async () => {
-    // Validation - Only firstName, lastName, email, and password are required
+  const handleCompleteProfile = async () => {
+    // Validation - firstName and lastName are required
     if (!firstName.trim()) {
       Alert.alert(t("common.error"), t("auth.firstNameRequired"));
       return;
@@ -49,67 +43,37 @@ export const RegisterScreen: React.FC = () => {
       Alert.alert(t("common.error"), t("auth.lastNameRequired"));
       return;
     }
-    if (!email.trim()) {
-      Alert.alert(t("common.error"), t("auth.emailRequired"));
-      return;
-    }
-    if (!password) {
-      Alert.alert(t("common.error"), t("auth.passwordRequired"));
-      return;
-    }
-    if (password.length < 6) {
-      Alert.alert(t("common.error"), t("auth.passwordTooShort"));
-      return;
-    }
-    if (password !== confirmPassword) {
-      Alert.alert(t("common.error"), t("auth.passwordsDoNotMatch"));
-      return;
-    }
 
     setLoading(true);
     try {
-      // Register user
-      await signUpWithEmail(email.trim(), password);
-      
-      // If we reach here, session exists - update profile
-      try {
-        await apiPatch("/api/user/profile", {
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          phone: phone.trim() || null,
-          bloodType: bloodType || null,
-          licensePlate: licensePlate.trim() || null,
-        });
-      } catch (profileError) {
-        // Log error but don't fail registration
-        console.error("Failed to update profile:", profileError);
-        // Registration was successful, profile update can be done later
-      }
+      // Update profile via API
+      await apiPatch("/api/user/profile", {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        phone: phone.trim() || null,
+        bloodType: bloodType || null,
+        licensePlate: licensePlate.trim() || null,
+      });
+
+      // Profile completed, navigate back to ProfileMain
+      Alert.alert(t("common.info"), "Profil bilgileriniz güncellendi!", [
+        {
+          text: t("common.ok"),
+          onPress: () => {
+            const nav = navigation as any;
+            nav.navigate("ProfileMain");
+          },
+        },
+      ]);
     } catch (error) {
-      if (error instanceof Error && error.message === "EMAIL_CONFIRMATION_REQUIRED") {
-        // Email confirmation required - navigate to login immediately
-        const nav = navigation as any;
-        nav.navigate("Login");
-        
-        // Show alert after navigation
-        setTimeout(() => {
-          Alert.alert(
-            t("common.info"),
-            t("auth.emailConfirmationMessage"),
-            [{ text: t("common.ok") }]
-          );
-        }, 300);
-      } else {
-        Alert.alert(
-          t("common.error"),
-          error instanceof Error ? error.message : "Registration failed"
-        );
-      }
+      Alert.alert(
+        t("common.error"),
+        error instanceof Error ? error.message : "Failed to update profile"
+      );
     } finally {
       setLoading(false);
     }
   };
-
 
   return (
     <Screen variant="default" scroll keyboardAvoiding>
@@ -131,7 +95,7 @@ export const RegisterScreen: React.FC = () => {
                 },
               ]}
             >
-              {t("auth.register")}
+              {t("auth.completeProfile")}
             </Text>
             <Text
               style={[
@@ -141,7 +105,7 @@ export const RegisterScreen: React.FC = () => {
                 },
               ]}
             >
-              {t("auth.registerSubtitle")}
+              {t("auth.completeProfileDescription")}
             </Text>
           </View>
 
@@ -156,7 +120,7 @@ export const RegisterScreen: React.FC = () => {
                   },
                 ]}
               >
-                {t("auth.firstName")}
+                {t("auth.firstName")} *
               </Text>
               <TextInput
                 style={[
@@ -176,6 +140,8 @@ export const RegisterScreen: React.FC = () => {
                 autoCapitalize="words"
                 autoComplete="given-name"
                 autoCorrect={false}
+                placeholder={t("auth.firstName")}
+                placeholderTextColor={theme.colors.textTertiary}
               />
             </View>
 
@@ -189,7 +155,7 @@ export const RegisterScreen: React.FC = () => {
                   },
                 ]}
               >
-                {t("auth.lastName")}
+                {t("auth.lastName")} *
               </Text>
               <TextInput
                 style={[
@@ -209,40 +175,8 @@ export const RegisterScreen: React.FC = () => {
                 autoCapitalize="words"
                 autoComplete="family-name"
                 autoCorrect={false}
-              />
-            </View>
-
-            <View style={{ marginBottom: theme.spacing.s16 }}>
-              <Text
-                style={[
-                  textStyles.section,
-                  {
-                    color: theme.colors.textSecondary,
-                    marginBottom: theme.spacing.s8,
-                  },
-                ]}
-              >
-                {t("auth.email")}
-              </Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: theme.colors.surface2,
-                    color: theme.colors.textPrimary,
-                    borderColor: theme.colors.border,
-                    borderRadius: theme.radii.r16,
-                    paddingLeft: theme.spacing.s16,
-                    paddingRight: theme.spacing.s14,
-                    paddingVertical: theme.spacing.s12,
-                  },
-                ]}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                autoCorrect={false}
+                placeholder={t("auth.lastName")}
+                placeholderTextColor={theme.colors.textTertiary}
               />
             </View>
 
@@ -288,6 +222,8 @@ export const RegisterScreen: React.FC = () => {
                 keyboardType="phone-pad"
                 autoComplete="tel"
                 autoCorrect={false}
+                placeholder={t("auth.phone")}
+                placeholderTextColor={theme.colors.textTertiary}
               />
             </View>
 
@@ -323,7 +259,7 @@ export const RegisterScreen: React.FC = () => {
               />
             </View>
 
-            <View style={{ marginBottom: theme.spacing.s16 }}>
+            <View style={{ marginBottom: theme.spacing.s24 }}>
               <View style={{ flexDirection: "row", alignItems: "center", marginBottom: theme.spacing.s8 }}>
                 <Text
                   style={[
@@ -364,140 +300,18 @@ export const RegisterScreen: React.FC = () => {
                 onChangeText={setLicensePlate}
                 autoCapitalize="characters"
                 autoCorrect={false}
+                placeholder={t("auth.licensePlate")}
+                placeholderTextColor={theme.colors.textTertiary}
               />
             </View>
 
-            <View style={{ marginBottom: theme.spacing.s16 }}>
-              <Text
-                style={[
-                  textStyles.section,
-                  {
-                    color: theme.colors.textSecondary,
-                    marginBottom: theme.spacing.s8,
-                  },
-                ]}
-              >
-                {t("auth.password")}
-              </Text>
-              <View style={{ position: "relative" }}>
-                <TextInput
-                  style={[
-                    styles.input,
-                    {
-                      backgroundColor: theme.colors.surface2,
-                      color: theme.colors.textPrimary,
-                      borderColor: theme.colors.border,
-                      borderRadius: theme.radii.r16,
-                      paddingLeft: theme.spacing.s16,
-                      paddingRight: 50,
-                      paddingVertical: theme.spacing.s12,
-                    },
-                  ]}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  autoComplete="password-new"
-                  autoCorrect={false}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeIcon}
-                >
-                  <Ionicons
-                    name={showPassword ? "eye-off-outline" : "eye-outline"}
-                    size={20}
-                    color={theme.colors.textTertiary}
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={{ marginBottom: theme.spacing.s24 }}>
-              <Text
-                style={[
-                  textStyles.section,
-                  {
-                    color: theme.colors.textSecondary,
-                    marginBottom: theme.spacing.s8,
-                  },
-                ]}
-              >
-                {t("auth.confirmPassword")}
-              </Text>
-              <View style={{ position: "relative" }}>
-                <TextInput
-                  style={[
-                    styles.input,
-                    {
-                      backgroundColor: theme.colors.surface2,
-                      color: theme.colors.textPrimary,
-                      borderColor: theme.colors.border,
-                      borderRadius: theme.radii.r16,
-                      paddingLeft: theme.spacing.s16,
-                      paddingRight: 50,
-                      paddingVertical: theme.spacing.s12,
-                    },
-                  ]}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry={!showConfirmPassword}
-                  autoCapitalize="none"
-                  autoComplete="password-new"
-                  autoCorrect={false}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                  style={styles.eyeIcon}
-                >
-                  <Ionicons
-                    name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
-                    size={20}
-                    color={theme.colors.textTertiary}
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-
             <PrimaryButton
-              title={t("auth.registerButton")}
-              onPress={handleRegister}
+              title={t("common.save")}
+              onPress={handleCompleteProfile}
               disabled={loading}
               loading={loading}
             />
           </Card>
-
-
-          <View style={styles.loginLink}>
-            <Text
-              style={[
-                textStyles.body,
-                {
-                  color: theme.colors.textSecondary,
-                },
-              ]}
-            >
-              {t("auth.hasAccount")}{" "}
-            </Text>
-            <TouchableOpacity
-              onPress={() => {
-                const nav = navigation as any;
-                nav.navigate("Login");
-              }}
-            >
-              <Text
-                style={[
-                  textStyles.body,
-                  {
-                    color: theme.colors.accent,
-                    fontWeight: "600",
-                  },
-                ]}
-              >
-                {t("auth.login")}
-              </Text>
-            </TouchableOpacity>
-          </View>
         </View>
       </ScrollView>
     </Screen>
@@ -507,7 +321,7 @@ export const RegisterScreen: React.FC = () => {
 const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
-    paddingVertical: 12,
+    paddingVertical: 24,
   },
   content: {
     flex: 1,
@@ -521,18 +335,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     height: 44,
   },
-  eyeIcon: {
-    position: "absolute",
-    right: 14,
-    height: 44,
-    width: 40,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loginLink: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginTop: 24,
-    paddingHorizontal: 16,
-  },
 });
+

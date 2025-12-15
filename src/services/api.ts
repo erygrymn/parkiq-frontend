@@ -44,14 +44,27 @@ async function apiRequest<T>(
     throw error;
   }
 
+  // Log 404 errors for debugging
+  if (response.status === 404) {
+    console.warn(`[API] 404 Error for ${url}`);
+    console.warn(`[API] Request method: ${options.method || "GET"}`);
+    console.warn(`[API] Backend URL: ${env.apiBaseUrl}`);
+  }
+
   const contentType = response.headers.get("content-type");
   const isJson = contentType?.includes("application/json");
 
   if (!isJson) {
     const text = await response.text();
     if (text.includes("<!DOCTYPE html>") || text.includes("<html>")) {
+      // Log more details for 404 errors
+      if (response.status === 404) {
+        console.error(`[API] 404 Error Details:`);
+        console.error(`[API] URL: ${url}`);
+        console.error(`[API] Response preview: ${text.substring(0, 200)}`);
+      }
       throw new Error(
-        `Server configuration error: ${response.status}. Check backend logs.`
+        `Server configuration error: ${response.status}. Check backend logs. URL: ${url}`
       );
     }
     throw new Error(
