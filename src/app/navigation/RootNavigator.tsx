@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { StatusBar } from "expo-status-bar";
 import { NavigationContainer } from "@react-navigation/native";
 import * as Linking from "expo-linking";
+import { Alert } from "react-native";
 import { useAuthStore } from "../../state/authStore";
 import { useSettingsStore } from "../../store/useSettingsStore";
 import { useTheme } from "../../ui/theme/theme";
@@ -66,51 +67,128 @@ export const RootNavigator: React.FC = () => {
     setLocale(language);
   }, [language]);
 
-  // Handle OAuth deep linking
+  // Handle auth callbacks from email confirmation and OAuth
   useEffect(() => {
-    const handleDeepLink = async (url: string) => {
+    const handleAuthCallback = async (url: string | null) => {
+      if (!url) return;
+
       try {
+        console.log("Auth callback received:", url);
         const parsedUrl = Linking.parse(url);
-        if (parsedUrl.path === "/auth/callback") {
-          // Extract tokens from URL hash
-          const hashParams = parsedUrl.queryParams as any;
-          if (hashParams?.access_token && hashParams?.refresh_token) {
-            const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-              access_token: hashParams.access_token,
-              refresh_token: hashParams.refresh_token,
-            });
-            
-            if (!sessionError && sessionData.session) {
-              const token = sessionData.session.access_token;
-              const userId = sessionData.user.id;
-              const userEmail = sessionData.user.email;
-              
-              await SecureStore.setItemAsync("parkiq_session_token", token);
-              await SecureStore.setItemAsync("parkiq_user_id", userId);
-              if (userEmail) {
-                await SecureStore.setItemAsync("parkiq_user_email", userEmail);
-              }
-              
-              // Reload session to update auth store
-              await loadSessionFromSecureStore();
+        
+        // Normalize path: Expo Go may use "/--/auth/callback" instead of "/auth/callback"
+        let normalizedPath = parsedUrl.path || "";
+        normalizedPath = normalizedPath.replace(/^\/--\//, "/");
+        
+        // Check if this is an auth callback
+        if (!normalizedPath.includes("auth/callback")) {
+          return;
+        }
+
+        // Extract params from both query string and hash fragment
+        const queryParams = parsedUrl.queryParams as any || {};
+        
+        // Also check hash fragment if present (some flows use hash)
+        let hashParams: any = {};
+        if (url.includes("#")) {
+          const hashPart = url.split("#")[1];
+          const hashPairs = hashPart.split("&");
+          hashPairs.forEach((pair) => {
+            const [key, value] = pair.split("=");
+            if (key && value) {
+              hashParams[decodeURIComponent(key)] = decodeURIComponent(value);
             }
+          });
+        }
+
+        // Merge query params and hash params (hash takes precedence)
+        const params = { ...queryParams, ...hashParams };
+
+        // Check for error first
+        if (params.error || params.error_description) {
+          const errorMsg = params.error_description || params.error || "Authentication failed";
+          Alert.alert("Authentication Error", errorMsg);
+          return;
+        }
+
+        // Handle code exchange (preferred method for email confirmation)
+        if (params.code) {
+          console.log("Exchanging code for session");
+          const { data, error } = await supabase.auth.exchangeCodeForSession(params.code);
+          
+          if (error) {
+            console.error("Code exchange error:", error);
+            Alert.alert("Authentication Error", error.message || "Failed to authenticate");
+            return;
+          }
+
+          if (data.session && data.user) {
+            console.log("Session created from code exchange");
+            const token = data.session.access_token;
+            const userId = data.user.id;
+            const userEmail = data.user.email;
+
+            await SecureStore.setItemAsync("parkiq_session_token", token);
+            await SecureStore.setItemAsync("parkiq_user_id", userId);
+            if (userEmail) {
+              await SecureStore.setItemAsync("parkiq_user_email", userEmail);
+            }
+
+            // Reload session to update auth store
+            await loadSessionFromSecureStore();
           }
         }
+        // Handle direct token exchange (fallback)
+        else if (params.access_token && params.refresh_token) {
+          console.log("Setting session from tokens");
+          const { data, error } = await supabase.auth.setSession({
+            access_token: params.access_token,
+            refresh_token: params.refresh_token,
+          });
+
+          if (error) {
+            console.error("Session set error:", error);
+            Alert.alert("Authentication Error", error.message || "Failed to authenticate");
+            return;
+          }
+
+          if (data.session && data.user) {
+            console.log("Session created from tokens");
+            const token = data.session.access_token;
+            const userId = data.user.id;
+            const userEmail = data.user.email;
+
+            await SecureStore.setItemAsync("parkiq_session_token", token);
+            await SecureStore.setItemAsync("parkiq_user_id", userId);
+            if (userEmail) {
+              await SecureStore.setItemAsync("parkiq_user_email", userEmail);
+            }
+
+            // Reload session to update auth store
+            await loadSessionFromSecureStore();
+          }
+        } else {
+          console.warn("No valid auth parameters found in callback URL");
+        }
       } catch (error) {
-        console.error("Error handling deep link:", error);
+        console.error("Error handling auth callback:", error);
+        Alert.alert(
+          "Authentication Error",
+          error instanceof Error ? error.message : "An unexpected error occurred"
+        );
       }
     };
 
     // Handle initial URL (if app was opened via deep link)
     Linking.getInitialURL().then((url) => {
       if (url) {
-        handleDeepLink(url);
+        handleAuthCallback(url);
       }
     });
 
     // Listen for deep links while app is running
     const subscription = Linking.addEventListener("url", (event) => {
-      handleDeepLink(event.url);
+      handleAuthCallback(event.url);
     });
 
     return () => {
@@ -166,8 +244,12 @@ export const RootNavigator: React.FC = () => {
         const isFailedToFetch = errorMessage.toLowerCase().includes("failed to fetch profile");
         
         // Only log unexpected errors
+        // "Failed to fetch profile" is expected when profile doesn't exist - backend will create it
         if (!is404 && !isUserNotFound && !isFailedToFetch) {
           console.error("Error checking profile:", error);
+        } else if (isFailedToFetch) {
+          // Log at info level for debugging, but don't treat as error
+          console.info("Profile not found, will be created automatically:", errorMessage);
         }
         
         // Assume incomplete and navigate to CompleteProfile

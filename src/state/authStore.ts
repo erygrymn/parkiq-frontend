@@ -3,6 +3,7 @@ import * as SecureStore from "expo-secure-store";
 import { supabase } from "../services/supabase";
 import * as Linking from "expo-linking";
 import { Alert } from "react-native";
+import { apiGet, apiPatch } from "../services/api";
 
 interface User {
   id: string;
@@ -27,6 +28,11 @@ const TOKEN_KEY = "parkiq_session_token";
 const USER_ID_KEY = "parkiq_user_id";
 const USER_EMAIL_KEY = "parkiq_user_email";
 
+// Get email redirect URL - works in both Expo Go (exp://) and dev/prod builds (parkiq://)
+function getEmailRedirectTo(): string {
+  return Linking.createURL("auth/callback");
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   sessionToken: null,
@@ -41,10 +47,73 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       if (error) throw error;
       if (!data.session) throw new Error("No session returned");
+      
+      // Check if email is confirmed
+      if (!data.user.email_confirmed_at) {
+        // Sign out the user immediately
+        await supabase.auth.signOut();
+        throw new Error("EMAIL_NOT_CONFIRMED");
+      }
 
       const token = data.session.access_token;
-      const userId = data.user.id;
-      const userEmail = data.user.email;
+      const userId = data.user?.id;
+      const userEmail = data.user?.email || null;
+
+      if (!userId) {
+        throw new Error("User ID not found");
+      }
+
+      // Verify that profile exists in database before allowing login
+      // This is a security check - users without profiles should not be able to login
+      // We temporarily set the token to check profile, then restore it
+      const previousToken = useAuthStore.getState().sessionToken;
+      try {
+        // Temporarily set token for API call
+        set({ sessionToken: token });
+        
+        // Check if profile exists
+        try {
+          await apiGet("/api/user/profile");
+        } catch (profileError) {
+          // Profile doesn't exist - check if there's pending profile data
+          // This can happen if user registered but email confirmation was required
+          const pendingProfileStr = await SecureStore.getItemAsync("parkiq_pending_profile");
+          if (pendingProfileStr) {
+            // Try to create profile with pending data
+            try {
+              const pendingProfile = JSON.parse(pendingProfileStr);
+              await apiPatch("/api/user/profile", {
+                firstName: pendingProfile.firstName || null,
+                lastName: pendingProfile.lastName || null,
+                phone: pendingProfile.phone || null,
+                bloodType: pendingProfile.bloodType || null,
+                licensePlate: pendingProfile.licensePlate || null,
+              });
+              // Remove pending profile data after successful creation
+              await SecureStore.deleteItemAsync("parkiq_pending_profile");
+            } catch (createError) {
+              // Failed to create profile - reject login
+              await supabase.auth.signOut();
+              set({ sessionToken: previousToken });
+              throw new Error("PROFILE_NOT_FOUND");
+            }
+          } else {
+            // No pending profile data - reject login
+            await supabase.auth.signOut();
+            set({ sessionToken: previousToken });
+            throw new Error("PROFILE_NOT_FOUND");
+          }
+        }
+      } catch (profileError) {
+        // If error is already PROFILE_NOT_FOUND, re-throw it
+        if (profileError instanceof Error && profileError.message === "PROFILE_NOT_FOUND") {
+          throw profileError;
+        }
+        // Other errors - reject login
+        await supabase.auth.signOut();
+        set({ sessionToken: previousToken });
+        throw new Error("PROFILE_NOT_FOUND");
+      }
 
       await SecureStore.setItemAsync(TOKEN_KEY, token);
       await SecureStore.setItemAsync(USER_ID_KEY, userId);
@@ -65,9 +134,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   signUpWithEmail: async (email: string, password: string) => {
     set({ loading: true });
     try {
+      // Set redirect URL for email confirmation - works in Expo Go
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: getEmailRedirectTo(),
+        },
       });
 
       if (error) throw error;
@@ -75,24 +148,28 @@ export const useAuthStore = create<AuthState>((set) => ({
       // If email confirmation is required, session might be null
       // In that case, we still save the user ID but don't set session
       if (data.session) {
-        const token = data.session.access_token;
-        const userId = data.user.id;
-        const userEmail = data.user.email;
+      const token = data.session.access_token;
+      const userId = data.user?.id;
+      const userEmail = data.user?.email || null;
 
-        await SecureStore.setItemAsync(TOKEN_KEY, token);
-        await SecureStore.setItemAsync(USER_ID_KEY, userId);
-        if (userEmail) {
-          await SecureStore.setItemAsync(USER_EMAIL_KEY, userEmail);
-        }
+      if (!userId) {
+        throw new Error("User ID not found");
+      }
 
-        set({
-          user: { id: userId, email: userEmail },
-          sessionToken: token,
-          loading: false,
-        });
+      await SecureStore.setItemAsync(TOKEN_KEY, token);
+      await SecureStore.setItemAsync(USER_ID_KEY, userId);
+      if (userEmail) {
+        await SecureStore.setItemAsync(USER_EMAIL_KEY, userEmail);
+      }
+
+      set({
+        user: { id: userId, email: userEmail },
+        sessionToken: token,
+        loading: false,
+      });
       } else {
         // Email confirmation required - don't set user state, just save email for reference
-        const userEmail = data.user.email;
+        const userEmail = data.user?.email || null;
         
         if (userEmail) {
           await SecureStore.setItemAsync(USER_EMAIL_KEY, userEmail);

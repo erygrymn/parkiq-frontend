@@ -101,13 +101,16 @@ export const ProfileScreen: React.FC = () => {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const isUserNotFound = errorMessage.toLowerCase().includes("user not found");
       const is404 = errorMessage.includes("404");
+      const isFailedToFetch = errorMessage.toLowerCase().includes("failed to fetch profile");
       
-      // Only log non-404 and non-user-not-found errors
-      if (!is404 && !isUserNotFound) {
+      // Only log unexpected errors (not 404, not user not found, not failed to fetch)
+      // "Failed to fetch profile" is expected when profile doesn't exist - backend will create it
+      if (!is404 && !isUserNotFound && !isFailedToFetch) {
         console.error("Failed to fetch user profile:", error);
       }
       
       // Set empty profile - backend will create it automatically on next access
+      // or user can complete it via CompleteProfile screen
       setUserProfile({
         firstName: null,
         lastName: null,

@@ -20,6 +20,7 @@ import { useTheme } from "../../ui/theme/theme";
 import { textStyles } from "../../ui/typography";
 import { t } from "../../localization";
 import { apiPatch } from "../../services/api";
+import * as SecureStore from "expo-secure-store";
 
 const BLOOD_TYPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 
@@ -71,23 +72,44 @@ export const RegisterScreen: React.FC = () => {
       // Register user
       await signUpWithEmail(email.trim(), password);
       
-      // If we reach here, session exists - update profile
-      try {
-        await apiPatch("/api/user/profile", {
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          phone: phone.trim() || null,
-          bloodType: bloodType || null,
-          licensePlate: licensePlate.trim() || null,
-        });
-      } catch (profileError) {
-        // Log error but don't fail registration
-        console.error("Failed to update profile:", profileError);
-        // Registration was successful, profile update can be done later
-      }
-    } catch (error) {
-      if (error instanceof Error && error.message === "EMAIL_CONFIRMATION_REQUIRED") {
-        // Email confirmation required - navigate to login immediately
+      // Get user and session from auth store
+      const user = useAuthStore.getState().user;
+      const sessionToken = useAuthStore.getState().sessionToken;
+      
+      // If session exists, update profile immediately
+      if (sessionToken && user) {
+        try {
+          await apiPatch("/api/user/profile", {
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            phone: phone.trim() || null,
+            bloodType: bloodType || null,
+            licensePlate: licensePlate.trim() || null,
+          });
+        } catch (profileError) {
+          // Log error but don't fail registration
+          console.error("Failed to update profile:", profileError);
+          // Registration was successful, profile update can be done later
+        }
+      } else {
+        // Email confirmation required - save profile data temporarily
+        // It will be saved after email confirmation when user logs in
+        try {
+          await SecureStore.setItemAsync(
+            "parkiq_pending_profile",
+            JSON.stringify({
+              firstName: firstName.trim(),
+              lastName: lastName.trim(),
+              phone: phone.trim() || null,
+              bloodType: bloodType || null,
+              licensePlate: licensePlate.trim() || null,
+            })
+          );
+        } catch (storeError) {
+          console.error("Failed to save pending profile:", storeError);
+        }
+        
+        // Navigate to login immediately
         const nav = navigation as any;
         nav.navigate("Login");
         
@@ -95,7 +117,39 @@ export const RegisterScreen: React.FC = () => {
         setTimeout(() => {
           Alert.alert(
             t("common.info"),
-            t("auth.emailConfirmationMessage"),
+            t("auth.emailConfirmationProfileMessage"),
+            [{ text: t("common.ok") }]
+          );
+        }, 300);
+        return; // Exit early
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message === "EMAIL_CONFIRMATION_REQUIRED") {
+        // Email confirmation required - save profile data temporarily
+        try {
+          await SecureStore.setItemAsync(
+            "parkiq_pending_profile",
+            JSON.stringify({
+              firstName: firstName.trim(),
+              lastName: lastName.trim(),
+              phone: phone.trim() || null,
+              bloodType: bloodType || null,
+              licensePlate: licensePlate.trim() || null,
+            })
+          );
+        } catch (storeError) {
+          console.error("Failed to save pending profile:", storeError);
+        }
+        
+        // Navigate to login immediately
+        const nav = navigation as any;
+        nav.navigate("Login");
+        
+        // Show alert after navigation
+        setTimeout(() => {
+          Alert.alert(
+            t("common.info"),
+            t("auth.emailConfirmationProfileMessage"),
             [{ text: t("common.ok") }]
           );
         }, 300);

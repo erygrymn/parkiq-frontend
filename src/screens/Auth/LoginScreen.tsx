@@ -18,6 +18,8 @@ import { PrimaryButton, SecondaryButton } from "../../ui/components/Button";
 import { useTheme } from "../../ui/theme/theme";
 import { textStyles } from "../../ui/typography";
 import { t } from "../../localization";
+import { supabase } from "../../services/supabase";
+import Constants from "expo-constants";
 
 export const LoginScreen: React.FC = () => {
   const theme = useTheme();
@@ -41,11 +43,64 @@ export const LoginScreen: React.FC = () => {
     setLoading(true);
     try {
       await signInWithEmail(email.trim(), password);
+      // Profile check and creation (if needed) is now handled in signInWithEmail
     } catch (error) {
-      Alert.alert(
-        t("common.error"),
-        error instanceof Error ? error.message : "Login failed"
-      );
+      const errorMessage = error instanceof Error ? error.message : "Login failed";
+      
+      if (errorMessage === "EMAIL_NOT_CONFIRMED") {
+        // Check if running in Expo Go (deep links won't work)
+        const isExpoGo = Constants.executionEnvironment === Constants.ExecutionEnvironment.StoreClient;
+        
+        Alert.alert(
+          t("common.error"),
+          isExpoGo 
+            ? t("auth.emailNotConfirmedExpoGo") || "E-posta adresinizi onaylayın. Email'deki link'e tıklayın, sonra buraya dönüp tekrar login yapmayı deneyin."
+            : t("auth.emailNotConfirmed"),
+          [
+            { text: t("common.cancel"), style: "cancel" },
+            {
+              text: t("auth.resendConfirmationEmail"),
+              onPress: async () => {
+                try {
+                  const { error: resendError } = await supabase.auth.resend({
+                    type: "signup",
+                    email: email.trim(),
+                  });
+                  
+                  if (resendError) {
+                    Alert.alert(
+                      t("common.error"),
+                      resendError.message || t("auth.resendConfirmationEmailError")
+                    );
+                  } else {
+                    Alert.alert(
+                      t("common.info"),
+                      isExpoGo
+                        ? t("auth.confirmationEmailResentExpoGo") || "Onay maili gönderildi. Email'inizdeki link'e tıklayın, sonra buraya dönüp login yapın."
+                        : t("auth.confirmationEmailResent")
+                    );
+                  }
+                } catch (resendErr) {
+                  Alert.alert(
+                    t("common.error"),
+                    t("auth.resendConfirmationEmailError")
+                  );
+                }
+              },
+            },
+          ]
+        );
+      } else if (errorMessage === "PROFILE_NOT_FOUND") {
+        Alert.alert(
+          t("common.error"),
+          t("auth.profileNotFound") || "Your account profile was not found. Please contact support."
+        );
+      } else {
+        Alert.alert(
+          t("common.error"),
+          errorMessage
+        );
+      }
     } finally {
       setLoading(false);
     }

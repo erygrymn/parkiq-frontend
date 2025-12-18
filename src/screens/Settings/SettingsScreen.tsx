@@ -21,7 +21,7 @@ import { SegmentedControl } from "../../ui/components/SegmentedControl";
 import { useTheme } from "../../ui/theme/theme";
 import { textStyles } from "../../ui/typography";
 import { t, setLocale } from "../../localization";
-import { apiGet } from "../../services/api";
+import { apiGet, apiDelete } from "../../services/api";
 
 interface VerifiedPrice {
   currency: string;
@@ -118,7 +118,7 @@ export const SettingsScreen: React.FC = () => {
     ]);
   };
 
-  const handleDeleteAccount = () => {
+  const handleDeleteAccount = async () => {
     Alert.alert(
       t("settings.deleteAccount"),
       t("settings.deleteAccountConfirm"),
@@ -127,9 +127,24 @@ export const SettingsScreen: React.FC = () => {
         {
           text: t("settings.delete"),
           style: "destructive",
-          onPress: () => {
-            // Mock: Account deletion logic would go here
-            Alert.alert(t("settings.deleteAccount"), t("settings.deleteAccountMock"));
+          onPress: async () => {
+            try {
+              // Delete account via API
+              await apiDelete("/api/user/account");
+              
+              // Sign out user after successful deletion
+              await signOut();
+              
+              Alert.alert(
+                t("settings.deleteAccount"),
+                t("settings.accountDeleted") || "Your account has been deleted successfully."
+              );
+            } catch (error) {
+              Alert.alert(
+                t("common.error"),
+                error instanceof Error ? error.message : t("settings.deleteAccountError") || "Failed to delete account"
+              );
+            }
           },
         },
       ]
