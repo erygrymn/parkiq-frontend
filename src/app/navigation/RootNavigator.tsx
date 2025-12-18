@@ -53,6 +53,18 @@ export const RootNavigator: React.FC = () => {
         setConfigLoaded(true);
       }
       
+      // Log redirect URL and initial URL for debugging
+      const getEmailRedirectUrl = () => {
+        const env = process.env.EXPO_PUBLIC_APP_ENV;
+        if (env === "development" || env === "local") {
+          return Linking.createURL("auth/callback");
+        }
+        return "parkiq://auth/callback";
+      };
+      console.log("Redirect URL:", getEmailRedirectUrl());
+      const initialUrl = await Linking.getInitialURL();
+      console.log("Initial URL:", initialUrl);
+      
       await loadSessionFromSecureStore();
       await loadSettings();
       
@@ -126,7 +138,7 @@ export const RootNavigator: React.FC = () => {
             console.log("Session created from code exchange");
             const token = data.session.access_token;
             const userId = data.user.id;
-            const userEmail = data.user.email;
+            const userEmail = data.user.email || null;
 
             await SecureStore.setItemAsync("parkiq_session_token", token);
             await SecureStore.setItemAsync("parkiq_user_id", userId);
@@ -134,8 +146,16 @@ export const RootNavigator: React.FC = () => {
               await SecureStore.setItemAsync("parkiq_user_email", userEmail);
             }
 
-            // Reload session to update auth store
+            // Reload session to update auth store and check user
             await loadSessionFromSecureStore();
+            
+            // Check user after session is loaded
+            const currentUser = useAuthStore.getState().user;
+            if (currentUser) {
+              console.log("User authenticated successfully:", currentUser.id);
+            } else {
+              console.warn("User not found after session load");
+            }
           }
         }
         // Handle direct token exchange (fallback)
@@ -156,7 +176,7 @@ export const RootNavigator: React.FC = () => {
             console.log("Session created from tokens");
             const token = data.session.access_token;
             const userId = data.user.id;
-            const userEmail = data.user.email;
+            const userEmail = data.user.email || null;
 
             await SecureStore.setItemAsync("parkiq_session_token", token);
             await SecureStore.setItemAsync("parkiq_user_id", userId);
@@ -164,8 +184,16 @@ export const RootNavigator: React.FC = () => {
               await SecureStore.setItemAsync("parkiq_user_email", userEmail);
             }
 
-            // Reload session to update auth store
+            // Reload session to update auth store and check user
             await loadSessionFromSecureStore();
+            
+            // Check user after session is loaded
+            const currentUser = useAuthStore.getState().user;
+            if (currentUser) {
+              console.log("User authenticated successfully:", currentUser.id);
+            } else {
+              console.warn("User not found after session load");
+            }
           }
         } else {
           console.warn("No valid auth parameters found in callback URL");

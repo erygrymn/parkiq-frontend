@@ -217,7 +217,7 @@ export const SettingsScreen: React.FC = () => {
                     },
                   ]}
                 >
-                  {t("settings.pushNotifications")}
+                  {t("settings.notifications")}
                 </Text>
               </View>
               <Text

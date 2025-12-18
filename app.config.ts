@@ -19,10 +19,12 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       supportsTablet: false,
       bundleIdentifier: "com.parkiq.app",
       infoPlist: {
+        NSUserNotificationUsageDescription:
+          "Notifications are used to remind you before your parking time expires.",
         NSLocationWhenInUseUsageDescription:
-          "ParkIQ needs your location to show nearby parking spots and start parking sessions.",
-        NSLocationAlwaysUsageDescription:
-          "ParkIQ needs your location to track parking sessions.",
+          "We use your location to save where you parked your vehicle.",
+        NSCameraUsageDescription:
+          "Camera access is used to take a photo of your parking location.",
       },
     },
     android: {

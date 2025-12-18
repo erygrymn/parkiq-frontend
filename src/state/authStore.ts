@@ -29,8 +29,12 @@ const USER_ID_KEY = "parkiq_user_id";
 const USER_EMAIL_KEY = "parkiq_user_email";
 
 // Get email redirect URL - works in both Expo Go (exp://) and dev/prod builds (parkiq://)
-function getEmailRedirectTo(): string {
-  return Linking.createURL("auth/callback");
+function getEmailRedirectUrl(): string {
+  const env = process.env.EXPO_PUBLIC_APP_ENV;
+  if (env === "development" || env === "local") {
+    return Linking.createURL("auth/callback");
+  }
+  return "parkiq://auth/callback";
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -45,8 +49,31 @@ export const useAuthStore = create<AuthState>((set) => ({
         password,
       });
 
-      if (error) throw error;
-      if (!data.session) throw new Error("No session returned");
+      // Handle Supabase errors first
+      if (error) {
+        // Check if error is related to email confirmation
+        if (error.message?.toLowerCase().includes("email not confirmed") || 
+            error.message?.toLowerCase().includes("email_not_confirmed")) {
+          throw new Error("EMAIL_NOT_CONFIRMED");
+        }
+        // Check if error is invalid credentials
+        if (error.message?.toLowerCase().includes("invalid login") || 
+            error.message?.toLowerCase().includes("invalid credentials") ||
+            error.message?.toLowerCase().includes("invalid password") ||
+            error.status === 400) {
+          throw new Error("INVALID_CREDENTIALS");
+        }
+        // For other errors, throw the original error
+        throw error;
+      }
+      
+      if (!data.session) {
+        // If no session but user exists, check if email is not confirmed
+        if (data.user && !data.user.email_confirmed_at) {
+          throw new Error("EMAIL_NOT_CONFIRMED");
+        }
+        throw new Error("No session returned");
+      }
       
       // Check if email is confirmed
       if (!data.user.email_confirmed_at) {
@@ -134,12 +161,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   signUpWithEmail: async (email: string, password: string) => {
     set({ loading: true });
     try {
-      // Set redirect URL for email confirmation - works in Expo Go
+      // Set redirect URL for email confirmation - works in both Expo Go and production
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: getEmailRedirectTo(),
+          emailRedirectTo: getEmailRedirectUrl(),
         },
       });
 
@@ -193,11 +220,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   signInWithApple: async () => {
     set({ loading: true });
     try {
-      const redirectUrl = Linking.createURL("/auth/callback");
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "apple",
         options: {
-          redirectTo: redirectUrl,
+          redirectTo: getEmailRedirectUrl(),
           skipBrowserRedirect: false,
         },
       });
@@ -219,11 +245,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   signInWithGoogle: async () => {
     set({ loading: true });
     try {
-      const redirectUrl = Linking.createURL("/auth/callback");
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: redirectUrl,
+          redirectTo: getEmailRedirectUrl(),
           skipBrowserRedirect: false,
         },
       });
@@ -244,11 +269,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   signInWithFacebook: async () => {
     set({ loading: true });
     try {
-      const redirectUrl = Linking.createURL("/auth/callback");
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "facebook",
         options: {
-          redirectTo: redirectUrl,
+          redirectTo: getEmailRedirectUrl(),
           skipBrowserRedirect: false,
         },
       });

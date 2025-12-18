@@ -90,15 +90,27 @@ export const LoginScreen: React.FC = () => {
             },
           ]
         );
+      } else if (errorMessage === "INVALID_CREDENTIALS") {
+        Alert.alert(
+          t("common.error"),
+          t("auth.invalidCredentials") || "Geçersiz email veya şifre. Lütfen tekrar deneyin."
+        );
       } else if (errorMessage === "PROFILE_NOT_FOUND") {
         Alert.alert(
           t("common.error"),
-          t("auth.profileNotFound") || "Your account profile was not found. Please contact support."
+          t("auth.profileNotFound") || "Hesabınız bulunamadı. Lütfen destek ekibiyle iletişime geçin."
         );
       } else {
+        // For other errors, show a user-friendly message
+        const friendlyMessage = errorMessage.includes("Invalid login") || 
+                                errorMessage.includes("invalid credentials") ||
+                                errorMessage.includes("invalid password")
+          ? (t("auth.invalidCredentials") || "Geçersiz email veya şifre. Lütfen tekrar deneyin.")
+          : errorMessage;
+        
         Alert.alert(
           t("common.error"),
-          errorMessage
+          friendlyMessage
         );
       }
     } finally {
