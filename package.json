@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "expo start --tunnel",
+    "start": "expo start --lan",
     "start:local": "expo start",
     "ios": "expo run:ios",
     "android": "expo run:android",

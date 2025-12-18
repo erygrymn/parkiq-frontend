@@ -102,13 +102,13 @@ export const ProfileScreen: React.FC = () => {
       const isUserNotFound = errorMessage.toLowerCase().includes("user not found");
       const is404 = errorMessage.includes("404");
       const isFailedToFetch = errorMessage.toLowerCase().includes("failed to fetch profile");
-      
+
       // Only log unexpected errors (not 404, not user not found, not failed to fetch)
       // "Failed to fetch profile" is expected when profile doesn't exist - backend will create it
       if (!is404 && !isUserNotFound && !isFailedToFetch) {
         console.error("Failed to fetch user profile:", error);
       }
-      
+
       // Set empty profile - backend will create it automatically on next access
       // or user can complete it via CompleteProfile screen
       setUserProfile({
@@ -140,7 +140,7 @@ export const ProfileScreen: React.FC = () => {
     }
     try {
       setLoading(true);
-      
+
       // Fetch user profile data
       await fetchUserProfile();
       const sessions = await apiGet<ParkSession[]>(
@@ -161,18 +161,18 @@ export const ProfileScreen: React.FC = () => {
         totalMinutes += diff;
       });
 
-          const totalHours = Math.floor(totalMinutes / 60);
-          const remainingMinutes = totalMinutes % 60;
-          const totalTime = totalHours > 0 
-            ? `${totalHours}${t("common.hourShort")} ${remainingMinutes}${t("common.minuteShort")}`
-            : `${remainingMinutes}${t("common.minuteShort")}`;
+      const totalHours = Math.floor(totalMinutes / 60);
+      const remainingMinutes = totalMinutes % 60;
+      const totalTime = totalHours > 0
+        ? `${totalHours}${t("common.hourShort")} ${remainingMinutes}${t("common.minuteShort")}`
+        : `${remainingMinutes}${t("common.minuteShort")}`;
 
       // Get recent activity (last 3 sessions, or as many as available)
       const recentSessions = endedSessions.slice(0, Math.min(3, endedSessions.length)).map((session) => {
         const endDate = new Date(session.ended_at!);
         const now = new Date();
         const diffMs = now.getTime() - endDate.getTime();
-        
+
         // Handle negative time differences (shouldn't happen, but just in case)
         if (diffMs < 0) {
           return {
@@ -236,16 +236,16 @@ export const ProfileScreen: React.FC = () => {
               : new Date(session.started_at).getTime();
             const endTime = new Date(session.ended_at!).getTime();
             const durationMinutes = Math.floor((endTime - startTime) / (1000 * 60));
-            
+
             // Calculate actual cost
             const actualCost = calculateParkingCost(priceInfo.price_json, durationMinutes);
-            
+
             // Calculate cost if 15 minutes more (would have cost)
             const wouldHaveDurationMinutes = durationMinutes + 15;
             const wouldHaveCost = calculateParkingCost(priceInfo.price_json, wouldHaveDurationMinutes);
-            
+
             const savedAmount = wouldHaveCost - actualCost;
-            
+
             if (savedAmount > 0) {
               totalSaved += savedAmount;
               savedSessionsList.push({
@@ -323,12 +323,12 @@ export const ProfileScreen: React.FC = () => {
                   : new Date(session.started_at).getTime();
                 const endTime = new Date(session.ended_at!).getTime();
                 const durationMinutes = Math.floor((endTime - startTime) / (1000 * 60));
-                
+
                 const actualCost = calculateParkingCost(priceInfo.price_json, durationMinutes);
                 const wouldHaveDurationMinutes = durationMinutes + 15;
                 const wouldHaveCost = calculateParkingCost(priceInfo.price_json, wouldHaveDurationMinutes);
                 const savedAmount = wouldHaveCost - actualCost;
-                
+
                 if (savedAmount > 0) {
                   totalSaved += savedAmount;
                   savedSessionsList.push({
@@ -482,11 +482,11 @@ export const ProfileScreen: React.FC = () => {
     // Calculate cost for each interval
     for (const interval of intervals) {
       if (durationHours <= interval.start) break;
-      
+
       const intervalStart = Math.max(interval.start, 0);
       const intervalEnd = Math.min(interval.end, durationHours);
       const hoursInInterval = intervalEnd - intervalStart;
-      
+
       if (hoursInInterval > 0) {
         totalCost += interval.price * hoursInInterval;
       }
@@ -843,57 +843,57 @@ export const ProfileScreen: React.FC = () => {
               </View>
             ) : (
               recentActivity.map((activity, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.activityRow,
-                  {
-                    borderBottomWidth: index < recentActivity.length - 1 ? 1 : 0,
-                    borderBottomColor: theme.colors.border,
-                    paddingBottom: index < recentActivity.length - 1 ? theme.spacing.s16 : 0,
-                    marginBottom: index < recentActivity.length - 1 ? theme.spacing.s16 : 0,
-                  },
-                ]}
-              >
                 <View
+                  key={index}
                   style={[
-                    styles.activityIcon,
+                    styles.activityRow,
                     {
-                      backgroundColor: theme.colors.surface2,
+                      borderBottomWidth: index < recentActivity.length - 1 ? 1 : 0,
+                      borderBottomColor: theme.colors.border,
+                      paddingBottom: index < recentActivity.length - 1 ? theme.spacing.s16 : 0,
+                      marginBottom: index < recentActivity.length - 1 ? theme.spacing.s16 : 0,
                     },
                   ]}
                 >
-                  <Ionicons
-                    name={activity.icon as any}
-                    size={20}
-                    color={activity.color}
-                  />
-                </View>
-                <View style={styles.activityInfo}>
-                  <Text
+                  <View
                     style={[
-                      textStyles.body,
+                      styles.activityIcon,
                       {
-                        color: theme.colors.textPrimary,
-                        fontWeight: "600",
-                        marginBottom: theme.spacing.s4,
+                        backgroundColor: theme.colors.surface2,
                       },
                     ]}
                   >
-                    {activity.title}
-                  </Text>
-                  <Text
-                    style={[
-                      textStyles.sub,
-                      {
-                        color: theme.colors.textSecondary,
-                      },
-                    ]}
-                  >
-                    {activity.subtitle}
-                  </Text>
+                    <Ionicons
+                      name={activity.icon as any}
+                      size={20}
+                      color={activity.color}
+                    />
+                  </View>
+                  <View style={styles.activityInfo}>
+                    <Text
+                      style={[
+                        textStyles.body,
+                        {
+                          color: theme.colors.textPrimary,
+                          fontWeight: "600",
+                          marginBottom: theme.spacing.s4,
+                        },
+                      ]}
+                    >
+                      {activity.title}
+                    </Text>
+                    <Text
+                      style={[
+                        textStyles.sub,
+                        {
+                          color: theme.colors.textSecondary,
+                        },
+                      ]}
+                    >
+                      {activity.subtitle}
+                    </Text>
+                  </View>
                 </View>
-              </View>
               ))
             )}
           </Card>

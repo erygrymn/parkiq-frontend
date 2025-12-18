@@ -45,7 +45,6 @@ export const en = {
     confirmationEmailResentExpoGo: "Confirmation email has been sent. Click the link in your email, then return here and log in.",
     resendConfirmationEmailError: "Failed to resend confirmation email. Please try again.",
     profileNotFound: "Account not found.",
-    invalidCredentials: "Invalid email or password. Please try again.",
     completeProfile: "Complete Profile",
     completeProfileDescription: "Please complete your profile information to continue",
     profileIncomplete: "Your profile is incomplete",

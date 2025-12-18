@@ -9,7 +9,6 @@ import { HistoryDetailScreen } from "../../screens/History/HistoryDetailScreen";
 import { SettingsScreen } from "../../screens/Settings/SettingsScreen";
 import { ProfileScreen } from "../../screens/Profile/ProfileScreen";
 import { ParkingSummaryScreen } from "../../screens/Parking/ParkingSummaryScreen";
-import { CompleteProfileScreen } from "../../screens/Auth/CompleteProfileScreen";
 import { FloatingTabBar } from "../../navigation/FloatingTabBar";
 import { t } from "../../localization";
 
@@ -45,7 +44,6 @@ function ProfileStackNavigator() {
     <ProfileStack.Navigator screenOptions={noHeaderOptions}>
       <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
       <ProfileStack.Screen name="SettingsMain" component={SettingsScreen} />
-      <ProfileStack.Screen name="CompleteProfile" component={CompleteProfileScreen} />
     </ProfileStack.Navigator>
   );
 }
@@ -56,18 +54,14 @@ function CustomTabBar({ state, navigation }: any) {
   
   let focusedRouteName: string | undefined;
   if (currentRouteState) {
-    focusedRouteName = getFocusedRouteNameFromRoute({
-      params: currentRouteState.params,
-      name: currentRoute,
-      state: currentRouteState,
-    });
+    const route = state.routes[state.index];
+    focusedRouteName = getFocusedRouteNameFromRoute(route as any);
   }
 
   const shouldHideTabBar =
     focusedRouteName === "HistoryDetail" ||
     focusedRouteName === "ParkingSummary" ||
-    focusedRouteName === "SettingsMain" ||
-    focusedRouteName === "CompleteProfile";
+    focusedRouteName === "SettingsMain";
 
   if (shouldHideTabBar) {
     return null;

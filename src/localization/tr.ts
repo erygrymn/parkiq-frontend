@@ -45,7 +45,6 @@ export const tr = {
     confirmationEmailResentExpoGo: "Onay maili gönderildi. Email'inizdeki link'e tıklayın, sonra buraya dönüp login yapın.",
     resendConfirmationEmailError: "Onay maili gönderilirken bir hata oluştu. Lütfen tekrar deneyin.",
     profileNotFound: "Hesap bulunamadı.",
-    invalidCredentials: "Geçersiz email veya şifre. Lütfen tekrar deneyin.",
     completeProfile: "Profil Bilgilerini Tamamla",
     completeProfileDescription: "Devam etmek için lütfen profil bilgilerinizi tamamlayın",
     profileIncomplete: "Profil bilgileriniz eksik",
