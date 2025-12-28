@@ -4,7 +4,6 @@ import MapView, { Marker } from "react-native-maps";
 import { useTranslation } from "react-i18next";
 import { ScreenContainer } from "@/components/layout/ScreenContainer";
 import { useTheme } from "@/theme";
-import { useAuthStore } from "@/store/useAuthStore";
 import { apiGet } from "@/services/api";
 import { getCurrentPosition } from "@/services/locationService";
 
@@ -18,7 +17,6 @@ interface VerifiedPrice {
 export const MapScreen: React.FC = () => {
   const { t } = useTranslation();
   const theme = useTheme();
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const [userLocation, setUserLocation] = useState<{
     latitude: number;
     longitude: number;
@@ -27,12 +25,10 @@ export const MapScreen: React.FC = () => {
   const [isPremium] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      getCurrentPosition()
-        .then(setUserLocation)
-        .catch(() => {});
-    }
-  }, [isAuthenticated]);
+    getCurrentPosition()
+      .then(setUserLocation)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (userLocation) {

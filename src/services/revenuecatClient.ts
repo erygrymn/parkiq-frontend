@@ -14,9 +14,9 @@ async function configureIfNeeded() {
     return;
   }
   await Purchases.configure({ apiKey });
-  const user = useAuthStore.getState().user;
-  if (user?.id) {
-    await Purchases.logIn(user.id);
+  const deviceId = useAuthStore.getState().deviceId;
+  if (deviceId) {
+    await Purchases.logIn(deviceId);
   }
   isConfigured = true;
 }

@@ -7,31 +7,23 @@ import { TextInputField } from "@/components/ui/TextInputField";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { useTheme } from "@/theme";
 import { parkingService } from "@/services/parkingService";
-import { useAuthStore } from "@/store/useAuthStore";
 import { getCurrentStatus } from "@/services/revenuecatClient";
 
 export const StartParkingScreen: React.FC = () => {
   const { t } = useTranslation();
   const theme = useTheme();
   const navigation = useNavigation();
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
 
   React.useEffect(() => {
-    if (isAuthenticated) {
-      getCurrentStatus()
-        .then((status) => setIsPremium(status === "premium"))
-        .catch(() => {});
-    }
-  }, [isAuthenticated]);
+    getCurrentStatus()
+      .then((status) => setIsPremium(status === "premium"))
+      .catch(() => {});
+  }, []);
 
   const handleStartParking = async () => {
-    if (!isAuthenticated) {
-      Alert.alert("Error", "Please sign in first");
-      return;
-    }
     setLoading(true);
     try {
       await parkingService.startParking(note || undefined);

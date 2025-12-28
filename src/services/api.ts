@@ -1,6 +1,5 @@
 import { useConfigStore } from "../state/configStore";
 import { useAuthStore } from "../state/authStore";
-import { getSupabase } from "../services/supabase";
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -11,23 +10,18 @@ export interface ApiResponse<T> {
   };
 }
 
-async function getAuthToken(): Promise<string | null> {
-  const session = useAuthStore.getState().session;
-  return session?.access_token ?? null;
-}
-
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token = await getAuthToken();
+  const deviceId = useAuthStore.getState().deviceId;
   const headers: HeadersInit = {
     "Content-Type": "application/json",
     ...options.headers,
   };
 
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+  if (deviceId) {
+    headers["X-Device-ID"] = deviceId;
   }
 
   const config = useConfigStore.getState();

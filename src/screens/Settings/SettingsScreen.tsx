@@ -106,11 +106,6 @@ export const SettingsScreen: React.FC = () => {
     fetchCurrencies();
   }, []);
 
-  // Logout is no longer needed with device ID authentication
-  const handleLogout = () => {
-    Alert.alert(t("settings.info"), "Device ID authentication is always active. No logout needed.");
-  };
-
   const handleDeleteAccount = async () => {
     Alert.alert(
       t("settings.deleteAccount"),
@@ -525,31 +520,6 @@ export const SettingsScreen: React.FC = () => {
               {t("settings.account")}
             </Text>
             <TouchableOpacity
-              onPress={handleLogout}
-              style={[
-                styles.logoutButton,
-                {
-                  backgroundColor: theme.colors.danger,
-                  borderRadius: theme.radii.r16,
-                  marginBottom: theme.spacing.s12,
-                },
-              ]}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[
-                  textStyles.body,
-                  {
-                    color: "#FFFFFF",
-                    fontWeight: "600",
-                    textAlign: "center",
-                  },
-                ]}
-              >
-                {t("settings.logout")}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
               onPress={handleDeleteAccount}
               style={[
                 styles.deleteAccountButton,
@@ -596,12 +566,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
-  },
-  logoutButton: {
-    height: 52,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 16,
   },
   deleteAccountButton: {
     height: 52,
