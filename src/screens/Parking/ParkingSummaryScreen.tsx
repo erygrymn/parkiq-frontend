@@ -192,18 +192,10 @@ export const ParkingSummaryScreen: React.FC = () => {
           text: t("history.delete") || "Delete",
           style: "destructive",
           onPress: async () => {
-            try {
-              setDeleting(true);
-              await apiDelete(`/api/park-sessions/${session.id}`);
-              navigation.goBack();
-            } catch (error) {
-              Alert.alert(
-                t("common.error"),
-                error instanceof Error ? error.message : "Failed to delete session"
-              );
-            } finally {
-              setDeleting(false);
-            }
+            Alert.alert(
+              t("common.error") || "Error",
+              "Delete functionality is not available yet."
+            );
           },
         },
       ]

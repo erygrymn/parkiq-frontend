@@ -17,11 +17,13 @@ export const LoginScreen: React.FC = () => {
   const theme = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const signIn = useAuthStore((state) => state.signIn);
+  const signInAnonymously = useAuthStore((state) => state.signInAnonymously);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [anonymousLoading, setAnonymousLoading] = useState(false);
 
   const handleSignIn = async () => {
     if (!email.trim() || !password.trim()) {
@@ -36,9 +38,10 @@ export const LoginScreen: React.FC = () => {
       await signIn(email.trim(), password);
     } catch (err: any) {
       const errorMessage = err?.message || "";
+      const errorCode = err?.code || "";
       
-      if (errorMessage.includes("Email not confirmed") || errorMessage.includes("email_not_confirmed")) {
-        setError("Please confirm your email before signing in.");
+      if (errorCode === "EMAIL_NOT_CONFIRMED" || errorMessage.includes("email_not_confirmed") || errorMessage.includes("Please confirm your email")) {
+        setError("Please confirm your email before logging in.");
       } else if (errorMessage.includes("Invalid login credentials") || errorMessage.includes("invalid_credentials")) {
         setError("Invalid email or password.");
       } else if (errorMessage.includes("rate limit") || errorMessage.includes("too_many_requests")) {
@@ -51,8 +54,33 @@ export const LoginScreen: React.FC = () => {
     }
   };
 
+  const handleContinueWithoutAccount = async () => {
+    setError(null);
+    setAnonymousLoading(true);
+
+    try {
+      await signInAnonymously();
+    } catch (err: any) {
+      console.error("Anonymous sign-in error:", err);
+      const errorMessage = err?.message || "";
+      const errorCode = err?.code || "";
+      
+      if (errorMessage.includes("captcha") || errorCode.includes("captcha")) {
+        setError("Anonymous sign-in requires CAPTCHA verification. Please check Supabase settings to disable CAPTCHA for anonymous sign-in.");
+      } else if (errorMessage.includes("Anonymous sign-ins are disabled")) {
+        setError("Anonymous sign-in is not enabled. Please create an account.");
+      } else if (errorMessage.includes("signup_disabled")) {
+        setError("Sign-up is currently disabled. Please try again later.");
+      } else {
+        setError("Something went wrong. Please try again.");
+      }
+    } finally {
+      setAnonymousLoading(false);
+    }
+  };
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={["top", "bottom"]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.bg }]} edges={["top", "bottom"]}>
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -154,6 +182,35 @@ export const LoginScreen: React.FC = () => {
               </Text>
             </TouchableOpacity>
           </View>
+
+          <View style={styles.dividerContainer}>
+            <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+            <Text style={[textStyles.caption, { color: theme.colors.textSecondary, marginHorizontal: theme.spacing.s16 }]}>
+              or
+            </Text>
+            <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+          </View>
+
+          <TouchableOpacity
+            onPress={handleContinueWithoutAccount}
+            disabled={loading || anonymousLoading}
+            style={[
+              styles.anonymousButton,
+              {
+                backgroundColor: theme.colors.surface2,
+                borderColor: theme.colors.border,
+                opacity: (loading || anonymousLoading) ? 0.6 : 1,
+              },
+            ]}
+          >
+            <Text style={[textStyles.body, { color: theme.colors.textPrimary, fontWeight: "600" }]}>
+              Continue without account
+            </Text>
+          </TouchableOpacity>
+
+          <Text style={[textStyles.caption, { color: theme.colors.textSecondary, textAlign: "center", marginTop: theme.spacing.s8 }]}>
+            Your data will stay on this device.
+          </Text>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -191,6 +248,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     marginTop: 24,
+  },
+  dividerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 24,
+    marginBottom: 16,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+  },
+  anonymousButton: {
+    height: 52,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 

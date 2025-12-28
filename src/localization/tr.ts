@@ -181,6 +181,8 @@ export const tr = {
     daysAgo: "{{count}} gün önce",
     daysAgo_plural: "{{count}} gün önce",
     personalInfo: "Kişisel Bilgiler",
+    anonymousUser: "Misafir Kullanıcı",
+    loginToAccess: "Profilinize erişmek ve verilerinizi cihazlar arasında senkronize etmek için giriş yapın.",
   },
   settings: {
     title: "Ayarlar",

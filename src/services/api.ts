@@ -1,6 +1,6 @@
-import { env } from "../env";
+import { useConfigStore } from "../state/configStore";
 import { useAuthStore } from "../state/authStore";
-import { supabase } from "../services/supabase";
+import { getSupabase } from "../services/supabase";
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -12,7 +12,8 @@ export interface ApiResponse<T> {
 }
 
 async function getAuthToken(): Promise<string | null> {
-  return useAuthStore.getState().sessionToken;
+  const session = useAuthStore.getState().session;
+  return session?.access_token ?? null;
 }
 
 async function apiRequest<T>(
@@ -29,7 +30,8 @@ async function apiRequest<T>(
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const url = endpoint.startsWith("http") ? endpoint : `${env.apiBaseUrl}${endpoint}`;
+  const config = useConfigStore.getState();
+  const url = endpoint.startsWith("http") ? endpoint : `${config.apiBaseUrl}${endpoint}`;
   let response: Response;
   try {
     response = await fetch(url, {
@@ -48,7 +50,8 @@ async function apiRequest<T>(
   if (response.status === 404) {
     console.warn(`[API] 404 Error for ${url}`);
     console.warn(`[API] Request method: ${options.method || "GET"}`);
-    console.warn(`[API] Backend URL: ${env.apiBaseUrl}`);
+    const config = useConfigStore.getState();
+    console.warn(`[API] Backend URL: ${config.apiBaseUrl}`);
   }
 
   const contentType = response.headers.get("content-type");
@@ -96,11 +99,11 @@ async function apiRequest<T>(
     if (isAuthError && token) {
       // Try to refresh the session and retry the request once
       try {
+        const supabase = getSupabase();
         const refreshResult = await supabase.auth.refreshSession();
         if (refreshResult.data.session) {
           const newToken = refreshResult.data.session.access_token;
-          // Update stored token
-          await useAuthStore.getState().refreshSession();
+          await useAuthStore.getState().hydrate();
           
           // Retry the request with new token
           const retryHeaders: HeadersInit = {
@@ -132,7 +135,7 @@ async function apiRequest<T>(
     }
     
     // Handle "User not found" errors silently for certain read endpoints
-    const isReadEndpoint = endpoint.includes("/park-sessions/history") || endpoint.includes("/park-sessions?");
+    const isReadEndpoint = endpoint.includes("/parking/history");
     
     if (isUserNotFoundError && isReadEndpoint) {
       // Return empty array for read endpoints when user not found

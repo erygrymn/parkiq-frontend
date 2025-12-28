@@ -45,6 +45,9 @@ export const ProfileScreen: React.FC = () => {
   const theme = useTheme();
   const navigation = useNavigation();
   const user = useAuthStore((state) => state.user);
+  const isAnonymous = useAuthStore((state) => state.isAnonymous);
+  const signOut = useAuthStore((state) => state.signOut);
+  const setShouldShowRegister = useAuthStore((state) => state.setShouldShowRegister);
   const currency = useSettingsStore((state) => state.currency);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -60,6 +63,7 @@ export const ProfileScreen: React.FC = () => {
   }>>([]);
   const [savedModalVisible, setSavedModalVisible] = useState(false);
   const [savedSessions, setSavedSessions] = useState<SavedSession[]>([]);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [userProfile, setUserProfile] = useState<{
     firstName?: string | null;
     lastName?: string | null;
@@ -87,6 +91,10 @@ export const ProfileScreen: React.FC = () => {
   };
 
   const fetchUserProfile = async () => {
+    if (isAnonymous) {
+      setUserProfile(null);
+      return;
+    }
     try {
       const profile = await apiGet<{
         firstName?: string | null;
@@ -122,6 +130,17 @@ export const ProfileScreen: React.FC = () => {
   };
 
   const fetchProfileData = async (forceRefresh = false) => {
+    if (isAnonymous) {
+      setLoading(false);
+      setStats({
+        totalSessions: 0,
+        totalTime: "0h 0m",
+        saved: "$0",
+      });
+      setRecentActivity([]);
+      return;
+    }
+
     // Cache duration: 5 minutes (300000 ms)
     const CACHE_DURATION = 5 * 60 * 1000;
     const now = Date.now();
@@ -143,11 +162,27 @@ export const ProfileScreen: React.FC = () => {
 
       // Fetch user profile data
       await fetchUserProfile();
-      const sessions = await apiGet<ParkSession[]>(
-        "/api/park-sessions/history?limit=100&offset=0"
-      );
+      const data = await apiGet<Array<{
+        id: string;
+        started_at: string;
+        ended_at: string | null;
+        lat: number;
+        lng: number;
+        note?: string | null;
+        duration_seconds?: number | null;
+      }>>("/api/parking/history");
+      const sessions = (data || []).map((s) => ({
+        id: s.id,
+        started_at: s.started_at,
+        ended_at: s.ended_at,
+        latitude: s.lat,
+        longitude: s.lng,
+        location_name: null,
+        note: s.note,
+        adjusted_started_at: null,
+      }));
 
-      const endedSessions = (sessions || []).filter((s) => s.ended_at);
+      const endedSessions = sessions.filter((s) => s.ended_at);
       const totalSessions = endedSessions.length;
 
       // Calculate total time
@@ -518,45 +553,166 @@ export const ProfileScreen: React.FC = () => {
         <View style={styles.content}>
           {/* Profile Header Card */}
           <Card style={{ marginBottom: theme.spacing.s16 }}>
-            <View style={styles.profileHeader}>
-              <View
-                style={[
-                  styles.avatar,
-                  {
-                    backgroundColor: theme.colors.accent,
-                  },
-                ]}
-              >
-                <Ionicons name="person" size={40} color={theme.colors.surface} />
-              </View>
-              <View style={styles.profileInfo}>
+            {isAnonymous ? (
+              <View style={styles.anonymousProfile}>
+                <View
+                  style={[
+                    styles.anonymousAvatar,
+                    {
+                      backgroundColor: theme.colors.surface2,
+                      borderColor: theme.colors.border,
+                    },
+                  ]}
+                >
+                  <Ionicons name="person-outline" size={32} color={theme.colors.textSecondary} />
+                </View>
                 <Text
                   style={[
                     textStyles.title,
                     {
                       color: theme.colors.textPrimary,
-                      marginBottom: theme.spacing.s4,
+                      marginBottom: theme.spacing.s8,
+                      textAlign: "center",
                     },
                   ]}
                 >
-                  {getUserDisplayName()}
+                  {t("profile.anonymousUser")}
                 </Text>
                 <Text
                   style={[
-                    textStyles.sub,
+                    textStyles.body,
                     {
                       color: theme.colors.textSecondary,
+                      marginBottom: theme.spacing.s24,
+                      textAlign: "center",
+                      paddingHorizontal: theme.spacing.s16,
                     },
                   ]}
                 >
-                  {user?.email || t("profile.noEmail")}
+                  {t("profile.loginToAccess")}
                 </Text>
+                <View style={styles.authButtonsContainer}>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      if (isSigningOut) return;
+                      setIsSigningOut(true);
+                      try {
+                        setShouldShowRegister(false);
+                        await signOut();
+                      } catch (error) {
+                        console.error("Sign out error:", error);
+                        setShouldShowRegister(false);
+                      } finally {
+                        setIsSigningOut(false);
+                      }
+                    }}
+                    disabled={isSigningOut}
+                    style={[
+                      styles.authButton,
+                      styles.loginButton,
+                      {
+                        backgroundColor: theme.colors.accent,
+                        marginRight: theme.spacing.s8,
+                        opacity: isSigningOut ? 0.6 : 1,
+                      },
+                    ]}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[
+                        textStyles.body,
+                        {
+                          color: theme.colors.surface,
+                          fontWeight: "600",
+                        },
+                      ]}
+                    >
+                      {t("auth.login")}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      if (isSigningOut) return;
+                      setIsSigningOut(true);
+                      try {
+                        setShouldShowRegister(true);
+                        await signOut();
+                      } catch (error) {
+                        console.error("Sign out error:", error);
+                        setShouldShowRegister(false);
+                      } finally {
+                        setIsSigningOut(false);
+                      }
+                    }}
+                    disabled={isSigningOut}
+                    style={[
+                      styles.authButton,
+                      styles.registerButton,
+                      {
+                        backgroundColor: theme.colors.surface2,
+                        borderColor: theme.colors.border,
+                        borderWidth: 1,
+                        marginLeft: theme.spacing.s8,
+                        opacity: isSigningOut ? 0.6 : 1,
+                      },
+                    ]}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[
+                        textStyles.body,
+                        {
+                          color: theme.colors.textPrimary,
+                          fontWeight: "600",
+                        },
+                      ]}
+                    >
+                      {t("auth.register")}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
+            ) : (
+              <View style={styles.profileHeader}>
+                <View
+                  style={[
+                    styles.avatar,
+                    {
+                      backgroundColor: theme.colors.accent,
+                    },
+                  ]}
+                >
+                  <Ionicons name="person" size={40} color={theme.colors.surface} />
+                </View>
+                <View style={styles.profileInfo}>
+                  <Text
+                    style={[
+                      textStyles.title,
+                      {
+                        color: theme.colors.textPrimary,
+                        marginBottom: theme.spacing.s4,
+                      },
+                    ]}
+                  >
+                    {getUserDisplayName()}
+                  </Text>
+                  <Text
+                    style={[
+                      textStyles.sub,
+                      {
+                        color: theme.colors.textSecondary,
+                      },
+                    ]}
+                  >
+                    {user?.email || t("profile.noEmail")}
+                  </Text>
+                </View>
+              </View>
+            )}
           </Card>
 
           {/* Profile Details Card */}
-          {(userProfile?.firstName || userProfile?.lastName || userProfile?.phone || userProfile?.bloodType || userProfile?.licensePlate) && (
+          {!isAnonymous && (userProfile?.firstName || userProfile?.lastName || userProfile?.phone || userProfile?.bloodType || userProfile?.licensePlate) && (
             <Card style={{ marginBottom: theme.spacing.s16 }}>
               <Text
                 style={[
@@ -700,6 +856,7 @@ export const ProfileScreen: React.FC = () => {
           )}
 
           {/* Stats Card */}
+          {!isAnonymous && (
           <Card style={{ marginBottom: theme.spacing.s16 }}>
             <Text
               style={[
@@ -810,8 +967,10 @@ export const ProfileScreen: React.FC = () => {
               </View>
             )}
           </Card>
+          )}
 
           {/* Recent Activity Card */}
+          {!isAnonymous && (
           <Card style={{ marginBottom: theme.spacing.s16 }}>
             <Text
               style={[
@@ -897,6 +1056,7 @@ export const ProfileScreen: React.FC = () => {
               ))
             )}
           </Card>
+          )}
 
           {/* Quick Actions Card */}
           <Card>
@@ -1212,6 +1372,38 @@ const styles = StyleSheet.create({
   },
   profileInfo: {
     flex: 1,
+  },
+  anonymousProfile: {
+    alignItems: "center",
+    paddingVertical: 32,
+    paddingHorizontal: 16,
+  },
+  anonymousAvatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+    borderWidth: 2,
+  },
+  authButtonsContainer: {
+    flexDirection: "row",
+    width: "100%",
+    paddingHorizontal: 16,
+  },
+  authButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loginButton: {
+    backgroundColor: "transparent",
+  },
+  registerButton: {
+    backgroundColor: "transparent",
   },
   statsRow: {
     flexDirection: "row",

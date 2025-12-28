@@ -11,12 +11,12 @@ import { AuthNavigator } from "./AuthNavigator";
 import { MainNavigator } from "./MainNavigator";
 import { SplashScreen } from "../../ui/components/SplashScreen";
 import { OnboardingScreen, hasSeenOnboarding } from "../../screens/Onboarding/OnboardingScreen";
-import { loadConfigFromBackend } from "../../env";
-import { supabase } from "../../services/supabase";
+import { useConfigStore } from "../../state/configStore";
+import { getSupabase } from "../../services/supabase";
 
 export const RootNavigator: React.FC = () => {
   const theme = useTheme();
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const authMode = useAuthStore((state) => state.authMode);
   const isHydrating = useAuthStore((state) => state.isHydrating);
   const hydrate = useAuthStore((state) => state.hydrate);
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
@@ -27,10 +27,10 @@ export const RootNavigator: React.FC = () => {
   useEffect(() => {
     const initialize = async () => {
       try {
-        await loadConfigFromBackend();
+        await useConfigStore.getState().loadConfig();
         setConfigLoaded(true);
       } catch (error) {
-        console.error("Failed to load config from backend, using defaults:", error);
+        console.error("Failed to load config from backend:", error);
         setConfigLoaded(true);
       }
       
@@ -86,6 +86,7 @@ export const RootNavigator: React.FC = () => {
         const isPasswordReset = params.type === "recovery" || url.includes("type=recovery");
 
         if (params.code) {
+          const supabase = getSupabase();
           const { data, error } = await supabase.auth.exchangeCodeForSession(params.code);
           
           if (error) {
@@ -100,6 +101,7 @@ export const RootNavigator: React.FC = () => {
             await hydrate();
           }
         } else if (params.access_token && params.refresh_token) {
+          const supabase = getSupabase();
           const { data, error } = await supabase.auth.setSession({
             access_token: params.access_token,
             refresh_token: params.refresh_token,
@@ -117,6 +119,7 @@ export const RootNavigator: React.FC = () => {
             await hydrate();
           }
         } else {
+          const supabase = getSupabase();
           const { data: { session } } = await supabase.auth.getSession();
           if (session) {
             if (isPasswordReset) {
@@ -164,11 +167,13 @@ export const RootNavigator: React.FC = () => {
     );
   }
 
+  const shouldShowMain = (authMode === "authenticated" || authMode === "anonymous") && !useAuthStore.getState().shouldShowResetPassword;
+
   return (
     <>
       <StatusBar style={theme.isDark ? "light" : "dark"} />
       <NavigationContainer>
-        {isAuthenticated && !useAuthStore.getState().shouldShowResetPassword ? (
+        {shouldShowMain ? (
           <MainNavigator />
         ) : (
           <AuthNavigator />

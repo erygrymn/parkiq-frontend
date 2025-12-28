@@ -52,10 +52,26 @@ export const HistoryScreen: React.FC = () => {
   const fetchHistory = async () => {
     try {
       setError(null);
-      const data = await apiGet<ParkSession[]>(
-        "/api/park-sessions/history?limit=50&offset=0"
-      );
-      const endedSessions = (data || []).filter((s) => s.ended_at);
+      const data = await apiGet<Array<{
+        id: string;
+        started_at: string;
+        ended_at: string | null;
+        lat: number;
+        lng: number;
+        note?: string | null;
+        duration_seconds?: number | null;
+      }>>("/api/parking/history");
+      const sessions = (data || []).map((s) => ({
+        id: s.id,
+        started_at: s.started_at,
+        ended_at: s.ended_at,
+        latitude: s.lat,
+        longitude: s.lng,
+        location_name: null,
+        note: s.note,
+        adjusted_started_at: null,
+      }));
+      const endedSessions = sessions.filter((s) => s.ended_at);
       
       // Mock history record with all information
       const mockSession: ParkSession = {

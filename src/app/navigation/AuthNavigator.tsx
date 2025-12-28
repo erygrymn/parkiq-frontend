@@ -20,6 +20,8 @@ export const AuthNavigator: React.FC = () => {
   const navigation = useNavigation();
   const resetFlag = useAuthStore((state) => state.shouldShowResetPassword);
   const setShouldShowResetPassword = useAuthStore((state) => state.setShouldShowResetPassword);
+  const registerFlag = useAuthStore((state) => state.shouldShowRegister);
+  const setShouldShowRegister = useAuthStore((state) => state.setShouldShowRegister);
 
   useEffect(() => {
     if (resetFlag) {
@@ -27,6 +29,23 @@ export const AuthNavigator: React.FC = () => {
       setShouldShowResetPassword(false);
     }
   }, [resetFlag, navigation, setShouldShowResetPassword]);
+
+  useEffect(() => {
+    if (registerFlag) {
+      const timer = setTimeout(() => {
+        try {
+          if ((navigation as any).navigate) {
+            (navigation as any).navigate("Register");
+          }
+        } catch (error) {
+          console.error("Navigation error:", error);
+        } finally {
+          setShouldShowRegister(false);
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [registerFlag, navigation, setShouldShowRegister]);
 
   return (
     <Stack.Navigator

@@ -181,6 +181,8 @@ export const en = {
     daysAgo: "{{count}} day ago",
     daysAgo_plural: "{{count}} days ago",
     personalInfo: "Personal Information",
+    anonymousUser: "Guest User",
+    loginToAccess: "Sign in to access your profile and sync your data across devices.",
   },
   settings: {
     title: "Settings",

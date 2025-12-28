@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Turnstile } from "@marsidev/react-turnstile";
 import { useTheme } from "../../ui/theme/theme";
 import { textStyles } from "../../ui/typography";
 import { PrimaryButton } from "../../ui/components/Button";
@@ -24,6 +25,8 @@ export const RegisterScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const turnstileRef = useRef<any>(null);
 
   const handleSignUp = async () => {
     if (!email.trim() || !password.trim() || !confirmPassword.trim()) {
@@ -41,17 +44,29 @@ export const RegisterScreen: React.FC = () => {
       return;
     }
 
+    if (!captchaToken) {
+      setError("Please complete the verification.");
+      return;
+    }
+
     setError(null);
     setLoading(true);
 
     try {
-      await signUp(email.trim(), password);
+      await signUp(email.trim(), password, captchaToken);
       setShowConfirmation(true);
     } catch (err: any) {
       const errorMessage = err?.message || "";
+      const errorCode = err?.code || "";
       
-      if (errorMessage.includes("already registered") || errorMessage.includes("User already registered")) {
+      if (errorCode === "email_not_confirmed" || errorMessage.includes("email_not_confirmed")) {
+        setError("Please confirm your email before logging in.");
+      } else if (errorMessage.includes("already registered") || errorMessage.includes("User already registered")) {
         setError("An account with this email already exists. Try signing in.");
+      } else if (errorMessage.includes("captcha") || errorMessage.includes("verification")) {
+        setError("Verification failed. Please try again.");
+        setCaptchaToken(null);
+        turnstileRef.current?.reset();
       } else {
         setError("Something went wrong. Please try again.");
       }
@@ -62,7 +77,7 @@ export const RegisterScreen: React.FC = () => {
 
   if (showConfirmation) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={["top", "bottom"]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.bg }]} edges={["top", "bottom"]}>
         <View style={styles.content}>
           <Card>
             <View style={styles.confirmationContent}>
@@ -84,7 +99,7 @@ export const RegisterScreen: React.FC = () => {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={["top", "bottom"]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.bg }]} edges={["top", "bottom"]}>
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -187,11 +202,29 @@ export const RegisterScreen: React.FC = () => {
                   </Text>
                 )}
 
+                <View style={[styles.turnstileContainer, { minHeight: 65 }]}>
+                  <Turnstile
+                    ref={turnstileRef}
+                    siteKey="0x4AAAAAACHU3lm9sz4rdEzE"
+                    onSuccess={(token) => {
+                      setCaptchaToken(token);
+                      setError(null);
+                    }}
+                    onError={() => {
+                      setCaptchaToken(null);
+                      setError("Verification failed. Please try again.");
+                    }}
+                    onExpire={() => {
+                      setCaptchaToken(null);
+                    }}
+                  />
+                </View>
+
                 <PrimaryButton
                   title={t("auth.registerButton")}
                   onPress={handleSignUp}
                   loading={loading}
-                  disabled={loading}
+                  disabled={loading || !captchaToken}
                   style={{ marginTop: theme.spacing.s24 }}
                 />
               </View>
@@ -251,6 +284,11 @@ const styles = StyleSheet.create({
   },
   confirmationContent: {
     alignItems: "center",
+  },
+  turnstileContainer: {
+    marginTop: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
 

@@ -64,13 +64,11 @@ export const useParkingStore = create<ParkingState>((set, get) => ({
         id: string;
         started_at: string;
         ended_at: string | null;
-        latitude: number;
-        longitude: number;
+        lat: number;
+        lng: number;
         note?: string | null;
-        adjusted_started_at?: string | null;
-        location_name?: string | null;
-        has_photo?: boolean;
-      }>>("/api/park-sessions/history?limit=1&offset=0");
+        duration_seconds?: number | null;
+      }>>("/api/parking/history");
 
       const active = history?.find((s) => !s.ended_at) || null;
 
@@ -79,12 +77,12 @@ export const useParkingStore = create<ParkingState>((set, get) => ({
           activeSession: {
             id: active.id,
             startedAt: active.started_at,
-            latitude: active.latitude,
-            longitude: active.longitude,
+            latitude: active.lat,
+            longitude: active.lng,
             note: active.note,
-            adjustedStartedAt: active.adjusted_started_at || undefined,
-            locationName: active.location_name || undefined,
-            hasPhoto: active.has_photo || false,
+            adjustedStartedAt: undefined,
+            locationName: undefined,
+            hasPhoto: false,
           },
         });
       } else {
@@ -108,35 +106,37 @@ export const useParkingStore = create<ParkingState>((set, get) => ({
       const response = await apiPost<{
         id: string;
         started_at: string;
-        latitude: number;
-        longitude: number;
+        lat: number;
+        lng: number;
         note?: string | null;
-        adjusted_started_at?: string | null;
-        location_name?: string | null;
-        has_photo?: boolean;
-      }>("/api/park-sessions", {
-        latitude: input.latitude,
-        longitude: input.longitude,
-        locationName: input.locationName,
-        note: input.note,
-        adjustedStartedAt: input.adjustedStartedAt,
-        premiumTimer: input.premiumTimer ?? false,
-        hasPhoto: input.hasPhoto ?? false,
+      }>("/api/parking/start", {
+        startedAt: new Date().toISOString(),
+        lat: input.latitude,
+        lng: input.longitude,
+        note: input.note || null,
       });
 
       set({
         activeSession: {
           id: response.id,
           startedAt: response.started_at,
-          latitude: response.latitude,
-          longitude: response.longitude,
+          latitude: response.lat,
+          longitude: response.lng,
           note: response.note || undefined,
-          adjustedStartedAt: response.adjusted_started_at || undefined,
-          locationName: response.location_name || undefined,
-          hasPhoto: response.has_photo || false,
+          adjustedStartedAt: undefined,
+          locationName: undefined,
+          hasPhoto: false,
         },
       });
-      return response;
+      return {
+        id: response.id,
+        started_at: response.started_at,
+        latitude: response.lat,
+        longitude: response.lng,
+        note: response.note,
+        adjusted_started_at: null,
+        location_name: null,
+      };
     } catch (error) {
       set({ activeSession: null });
       throw error;
@@ -153,16 +153,16 @@ export const useParkingStore = create<ParkingState>((set, get) => ({
 
     try {
       set({ loading: true });
-      const response = await apiPatch<{
+      const response = await apiPost<{
         id: string;
         started_at: string;
         ended_at: string;
-        latitude: number;
-        longitude: number;
+        lat: number;
+        lng: number;
         note?: string | null;
-        adjusted_started_at?: string | null;
-        location_name?: string | null;
-      }>(`/api/park-sessions/end/${activeSession.id}`, {
+        duration_seconds?: number | null;
+      }>("/api/parking/end", {
+        sessionId: activeSession.id,
         endedAt: new Date().toISOString(),
       });
 
@@ -177,7 +177,16 @@ export const useParkingStore = create<ParkingState>((set, get) => ({
         scheduledNotificationId: null,
       });
 
-      return response;
+      return {
+        id: response.id,
+        started_at: response.started_at,
+        ended_at: response.ended_at,
+        latitude: response.lat,
+        longitude: response.lng,
+        note: response.note,
+        adjusted_started_at: null,
+        location_name: null,
+      };
     } catch (error) {
       throw error;
     } finally {

@@ -7,7 +7,7 @@ import { useTheme } from "../../ui/theme/theme";
 import { textStyles } from "../../ui/typography";
 import { PrimaryButton } from "../../ui/components/Button";
 import { Card } from "../../ui/components/Card";
-import { supabase } from "../../services/supabase";
+import { getSupabase } from "../../services/supabase";
 import { t } from "../../localization";
 import type { AuthStackParamList } from "../../app/navigation/AuthNavigator";
 
@@ -25,6 +25,7 @@ export const ResetPasswordScreen: React.FC = () => {
 
   useEffect(() => {
     const checkSession = async () => {
+      const supabase = getSupabase();
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         setError("This reset link is invalid or expired.");
@@ -56,6 +57,7 @@ export const ResetPasswordScreen: React.FC = () => {
     setLoading(true);
 
     try {
+      const supabase = getSupabase();
       const { error: updateError } = await supabase.auth.updateUser({
         password: password,
       });
@@ -72,7 +74,7 @@ export const ResetPasswordScreen: React.FC = () => {
 
   if (!isValidSession && error) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={["top", "bottom"]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.bg }]} edges={["top", "bottom"]}>
         <View style={styles.content}>
           <Card>
             <View style={styles.errorContent}>
