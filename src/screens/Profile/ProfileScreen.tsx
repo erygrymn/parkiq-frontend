@@ -318,7 +318,8 @@ export const ProfileScreen: React.FC = () => {
           }
 
           const newStats = {
-            ...cachedStatsRef.current,
+            totalSessions: cachedStatsRef.current?.totalSessions || 0,
+            totalTime: cachedStatsRef.current?.totalTime || "0h 0m",
             saved: `${getCurrencySymbol(currency)}${totalSaved.toFixed(2)}`,
           };
 
@@ -516,7 +517,6 @@ export const ProfileScreen: React.FC = () => {
                   </Text>
                 </View>
               </View>
-            )}
           </Card>
 
           {/* Stats Card */}

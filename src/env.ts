@@ -10,8 +10,11 @@ interface AppEnv {
   revenueCatApiKey?: string;
 }
 
-// Hardcoded backend URL - only this needs to be known upfront
-const BACKEND_BASE_URL = "https://parkiq-backend.vercel.app";
+import Constants from "expo-constants";
+
+// Get backend URL from app config (set via EXPO_PUBLIC_BACKEND_URL or app.config.ts)
+// For local development: EXPO_PUBLIC_BACKEND_URL=http://localhost:3000
+const BACKEND_BASE_URL = Constants.expoConfig?.extra?.backendUrl || "https://parkiq-backend.vercel.app";
 
 const CONFIG_CACHE_KEY = "parkiq_app_config";
 const CONFIG_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes (reduced for easier debugging)

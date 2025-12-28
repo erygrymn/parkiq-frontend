@@ -26,6 +26,11 @@ async function apiRequest<T>(
 
   const config = useConfigStore.getState();
   const url = endpoint.startsWith("http") ? endpoint : `${config.apiBaseUrl}${endpoint}`;
+  
+  // Log the request for debugging
+  console.log(`[API] ${options.method || "GET"} ${url}`);
+  console.log(`[API] Headers:`, headers);
+  
   let response: Response;
   try {
     response = await fetch(url, {

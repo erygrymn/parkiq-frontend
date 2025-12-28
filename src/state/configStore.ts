@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import Constants from "expo-constants";
 
 interface ConfigState {
   supabaseUrl: string;
@@ -8,7 +9,8 @@ interface ConfigState {
   loadConfig: () => Promise<void>;
 }
 
-const BACKEND_BASE_URL = "https://parkiq-backend.vercel.app";
+// Get backend URL from app config (set via EXPO_PUBLIC_BACKEND_URL or app.config.ts)
+const BACKEND_BASE_URL = Constants.expoConfig?.extra?.backendUrl || "https://parkiq-backend.vercel.app";
 
 export const useConfigStore = create<ConfigState>((set, get) => ({
   supabaseUrl: "",
@@ -22,6 +24,7 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
     }
 
     try {
+      console.log(`[Config] Loading config from: ${BACKEND_BASE_URL}/api/config`);
       const response = await fetch(`${BACKEND_BASE_URL}/api/config`, {
         method: "GET",
         headers: {
@@ -34,15 +37,19 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
       }
 
       const data = await response.json();
+      console.log(`[Config] Config response:`, data);
 
       if (!data.success || !data.data) {
         throw new Error("Invalid config response");
       }
 
+      const apiBaseUrl = data.data.apiBaseUrl || BACKEND_BASE_URL;
+      console.log(`[Config] Using API Base URL: ${apiBaseUrl}`);
+
       set({
         supabaseUrl: data.data.supabaseUrl || "",
         supabaseAnonKey: data.data.supabaseAnonKey || "",
-        apiBaseUrl: data.data.apiBaseUrl || BACKEND_BASE_URL,
+        apiBaseUrl,
         isLoaded: true,
       });
     } catch (error) {

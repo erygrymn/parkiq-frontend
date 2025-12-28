@@ -1,6 +1,11 @@
 import { ExpoConfig, ConfigContext } from "expo/config";
 
 export default ({ config }: ConfigContext): ExpoConfig => {
+  // Get backend URL from environment variable or use default
+  // For local development, set EXPO_PUBLIC_BACKEND_URL=http://localhost:3000
+  // For production, it will use the default Vercel URL
+  const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || "parkiq-ten.vercel.app";
+
   return {
     ...config,
     name: "ParkIQ",
@@ -38,6 +43,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       eas: {
         projectId: "00000000-0000-0000-0000-000000000000",
       },
+      backendUrl,
     },
   };
 };
