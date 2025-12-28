@@ -92,47 +92,9 @@ async function apiRequest<T>(
         : `HTTP ${response.status}`,
     };
     
-    // Handle "User not found" or authentication errors by refreshing session
+    // Handle "User not found" or authentication errors
     const isUserNotFoundError = error.message?.toLowerCase().includes("user not found");
     const isAuthError = response.status === 401 || isUserNotFoundError;
-    
-    if (isAuthError && token) {
-      // Try to refresh the session and retry the request once
-      try {
-        const supabase = getSupabase();
-        const refreshResult = await supabase.auth.refreshSession();
-        if (refreshResult.data.session) {
-          const newToken = refreshResult.data.session.access_token;
-          await useAuthStore.getState().hydrate();
-          
-          // Retry the request with new token
-          const retryHeaders: HeadersInit = {
-            "Content-Type": "application/json",
-            ...options.headers,
-            Authorization: `Bearer ${newToken}`,
-          };
-          
-          const retryResponse = await fetch(url, {
-            ...options,
-            headers: retryHeaders,
-            signal: options.signal,
-          });
-          
-          const retryContentType = retryResponse.headers.get("content-type");
-          const retryIsJson = retryContentType?.includes("application/json");
-          
-          if (retryIsJson) {
-            const retryData: ApiResponse<T> = await retryResponse.json();
-            if (retryResponse.ok && retryData.success) {
-              return retryData.data as T;
-            }
-          }
-        }
-      } catch (refreshError) {
-        // Refresh failed, continue with original error handling
-        console.error("Session refresh failed:", refreshError);
-      }
-    }
     
     // Handle "User not found" errors silently for certain read endpoints
     const isReadEndpoint = endpoint.includes("/parking/history");

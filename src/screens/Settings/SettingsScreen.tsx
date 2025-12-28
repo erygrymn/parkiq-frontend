@@ -29,7 +29,6 @@ interface VerifiedPrice {
 
 export const SettingsScreen: React.FC = () => {
   const theme = useTheme();
-  const signOut = useAuthStore((state) => state.signOut);
   const themeMode = useSettingsStore((state) => state.themeMode);
   const setThemeMode = useSettingsStore((state) => state.setThemeMode);
   const reminderOffsetMinutes = useSettingsStore((state) => state.reminderOffsetMinutes);
@@ -107,15 +106,9 @@ export const SettingsScreen: React.FC = () => {
     fetchCurrencies();
   }, []);
 
+  // Logout is no longer needed with device ID authentication
   const handleLogout = () => {
-    Alert.alert(t("settings.logout"), t("settings.logoutConfirm"), [
-      { text: t("common.cancel"), style: "cancel" },
-      {
-        text: t("settings.logout"),
-        style: "destructive",
-        onPress: signOut,
-      },
-    ]);
+    Alert.alert(t("settings.info"), "Device ID authentication is always active. No logout needed.");
   };
 
   const handleDeleteAccount = async () => {
@@ -131,9 +124,6 @@ export const SettingsScreen: React.FC = () => {
             try {
               // Delete account via API
               await apiDelete("/api/user/account");
-              
-              // Sign out user after successful deletion
-              await signOut();
               
               Alert.alert(
                 t("settings.deleteAccount"),

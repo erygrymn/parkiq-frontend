@@ -1357,8 +1357,6 @@ const AddPriceModal: React.FC<AddPriceModalProps> = ({
               text: t("common.ok"),
               onPress: () => {
                 // Optionally sign out the user
-                // const signOut = useAuthStore.getState().signOut;
-                // signOut();
               },
             },
           ]

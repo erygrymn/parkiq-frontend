@@ -44,10 +44,6 @@ interface SavedSession {
 export const ProfileScreen: React.FC = () => {
   const theme = useTheme();
   const navigation = useNavigation();
-  const user = useAuthStore((state) => state.user);
-  const isAnonymous = useAuthStore((state) => state.isAnonymous);
-  const signOut = useAuthStore((state) => state.signOut);
-  const setShouldShowRegister = useAuthStore((state) => state.setShouldShowRegister);
   const currency = useSettingsStore((state) => state.currency);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -63,7 +59,6 @@ export const ProfileScreen: React.FC = () => {
   }>>([]);
   const [savedModalVisible, setSavedModalVisible] = useState(false);
   const [savedSessions, setSavedSessions] = useState<SavedSession[]>([]);
-  const [isSigningOut, setIsSigningOut] = useState(false);
   const [userProfile, setUserProfile] = useState<{
     firstName?: string | null;
     lastName?: string | null;
@@ -91,10 +86,6 @@ export const ProfileScreen: React.FC = () => {
   };
 
   const fetchUserProfile = async () => {
-    if (isAnonymous) {
-      setUserProfile(null);
-      return;
-    }
     try {
       const profile = await apiGet<{
         firstName?: string | null;
@@ -130,16 +121,6 @@ export const ProfileScreen: React.FC = () => {
   };
 
   const fetchProfileData = async (forceRefresh = false) => {
-    if (isAnonymous) {
-      setLoading(false);
-      setStats({
-        totalSessions: 0,
-        totalTime: "0h 0m",
-        saved: "$0",
-      });
-      setRecentActivity([]);
-      return;
-    }
 
     // Cache duration: 5 minutes (300000 ms)
     const CACHE_DURATION = 5 * 60 * 1000;
@@ -458,10 +439,7 @@ export const ProfileScreen: React.FC = () => {
     if (userProfile?.firstName) {
       return userProfile.firstName;
     }
-    if (!user?.email) return t("profile.user");
-    const emailParts = user.email.split("@");
-    const name = emailParts[0].split(".").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
-    return name || t("profile.user");
+    return t("profile.user");
   };
 
   // Get currency symbol from currency code
@@ -553,127 +531,7 @@ export const ProfileScreen: React.FC = () => {
         <View style={styles.content}>
           {/* Profile Header Card */}
           <Card style={{ marginBottom: theme.spacing.s16 }}>
-            {isAnonymous ? (
-              <View style={styles.anonymousProfile}>
-                <View
-                  style={[
-                    styles.anonymousAvatar,
-                    {
-                      backgroundColor: theme.colors.surface2,
-                      borderColor: theme.colors.border,
-                    },
-                  ]}
-                >
-                  <Ionicons name="person-outline" size={32} color={theme.colors.textSecondary} />
-                </View>
-                <Text
-                  style={[
-                    textStyles.title,
-                    {
-                      color: theme.colors.textPrimary,
-                      marginBottom: theme.spacing.s8,
-                      textAlign: "center",
-                    },
-                  ]}
-                >
-                  {t("profile.anonymousUser")}
-                </Text>
-                <Text
-                  style={[
-                    textStyles.body,
-                    {
-                      color: theme.colors.textSecondary,
-                      marginBottom: theme.spacing.s24,
-                      textAlign: "center",
-                      paddingHorizontal: theme.spacing.s16,
-                    },
-                  ]}
-                >
-                  {t("profile.loginToAccess")}
-                </Text>
-                <View style={styles.authButtonsContainer}>
-                  <TouchableOpacity
-                    onPress={async () => {
-                      if (isSigningOut) return;
-                      setIsSigningOut(true);
-                      try {
-                        setShouldShowRegister(false);
-                        await signOut();
-                      } catch (error) {
-                        console.error("Sign out error:", error);
-                        setShouldShowRegister(false);
-                      } finally {
-                        setIsSigningOut(false);
-                      }
-                    }}
-                    disabled={isSigningOut}
-                    style={[
-                      styles.authButton,
-                      styles.loginButton,
-                      {
-                        backgroundColor: theme.colors.accent,
-                        marginRight: theme.spacing.s8,
-                        opacity: isSigningOut ? 0.6 : 1,
-                      },
-                    ]}
-                    activeOpacity={0.7}
-                  >
-                    <Text
-                      style={[
-                        textStyles.body,
-                        {
-                          color: theme.colors.surface,
-                          fontWeight: "600",
-                        },
-                      ]}
-                    >
-                      {t("auth.login")}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={async () => {
-                      if (isSigningOut) return;
-                      setIsSigningOut(true);
-                      try {
-                        setShouldShowRegister(true);
-                        await signOut();
-                      } catch (error) {
-                        console.error("Sign out error:", error);
-                        setShouldShowRegister(false);
-                      } finally {
-                        setIsSigningOut(false);
-                      }
-                    }}
-                    disabled={isSigningOut}
-                    style={[
-                      styles.authButton,
-                      styles.registerButton,
-                      {
-                        backgroundColor: theme.colors.surface2,
-                        borderColor: theme.colors.border,
-                        borderWidth: 1,
-                        marginLeft: theme.spacing.s8,
-                        opacity: isSigningOut ? 0.6 : 1,
-                      },
-                    ]}
-                    activeOpacity={0.7}
-                  >
-                    <Text
-                      style={[
-                        textStyles.body,
-                        {
-                          color: theme.colors.textPrimary,
-                          fontWeight: "600",
-                        },
-                      ]}
-                    >
-                      {t("auth.register")}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ) : (
-              <View style={styles.profileHeader}>
+            <View style={styles.profileHeader}>
                 <View
                   style={[
                     styles.avatar,
@@ -704,7 +562,7 @@ export const ProfileScreen: React.FC = () => {
                       },
                     ]}
                   >
-                    {user?.email || t("profile.noEmail")}
+                    {t("profile.user")}
                   </Text>
                 </View>
               </View>
@@ -712,7 +570,7 @@ export const ProfileScreen: React.FC = () => {
           </Card>
 
           {/* Profile Details Card */}
-          {!isAnonymous && (userProfile?.firstName || userProfile?.lastName || userProfile?.phone || userProfile?.bloodType || userProfile?.licensePlate) && (
+          {(userProfile?.firstName || userProfile?.lastName || userProfile?.phone || userProfile?.bloodType || userProfile?.licensePlate) && (
             <Card style={{ marginBottom: theme.spacing.s16 }}>
               <Text
                 style={[
@@ -856,7 +714,7 @@ export const ProfileScreen: React.FC = () => {
           )}
 
           {/* Stats Card */}
-          {!isAnonymous && (
+          {(
           <Card style={{ marginBottom: theme.spacing.s16 }}>
             <Text
               style={[
@@ -970,7 +828,7 @@ export const ProfileScreen: React.FC = () => {
           )}
 
           {/* Recent Activity Card */}
-          {!isAnonymous && (
+          {(
           <Card style={{ marginBottom: theme.spacing.s16 }}>
             <Text
               style={[
@@ -1387,23 +1245,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 2,
   },
-  authButtonsContainer: {
-    flexDirection: "row",
-    width: "100%",
-    paddingHorizontal: 16,
-  },
-  authButton: {
-    flex: 1,
+  loginButton: {
     height: 48,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-  },
-  loginButton: {
-    backgroundColor: "transparent",
-  },
-  registerButton: {
-    backgroundColor: "transparent",
+    paddingHorizontal: 32,
+    minWidth: 200,
   },
   statsRow: {
     flexDirection: "row",
