@@ -257,7 +257,8 @@ Gölgeler sıcak-ink `rgba(24,20,12,x)`, temas+ortam çifti, **max alfa .18**, t
 
 **Tarife veri modeli (tek doğru kaynak):**
 
-- Tier = `{duration, cumulativePrice}` — fiyatlar **KÜMÜLATİF TOPLAM**dır: "Now ₺50 · Next ₺100" satırında ₺100, o dilimde ödenecek toplam tutardır, ek tutar değil.
+- Tier = `{endMin, cumulativePrice}` — `endMin` dilim SONUNUN park başlangıcından kümülatif dakikasıdır (1h → 60, 2h → 120; §7.4 formu süre girse bile motor kümülatif sınır tutar). Fiyatlar **KÜMÜLATİF TOPLAM**dır: "Now ₺50 · Next ₺100" satırında ₺100, o dilimde ödenecek toplam tutardır, ek tutar değil.
+- **Girdi normalizasyonu `tariffMath`'te zorunludur** (elle giriş + OCR güvenilmezdir): tiers `endMin` artan sıraya dizilir; `endMin ≤ 0` veya bir öncekine eşit/küçük dilimler atılır (ilk giriş kazanır); kümülatif fiyat azalamaz (azalan fiyat bir öncekine yükseltilir). Normalizasyon sonrası dilim kalmazsa durum tarifesize düşer; NaN/sonsuz değer hiçbir çıktı alanına sızamaz.
 - Tarife tipleri enum: `tiered | flat | hourly`.
   - `tiered`: form = dilim satırları (süre + toplam ₺, §7.4). Çubuk: süre-orantılı dilimler.
   - `flat`: form = tek ₺ alanı ("Flat rate"). Çubuk gizlenir; LA ikincil yuvası "₺X FLAT" (§8.1); para kutusu ve dilim uyarısı üretilmez.
@@ -269,14 +270,15 @@ Gölgeler sıcak-ink `rgba(24,20,12,x)`, temas+ortam çifti, **max alfa .18**, t
 
 - **Track:** 12pt yükseklik in-app (LA 8pt), radius tam, `#E9E9E2` light / `#26262B` dark+LA.
 - **Dolgu:** SOLID yeşil — `#00A650` light / `#2FE07A` dark+LA. **Gradyan her yerde silindi.**
-- **Knob:** 18pt daire (LA 14pt). Light app: `#141416` + 3.5px beyaz halka; dark/LA: `#2FE07A` + kart rengi halka. Knob konumu: `knobX = segStart + (elapsedInTier/tierDuration) × segWidth` — elle yüzde yasak.
+- **Knob:** 18pt daire (LA 14pt). Light app: `#141416` + 3.5px beyaz halka; dark/LA: `#2FE07A` + kart rengi halka. Knob konumu: `knobX = segStart + (elapsedInTier/tierDuration) × segWidth` — elle yüzde yasak. Açık uçlu dilimde referans süre = son tanımlı dilimin süresi; ilerleme segment sonunda doyar (knob %100'ü aşamaz).
 - **Dilimler:** genişlik süre-orantılı; gösterim penceresi = başlangıç → şimdiki dilim + 2 (max 4 dilim); min dilim %18 clamp + renormalize; açık uçlu son dilim sabit %22 + sağ kenarda 12pt alpha fade. Ayraç: 2px zemin/yüzey rengi gap (asla stroke).
 - **Fiyat etiketleri:** dilim MERKEZİNE absolute (`left: segCenter%`, `translateX(-50%)`), 11pt/800 tabular ink. **Geçilmiş dilim fiyatı `text-secondary` + ağırlık 400'e düşer** — "geçmişlik" sinyali renkle değil ağırlıkla verilir (aktif/sonraki 800, geçilmiş 400; renk tek sinyal olamaz + `disabled` bilgi taşıyamaz). `space-between` yasak.
 - **Saat işaretleri:** dilim SINIRLARININ üstünde 9pt/600 tabular `text-secondary`; yalnız bir SONRAKİ sınır ink + 800.
-- **Durum makinesi (app + LA + Aktif Oturum senkron — hepsi `tariffMath` çıktısından):**
-  - Sınıra >15 dk: dolgu+knob yeşil.
-  - Sınıra ≤15 dk (kullanıcı eşiği, vars. 15 dk): dolgunun aktif segmenti ve knob `warn-fill`'e, geri sayım RAKAMI `warn-text`'e döner. İstisna: rakam ≥22pt display boyutundaysa (örn. LA hero 44pt) `warn-fill` (dark'ta `#FFB300`) kullanılabilir; varsayılan metin rengi her zaman `warn-text`'tir. **Knob dolu daireden halkaya döner** (ikinci kanal); saat ikonu (`clock`, Regular) + metin zorunlu eşlik eder. Pulse/titreme yok.
-  - Dilim aşıldı: amber kalır; copy duruma döner. Kırmızı asla.
+- **Durum makinesi (app + LA + Aktif Oturum senkron — hepsi `tariffMath` çıktısındaki `barTone: green | amber-approaching | amber-exceeded` alanından; render katmanı bu durumu asla kendisi türetmez):**
+  - `green` — sınıra >15 dk: dolgu+knob yeşil.
+  - `amber-approaching` — sınıra ≤15 dk (kullanıcı eşiği, vars. 15 dk): dolgunun aktif segmenti ve knob `warn-fill`'e, geri sayım RAKAMI `warn-text`'e döner. İstisna: rakam ≥22pt display boyutundaysa (örn. LA hero 44pt) `warn-fill` (dark'ta `#FFB300`) kullanılabilir; varsayılan metin rengi her zaman `warn-text`'tir. **Knob dolu daireden halkaya döner** (ikinci kanal); saat ikonu (`clock`, Regular) + metin zorunlu eşlik eder. Pulse/titreme yok.
+  - `amber-exceeded` — dilim aşıldı: amber kalır; copy duruma döner. Aşılmışken yeni bir sınıra ≤15 dk kalırsa `amber-approaching` öncelik alır. Kırmızı asla.
+  - **Amber yalnız gerçek bir fiyat artışına bağlanır:** sonraki dilim yoksa (fiyat artmayacaksa) `amber-approaching` üretilmez ve sınır alanları (`nextBoundary*`, `minutesToBoundary`) null döner — bildirim zamanlayıcı fiyatı değişmeyen sınıra uyarı kuramaz.
 - Çubuk çevresindeki tüm metin ink/gri kalır (overline'lar, ₺ etiketleri).
 
 ### 5.10 Uyarı / para kutusu (koşullu)
@@ -437,7 +439,7 @@ Paged yatay swipe, sağ üstte "Skip" (text buton), altta 3 nokta indicator (akt
 ### 7.10 Paywall (pageSheet)
 
 - Zemin `surface/card #FFFFFF` (dark `#1C1C1F`) — krem yasak. Plan/başlık metinlerinde nokta imzası YOK.
-- Hiyerarşi: overline "PARKIQ PRO" 11pt → başlık display-S 28pt Black uppercase, noktasız: **"PRO DETECTS PARKING"** + body 15pt "You never think about it." → özellik listesi 5 satır (SF Symbol Regular + 15pt): Auto-detection, Live Activity + widgets, Unlimited history & stats, Unlimited OCR, Multiple vehicles → plan kartları: Yearly (vars. seçili) + Monthly + Lifetime — her biri `r-16` kutu, 44pt+, fiyat 17pt/800 tabular; seçili kart 2pt ink border → siyah hap CTA → 13pt text satır: "Restore · Terms · Privacy".
+- Hiyerarşi: overline "PARKIQ PRO" 11pt → başlık display-S 28pt Black uppercase, noktasız: **"PRO DETECTS PARKING"** + body 15pt "You never think about it." → özellik listesi 4 satır (SF Symbol Regular + 15pt): Auto-detection, Live Activity + widgets, Unlimited history & stats, Multiple vehicles — (tarife panosu tarama premium DEĞİLDİR: cihaz üstü Vision'a geçildiği için herkese sınırsız ücretsizdir) → plan kartları: Yearly (vars. seçili) + Monthly + Lifetime — her biri `r-16` kutu, 44pt+, fiyat 17pt/800 tabular; seçili kart 2pt ink border → siyah hap CTA → 13pt text satır: "Restore · Terms · Privacy".
 - **CTA metni plan-bağımlı şablon:** "Continue — ₺X/year" / "Continue — ₺X/month" / "Continue — ₺X once" (fiyat her zaman tabular rakam).
 - **Durum listesi (bağlayıcı):**
   1. **Yükleniyor:** plan kartları yerine 3 iskelet kutu (§5.12 kalıbı, `r-16`), CTA disabled.
