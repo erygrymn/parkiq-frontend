@@ -1,0 +1,18 @@
+diff --git a/node_modules/expo-modules-jsi/apple/Sources/ExpoModulesJSI/Coding/JavaScriptCodable+Date.swift b/node_modules/expo-modules-jsi/apple/Sources/ExpoModulesJSI/Coding/JavaScriptCodable+Date.swift
+index eb1cc94..e7da251 100644
+--- a/node_modules/expo-modules-jsi/apple/Sources/ExpoModulesJSI/Coding/JavaScriptCodable+Date.swift
++++ b/node_modules/expo-modules-jsi/apple/Sources/ExpoModulesJSI/Coding/JavaScriptCodable+Date.swift
+@@ -50,7 +50,12 @@ let maxJavaScriptDateMilliseconds: Double = 8_640_000_000_000_000
+ /// faithful to `new Date(number)`; the `Date`/string branches pass an already-clipped `getTime()` through.
+ @usableFromInline
+ func dateFromMilliseconds(_ milliseconds: Double) throws -> Date {
+-  guard milliseconds.isFinite, abs(milliseconds) <= maxJavaScriptDateMilliseconds else {
++  // Swift 6.2 (Xcode 26.2) cannot type-check `abs(milliseconds) <= maxJavaScriptDateMilliseconds`
++  // inline: the generic `abs` leaves the comparison ambiguous. Binding it to an explicitly typed
++  // local picks the single Double overload. Behaviour is unchanged — abs is total on Double, so
++  // hoisting it out of the short-circuit cannot trap.
++  let magnitude: Double = abs(milliseconds)
++  guard milliseconds.isFinite, magnitude <= maxJavaScriptDateMilliseconds else {
+     throw InvalidDateException()
+   }
+   return Date(timeIntervalSince1970: milliseconds.rounded(.towardZero) / 1000.0)
