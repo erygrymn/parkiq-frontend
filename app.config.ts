@@ -7,6 +7,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...(config as ExpoConfig),
   ios: {
     ...(config.ios ?? {}),
+    // Widget extension target'ının imzalanabilmesi için zorunlu (@bacons/apple-targets)
+    appleTeamId: 'H935CHT5WL',
     // Live Activity/widget ile ana app arasındaki paylaşılan kutu (§8.3)
     entitlements: {
       ...((config.ios?.entitlements as Record<string, unknown>) ?? {}),
