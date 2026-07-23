@@ -426,13 +426,14 @@ function useNow(intervalMs: number): number {
   return now;
 }
 
-export function ActiveSheet() {
+export function ActiveSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   const { colors } = useTheme();
   const session = useSessionStore((s) => s.session);
   const phase = useSessionStore((s) => s.phase);
   const notificationState = useSessionStore((s) => s.notificationState);
   const { requestEnd, keep, confirmEnd } = useSessionStore.getState();
   const online = useNetworkStore((s) => s.online);
+  const isPremium = useIsPremium();
   const warnThresholdMin = useSettingsStore((s) => s.warnThresholdMin);
   const [findOpen, setFindOpen] = useState(false);
   const now = useNow(1000);
@@ -523,8 +524,13 @@ export function ActiveSheet() {
         </View>
       ) : (
         <View style={{ gap: spacing.s8 }}>
-          {/* Ekranın tek siyah CTA'sı: dönüş anının aksiyonu (İlke 4) */}
-          <PrimaryCta label={t('findMyCar')} onPress={() => setFindOpen(true)} />
+          {/* Ekranın tek siyah CTA'sı: dönüş anının aksiyonu (İlke 4).
+              Pusulalı dönüş premium; free'de araba haritada pin olarak durmaya
+              devam eder, CTA paywall'a köprüdür. */}
+          <PrimaryCta
+            label={t('findMyCar')}
+            onPress={() => (isPremium ? setFindOpen(true) : onOpenPaywall())}
+          />
           <View style={{ flexDirection: 'row', gap: spacing.s8 }}>
             <GhostButton
               label={t('shareLocation')}

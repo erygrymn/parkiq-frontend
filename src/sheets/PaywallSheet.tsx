@@ -20,9 +20,10 @@ const PRIVACY_URL = 'https://www.twiceapps.co/privacy';
 // §4.10 dikkat: paywall işletim sistemi yeteneğini (Live Activity/widget) DEĞİL,
 // ParkIQ'nun kendi işlevlerini satar. LA, Dynamic Island, widget ve bildirim
 // uyarıları herkese ÜCRETSİZDİR.
-const FEATURES: Array<{ symbol: SFSymbol; key: 'proFeatureAuto' | 'proFeatureScan' | 'proFeatureHistory' }> = [
+const FEATURES: Array<{ symbol: SFSymbol; key: 'proFeatureAuto' | 'proFeatureScan' | 'proFeatureFind' | 'proFeatureHistory' }> = [
   { symbol: 'sensor.tag.radiowaves.forward', key: 'proFeatureAuto' },
   { symbol: 'camera.viewfinder', key: 'proFeatureScan' },
+  { symbol: 'location.north.circle', key: 'proFeatureFind' },
   { symbol: 'chart.bar', key: 'proFeatureHistory' },
 ];
 

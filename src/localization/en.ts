@@ -131,6 +131,7 @@ export const en = {
   proFeatureAuto: 'Auto-detection when you leave the car',
   proFeatureScan: 'Scan tariff boards with the camera',
   autoRenewNotice: 'Subscriptions renew automatically until cancelled. Your Apple ID is charged at confirmation and again at each renewal. Manage or cancel in Settings.',
+  proFeatureFind: 'Compass guidance back to the car',
   proFeatureHistory: 'Unlimited history and stats',
   planYearly: 'Yearly',
   planMonthly: 'Monthly',

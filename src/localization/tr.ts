@@ -123,6 +123,7 @@ export const tr: Record<CopyKey, string> = {
   proFeatureAuto: 'Arabadan inince otomatik kayıt',
   proFeatureScan: 'Tarife panolarını kamerayla tara',
   autoRenewNotice: 'Abonelik iptal edilene dek kendini yeniler. Ücret onayda ve her yenilemede Apple kimliğinden tahsil edilir. Ayarlar’dan yönetebilir veya iptal edebilirsin.',
+  proFeatureFind: 'Arabaya pusulayla geri dönüş',
   proFeatureHistory: 'Sınırsız geçmiş ve istatistik',
   planYearly: 'Yıllık',
   planMonthly: 'Aylık',

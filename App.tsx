@@ -81,7 +81,7 @@ function SheetContent({ phase, onOpenPaywall }: { phase: SessionPhase; onOpenPay
       return <ParkingSheet onOpenPaywall={onOpenPaywall} />;
     case 'active':
     case 'ending':
-      return <ActiveSheet />;
+      return <ActiveSheet onOpenPaywall={onOpenPaywall} />;
     case 'ended':
       return <EndedSheet onOpenPaywall={onOpenPaywall} />;
   }
