@@ -9,7 +9,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.twiceapps.parkiq",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "ParkIQ saves where you parked so you can find your car later. Your location stays on this device.",
         "NSCameraUsageDescription": "Take a photo of your parking spot so you can find your car in a garage. Photos stay on this device.",
