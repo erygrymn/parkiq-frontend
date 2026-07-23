@@ -3,7 +3,7 @@ import { Caption, Overline } from '../components/Typography';
 import { formatClock, formatDateShort, formatDurationStamp, formatMoney } from '../lib/format';
 import { openInMaps } from '../lib/maps';
 import { computeExitSummary } from '../lib/tariffMath';
-import { getLocale, t } from '../localization';
+import { getLocale, t, upper } from '../localization';
 import type { ParkSession } from '../state/sessionStore';
 import { useTheme } from '../theme';
 import { radius, spacing } from '../theme/tokens';
@@ -62,12 +62,11 @@ export function SessionDetail({ session }: { session: ParkSession }) {
               fontSize: 28,
               fontWeight: '900',
               letterSpacing: 28 * -0.02,
-              textTransform: 'uppercase',
               color: colors.ink,
             }}
             maxFontSizeMultiplier={1.3}
           >
-            {session.placeName}
+            {upper(session.placeName)}
             <Text style={{ color: colors.ink }}>.</Text>
           </Text>
         )}

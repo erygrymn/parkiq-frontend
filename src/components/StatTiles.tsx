@@ -21,7 +21,10 @@ function Tile({ label, value, hero }: { label: string; value: string; hero?: boo
         gap: spacing.s4,
       }}
     >
-      <Overline numberOfLines={1}>{label}</Overline>
+      {/* Üçte bir genişlikte kutu: uzun etiketler kırpılmasın diye küçülebilir */}
+      <Overline numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+        {label}
+      </Overline>
       <Text
         numberOfLines={1}
         adjustsFontSizeToFit

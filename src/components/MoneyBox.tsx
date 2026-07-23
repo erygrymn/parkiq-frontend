@@ -1,5 +1,5 @@
 import { Text, View } from 'react-native';
-import { formatClock, formatMoney } from '../lib/format';
+import { formatMoney } from '../lib/format';
 import { getLocale, t } from '../localization';
 import type { TariffState } from '../lib/tariffMath';
 import { useTheme } from '../theme';
@@ -30,11 +30,14 @@ export function MoneyBox({ state }: { state: TariffState }) {
   const textColor = amber ? colors.warnText : colors.accentText;
   const locale = getLocale();
 
-  const parts = t('exitBeforePay', {
-    time: formatClock(state.nextBoundaryAtMs),
+  // Saat yerine kalan süre: "02:04 öncesi çık" okuyucuya çıkarma yaptırıyor,
+  // "12 dk içinde çık" doğrudan aksiyonun kendisi.
+  const minutes = Math.max(0, Math.round(state.minutesToBoundary));
+  const money = {
     now: formatMoney(state.nowPrice, state.currency, locale),
     next: formatMoney(state.nextPrice, state.currency, locale),
-  });
+  };
+  const parts = minutes < 1 ? t('exitNowPay', money) : t('exitWithinPay', { minutes, ...money });
 
   return (
     <View

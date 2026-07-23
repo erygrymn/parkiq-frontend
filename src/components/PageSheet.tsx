@@ -1,6 +1,7 @@
 import { SymbolView } from 'expo-symbols';
 import type { ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { upper } from '../localization';
 import { useTheme } from '../theme';
 import { radius, spacing, typeScale } from '../theme/tokens';
 
@@ -61,11 +62,10 @@ export function PageSheet({
               fontSize: typeScale.title.fontSize,
               fontWeight: typeScale.title.fontWeight,
               letterSpacing: typeScale.title.letterSpacing,
-              textTransform: 'uppercase',
               color: colors.ink,
             }}
           >
-            {title}
+            {upper(title)}
           </Text>
           <Pressable
             onPress={onClose}
@@ -111,11 +111,10 @@ function SectionLabel({ children }: { children: ReactNode }) {
         fontSize: typeScale.overline.fontSize,
         fontWeight: typeScale.overline.fontWeight,
         letterSpacing: typeScale.overline.letterSpacing,
-        textTransform: 'uppercase',
         color: colors.textTertiary,
       }}
     >
-      {children}
+      {typeof children === 'string' ? upper(children) : children}
     </Text>
   );
 }

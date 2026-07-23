@@ -26,7 +26,7 @@ import { useNetworkStore } from '../state/networkStore';
 import { shareParkedLocation } from '../lib/share';
 import { FindMyCar } from '../screens/FindMyCar';
 import { computeExitSummary, computeTariffState } from '../lib/tariffMath';
-import { getLocale, t } from '../localization';
+import { getLocale, t, upper } from '../localization';
 import { useSessionStore, type ParkSession } from '../state/sessionStore';
 import { useSettingsStore } from '../state/settingsStore';
 import { useTheme } from '../theme';
@@ -52,7 +52,7 @@ export function IdleSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   const filter = useDiscoveryStore((s) => s.filter);
   const discoveryState = useDiscoveryStore((s) => s.state);
   const pois = useDiscoveryStore((s) => s.pois);
-  const { setFilter, load } = useDiscoveryStore.getState();
+  const { setFilter, load, focus } = useDiscoveryStore.getState();
 
   // Kullanıcı konumu alınınca yakındakiler çekilir (mesafe eşiğiyle tekrar sorgu engellenir).
   useEffect(() => {
@@ -76,10 +76,11 @@ export function IdleSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
     }
   };
 
+  // `focus` hem kamerayı taşır hem veriyi çeker — yalnız `load` kamerayı oynatmıyordu.
   const locateMe = () => {
     void captureCurrentPlace().then((outcome) => {
       if (outcome.status === 'ok') {
-        load({ latitude: outcome.place.latitude, longitude: outcome.place.longitude });
+        focus({ latitude: outcome.place.latitude, longitude: outcome.place.longitude });
       }
     });
   };
@@ -87,7 +88,11 @@ export function IdleSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   return (
     <View style={{ paddingHorizontal: spacing.s20, paddingBottom: spacing.s20, gap: spacing.s16 }}>
       {/* Hedefi ara → ORANIN çevresindeki otoparklar (evden çıkmadan planlama) */}
-      <SearchBar onPick={(result) => load(result.coords)} onLocate={locateMe} />
+      <SearchBar onPick={(result) => focus(result.coords)} onLocate={locateMe} />
+
+      {/* CTA doğrudan aramanın altında: kompakt kademede görünen tek şey bu ikisi.
+          Filtreler ve liste aşağıda kalır, panel yukarı çekilince ortaya çıkar. */}
+      <PrimaryCta label={t('iParked')} onPress={park} />
 
       <ChipGroup<PoiFilter>
         options={[
@@ -136,11 +141,11 @@ export function IdleSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
                   fontSize: 21,
                   fontWeight: '900',
                   letterSpacing: 21 * -0.02,
-                  textTransform: 'uppercase',
                   color: colors.ink,
                 }}
               >
-                {poi.name ?? t(poi.kind === 'charging' ? 'filterCharging' : 'filterAll')}
+                {/* Adsız POI'de filtre etiketi ("Tümü") basılıyordu — türün adı doğrusu */}
+                {upper(poi.name ?? t(poi.kind === 'charging' ? 'poiCharging' : 'poiParking'))}
               </Text>
               <Pressable accessibilityRole="button" onPress={() => openCoordsInMaps(poi, poi.name)} hitSlop={8}>
                 <Caption color={colors.ink} style={{ fontWeight: '600' }}>
@@ -154,8 +159,6 @@ export function IdleSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
           </View>
         );
       })}
-
-      <PrimaryCta label={t('iParked')} onPress={park} />
     </View>
   );
 }

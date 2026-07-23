@@ -4,13 +4,13 @@ export const en = {
   // Aksiyonlar
   // Onboarding (§7.1) — poster başlıkları noktasız saklanır, nokta bileşende renklenir
   onbTitle1: 'PARK',
-  onbSub1: 'ONE TAP. TWO SECONDS.',
-  onbTitle2: 'SAVE ₺',
-  onbExample2: '01:47 · ₺45',
+  onbBody1: 'One tap marks where you left the car. Floor, photo and note are optional — add them only when the garage is confusing.',
+  onbTitle2: 'SAVE MONEY',
+  onbBody2: 'Enter the tariff once and ParkIQ counts down to the next price step. Leave before it jumps and the difference stays in your pocket.',
   onbTitle3: 'FIND IT',
-  onbSub3: 'WE REMEMBER WHERE YOU PARKED.',
+  onbBody3: 'Compass and map walk you back. Underground, where GPS gives up, the photo and floor you saved take over.',
   skip: 'Skip',
-  enableLocation: 'Enable Location',
+  enableLocation: 'Continue',
   notNow: 'Not now',
 
   iParked: 'I Parked',
@@ -29,6 +29,8 @@ export const en = {
   filterCovered: 'Covered',
   myLocation: 'My location',
   noResults: 'No places found.',
+  poiParking: 'Parking',
+  poiCharging: 'Charging point',
   directions: 'Directions',
   minWalk: '{minutes} min walk',
 
@@ -42,7 +44,8 @@ export const en = {
   addTariff: 'Add tariff to see cost',
 
   // Tarife / para (§5.9–5.10 formülünden)
-  exitBeforePay: 'Exit before {time} and pay {now} instead of {next}',
+  exitWithinPay: 'Leave within {minutes} min and pay {now} instead of {next}',
+  exitNowPay: 'Leave now and pay {now} instead of {next}',
   nowNext: 'Now {now} · Next {next}',
   nextTier: 'Next tier',
   tierAlert: 'Tier {tier} in {minutes} min. Now {now}, after {next}.',
@@ -189,9 +192,9 @@ export const en = {
   history: 'History',
   shareMonth: 'Share this month',
   monthlySaved: 'Saved per month',
-  totalSaved: 'Total saved',
+  totalSaved: 'Saved',
   sessionsCount: 'Sessions',
-  avgDuration: 'Avg duration',
+  avgDuration: 'Avg time',
   sessionDetail: 'Session',
   openInMaps: 'Open in Maps',
   back: 'Back',

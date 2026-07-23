@@ -1,5 +1,6 @@
 import Mapbox, { Camera, LocationPuck, MapView, MarkerView } from '@rnmapbox/maps';
 import { SymbolView } from 'expo-symbols';
+import { useEffect, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { MAPBOX_PUBLIC_TOKEN, MAPBOX_STYLE_URL_DARK, MAPBOX_STYLE_URL_LIGHT } from '../config';
 import { applyFilter, type PoiKind } from '../lib/parkingPoi';
@@ -91,7 +92,20 @@ export function MapboxCanvas() {
   const phase = useSessionStore((s) => s.phase);
   const pois = useDiscoveryStore((s) => s.pois);
   const filter = useDiscoveryStore((s) => s.filter);
+  const cameraTarget = useDiscoveryStore((s) => s.cameraTarget);
+  const cameraToken = useDiscoveryStore((s) => s.cameraToken);
   const visiblePois = applyFilter(pois, filter);
+  const cameraRef = useRef<Camera>(null);
+
+  // Konuma dön / arama sonucu: token her artışta kamera hedefe uçar.
+  useEffect(() => {
+    if (cameraToken === 0 || !cameraTarget) return;
+    cameraRef.current?.setCamera({
+      centerCoordinate: [cameraTarget.longitude, cameraTarget.latitude],
+      zoomLevel: DEFAULT_ZOOM,
+      animationDuration: 600,
+    });
+  }, [cameraToken, cameraTarget]);
 
   const styleURL =
     scheme === 'dark'
@@ -120,8 +134,11 @@ export function MapboxCanvas() {
         compassEnabled={false}
       >
       <Camera
+        ref={cameraRef}
         defaultSettings={{ zoomLevel: DEFAULT_ZOOM }}
         zoomLevel={DEFAULT_ZOOM}
+        // Kullanıcı haritayı elle kaydırdıysa takip kopar; "konuma dön" ve arama
+        // sonucu bu yüzden takip bayrağına değil, açık setCamera'ya bağlı (aşağıda).
         followUserLocation={followUser}
         followZoomLevel={DEFAULT_ZOOM}
         centerCoordinate={followUser ? undefined : (carCoords ?? undefined)}

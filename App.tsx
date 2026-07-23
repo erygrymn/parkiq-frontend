@@ -1,8 +1,8 @@
-import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
+import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { StatusBar } from 'expo-status-bar';
 import { SymbolView, type SFSymbol } from 'expo-symbols';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, useWindowDimensions, View } from 'react-native';
 import { t } from './src/localization';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,18 +22,17 @@ import { ThemeProvider, useTheme } from './src/theme';
 import { radius, shadow, spacing } from './src/theme/tokens';
 
 // design.md §7 mimarisi: tab bar yok — Root = MapCanvas + her zaman açık,
-// durum-güdümlü bottom sheet. Detent'ler: 148pt / %46 / %88.
-// Geçmiş = pageSheet (§7.8); giriş noktası harita üstü kare buton.
+// durum-güdümlü bottom sheet. Geçmiş = pageSheet (§7.8).
+//
+// Panel yüksekliği İÇERİKTEN gelir (enableDynamicSizing): sabit yüzdeler
+// kutlama/oturum gibi kısa içeriklerde kocaman boşluk bırakıyordu. Keşifte
+// ek olarak tek bir kompakt kademe var — arama çubuğu + "Park Ettim" kadar;
+// yukarı çekilince filtreler ve otopark listesi açılır.
 
-const SNAP_POINTS = [148, '46%', '88%'];
+const IDLE_COMPACT_HEIGHT = 172;
 
-const PHASE_SNAP_INDEX: Record<SessionPhase, number> = {
-  idle: 0,
-  parking: 2,
-  active: 1,
-  ending: 1,
-  ended: 2,
-};
+/** İçerik ekranı aşarsa panel burada durur ve içerik kaydırılır. */
+const MAX_SHEET_RATIO = 0.88;
 
 function FloatingIconButton({
   symbol,
@@ -91,8 +90,10 @@ function Root() {
   const sheetRef = useRef<BottomSheet>(null);
   const insets = useSafeAreaInsets();
 
+  // Faz değişince panel ilk kademesine döner: keşifte kompakt çubuk,
+  // diğer fazlarda tek kademe olan içerik yüksekliği.
   useEffect(() => {
-    sheetRef.current?.snapToIndex(PHASE_SNAP_INDEX[phase]);
+    sheetRef.current?.snapToIndex(0);
   }, [phase]);
 
   // §5.11 offline satırı için ağ durumu dinlenir.
@@ -111,6 +112,15 @@ function Root() {
     [colors.card],
   );
 
+  const { height: windowHeight } = useWindowDimensions();
+  const maxSheetHeight = Math.round(windowHeight * MAX_SHEET_RATIO);
+  // Yalnız keşifte ikinci (kompakt) kademe var; dinamik içerik kademesi kütüphane
+  // tarafından sona eklenir. Diğer fazlarda tek kademe = içerik yüksekliği.
+  const snapPoints = useMemo(
+    () => (phase === 'idle' ? [IDLE_COMPACT_HEIGHT + insets.bottom] : undefined),
+    [phase, insets.bottom],
+  );
+
   return (
     <View style={{ flex: 1 }}>
       <MapCanvas />
@@ -127,18 +137,25 @@ function Root() {
 
       <BottomSheet
         ref={sheetRef}
-        index={PHASE_SNAP_INDEX[phase]}
-        snapPoints={SNAP_POINTS}
+        index={0}
+        // Keşifte kompakt kademe + içerik kademesi; diğer fazlarda yalnız içerik.
+        snapPoints={snapPoints}
+        enableDynamicSizing
+        maxDynamicContentSize={maxSheetHeight}
         enablePanDownToClose={false}
-        enableDynamicSizing={false}
         keyboardBehavior="interactive"
         keyboardBlurBehavior="restore"
         backgroundStyle={backgroundStyle}
         handleIndicatorStyle={{ backgroundColor: colors.insetPressed, width: 36, height: 4.5 }}
       >
-        <BottomSheetView>
+        {/* İçerik ekranı aşarsa kaydırılabilir; aşmazsa panel içeriğe küçülür. */}
+        <BottomSheetScrollView
+          bounces={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: insets.bottom }}
+        >
           <SheetContent phase={phase} onOpenPaywall={() => setPaywallOpen(true)} />
-        </BottomSheetView>
+        </BottomSheetScrollView>
       </BottomSheet>
 
       <HistorySheet

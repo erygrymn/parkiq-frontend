@@ -13,8 +13,17 @@ interface DiscoveryStore {
   filter: PoiFilter;
   /** Sonuçların ait olduğu merkez — gereksiz tekrar sorguyu engeller. */
   center: Coords | null;
+  /**
+   * Haritanın gitmesi istenen nokta. `load` yalnız veri çeker; kamerayı oynatmak
+   * ayrı bir niyettir (konuma dön butonu, arama sonucu) — bu yüzden ayrı alan.
+   * Token her istekte artar: aynı koordinata art arda dönmek de kamerayı hareket ettirir.
+   */
+  cameraTarget: Coords | null;
+  cameraToken: number;
   setFilter: (filter: PoiFilter) => void;
   load: (center: Coords) => void;
+  /** Kamerayı oraya taşı + o çevrenin otoparklarını çek. */
+  focus: (center: Coords) => void;
   visiblePois: () => ParkingPoi[];
 }
 
@@ -28,8 +37,15 @@ export const useDiscoveryStore = create<DiscoveryStore>((set, get) => ({
   pois: [],
   filter: 'all',
   center: null,
+  cameraTarget: null,
+  cameraToken: 0,
 
   setFilter: (filter) => set({ filter }),
+
+  focus: (center) => {
+    set({ cameraTarget: center, cameraToken: get().cameraToken + 1 });
+    get().load(center);
+  },
 
   load: (center) => {
     const { center: previous, state } = get();

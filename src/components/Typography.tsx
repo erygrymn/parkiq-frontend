@@ -1,4 +1,5 @@
 import { Text, type TextProps, type TextStyle } from 'react-native';
+import { upper } from '../localization';
 import { useTheme } from '../theme';
 import { typeScale, type TypeToken } from '../theme/tokens';
 
@@ -7,9 +8,19 @@ function tokenStyle(token: TypeToken): TextStyle {
     fontSize: token.fontSize,
     fontWeight: token.fontWeight,
     letterSpacing: token.letterSpacing,
-    ...(token.uppercase ? { textTransform: 'uppercase' as const } : {}),
     ...(token.tabular ? { fontVariant: ['tabular-nums' as const] } : {}),
   };
+}
+
+/**
+ * Büyük harf `textTransform` ile DEĞİL, dil-duyarlı `upper()` ile yapılır — aksi
+ * halde Türkçe "i" harfi "İ" yerine "I" olur (bkz. localization/upper).
+ * Yalnız düz metin çocuklar çevrilir; iç içe <Text> kendi dönüşümünü uygular.
+ */
+function uppercased(children: React.ReactNode): React.ReactNode {
+  if (typeof children === 'string') return upper(children);
+  if (Array.isArray(children)) return children.map((c) => (typeof c === 'string' ? upper(c) : c));
+  return children;
 }
 
 interface TypoProps extends TextProps {
@@ -17,9 +28,13 @@ interface TypoProps extends TextProps {
 }
 
 /** §3.1 overline: 11/800, +0.14em, UPPER — varsayılan renk text-tertiary. */
-export function Overline({ color, style, ...rest }: TypoProps) {
+export function Overline({ color, style, children, ...rest }: TypoProps) {
   const { colors } = useTheme();
-  return <Text {...rest} style={[tokenStyle(typeScale.overline), { color: color ?? colors.textTertiary }, style]} />;
+  return (
+    <Text {...rest} style={[tokenStyle(typeScale.overline), { color: color ?? colors.textTertiary }, style]}>
+      {uppercased(children)}
+    </Text>
+  );
 }
 
 export function Caption({ color, style, ...rest }: TypoProps) {
@@ -56,7 +71,7 @@ export function DisplayStamp({
       adjustsFontSizeToFit
       minimumFontScale={0.7}
     >
-      {text}
+      {upper(text)}
       <Text style={{ color: dotColor }}>.</Text>
     </Text>
   );

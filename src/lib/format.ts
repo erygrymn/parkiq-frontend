@@ -1,4 +1,4 @@
-import { t } from '../localization';
+import { getLocale, t } from '../localization';
 import type { Tariff } from './tariffMath';
 
 // Para/saat/süre biçimleme — tüm yüzeyler aynı biçimden geçer (İlke 5: para rakamla konuşur).
@@ -30,12 +30,17 @@ export function formatElapsed(elapsedMs: number): { main: string; seconds: strin
   return { main: `${h}:${String(m).padStart(2, '0')}`, seconds: `:${String(s).padStart(2, '0')}` };
 }
 
-/** Damga süresi: "1H 45M" / "45M" (uppercase display satırlarında kullanılır). */
-export function formatDurationStamp(elapsedMs: number): string {
+/**
+ * Damga süresi: EN "1H 45M" / "45M", TR "1S 45DK" / "45DK".
+ * Birim kısaltmaları dile bağlıdır — Türkçede dakika "m" değil "dk"dır.
+ * Küçük harfli satırlar çağıran tarafta `.toLowerCase()` ile üretilir.
+ */
+export function formatDurationStamp(elapsedMs: number, locale: string = getLocale()): string {
   const totalMin = Math.max(0, Math.round(elapsedMs / 60_000));
   const h = Math.floor(totalMin / 60);
   const m = totalMin % 60;
-  return h > 0 ? `${h}H ${m}M` : `${m}M`;
+  const [hourUnit, minuteUnit] = locale === 'tr' ? ['S', 'DK'] : ['H', 'M'];
+  return h > 0 ? `${h}${hourUnit} ${m}${minuteUnit}` : `${m}${minuteUnit}`;
 }
 
 /** Tarife hafızası önerisi için kısa özet: "₺50 / hour" · "₺80 flat". */

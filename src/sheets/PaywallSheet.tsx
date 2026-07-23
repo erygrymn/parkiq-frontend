@@ -4,7 +4,7 @@ import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native'
 import { PrimaryCta } from '../components/Buttons';
 import { PageSheet } from '../components/PageSheet';
 import { Body, Caption, Overline } from '../components/Typography';
-import { t } from '../localization';
+import { t, upper } from '../localization';
 import type { PlanPeriod, PurchasePlan } from '../lib/purchases';
 import { usePremiumStore } from '../state/premiumStore';
 import { useTheme } from '../theme';
@@ -139,12 +139,11 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
               fontSize: typeScale.displayS.fontSize,
               fontWeight: typeScale.displayS.fontWeight,
               letterSpacing: typeScale.displayS.letterSpacing,
-              textTransform: 'uppercase',
               color: colors.ink,
             }}
             maxFontSizeMultiplier={1.3}
           >
-            {t('proHeadline')}
+            {upper(t('proHeadline'))}
           </Text>
           <Body color={colors.textSecondary}>{t('proBody')}</Body>
         </View>

@@ -4,13 +4,13 @@ import type { CopyKey } from './en';
 
 export const tr: Record<CopyKey, string> = {
   onbTitle1: 'PARK ET',
-  onbSub1: 'TEK DOKUNUŞ. İKİ SANİYE.',
-  onbTitle2: '₺ BİRİKTİR',
-  onbExample2: '01:47 · ₺45',
+  onbBody1: 'Tek dokunuş arabayı bıraktığın yeri işaretler. Kat, fotoğraf ve not isteğe bağlı — yalnız otopark karışıksa doldur.',
+  onbTitle2: 'TASARRUF ET',
+  onbBody2: 'Tarifeyi bir kez gir, ParkIQ bir sonraki fiyat kademesine kalan süreyi saysın. Kademe atlamadan çıkarsan aradaki fark cebinde kalır.',
   onbTitle3: 'BUL',
-  onbSub3: 'ARABANI NEREYE BIRAKTIĞINI HATIRLIYORUZ.',
+  onbBody3: 'Pusula ve harita seni arabaya geri götürür. GPS’in çalışmadığı kapalı otoparkta kaydettiğin fotoğraf ve kat devreye girer.',
   skip: 'Atla',
-  enableLocation: 'Konuma İzin Ver',
+  enableLocation: 'Devam Et',
   notNow: 'Şimdi değil',
 
   iParked: 'Park Ettim',
@@ -28,6 +28,8 @@ export const tr: Record<CopyKey, string> = {
   filterCovered: 'Kapalı',
   myLocation: 'Konumum',
   noResults: 'Sonuç bulunamadı.',
+  poiParking: 'Otopark',
+  poiCharging: 'Şarj noktası',
   directions: 'Yol tarifi',
   minWalk: '{minutes} dk yürüme',
 
@@ -39,7 +41,8 @@ export const tr: Record<CopyKey, string> = {
   stillParked: 'Hâlâ {place} konumunda mısın?',
   addTariff: 'Maliyeti görmek için tarife ekle',
 
-  exitBeforePay: '{time} öncesi çık, {next} yerine {now} öde',
+  exitWithinPay: '{minutes} dk içinde çık, {next} yerine {now} öde',
+  exitNowPay: 'Şimdi çık, {next} yerine {now} öde',
   nowNext: 'Şimdi {now} · Sonra {next}',
   nextTier: 'Sonraki dilim',
   tierAlert: '{minutes} dk sonra {tier}. dilim. Şimdi {now}, sonra {next}.',
@@ -76,7 +79,7 @@ export const tr: Record<CopyKey, string> = {
   parkedWord: 'PARK',
   duration: 'Süre',
   paid: 'Ödenen',
-  avoided: 'Kaçınılan',
+  avoided: 'Tasarruf',
   costNow: 'Şu anki maliyet',
 
   locating: 'Konum bulunuyor',
@@ -179,9 +182,9 @@ export const tr: Record<CopyKey, string> = {
   history: 'Geçmiş',
   shareMonth: 'Bu ayı paylaş',
   monthlySaved: 'Aylık tasarruf',
-  totalSaved: 'Toplam tasarruf',
+  totalSaved: 'Tasarruf',
   sessionsCount: 'Park',
-  avgDuration: 'Ortalama süre',
+  avgDuration: 'Ortalama',
   sessionDetail: 'Oturum',
   openInMaps: 'Haritada aç',
   back: 'Geri',

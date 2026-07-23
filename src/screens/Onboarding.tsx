@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PrimaryCta } from '../components/Buttons';
-import { t } from '../localization';
+import { t, upper } from '../localization';
 import { useTheme } from '../theme';
 import { spacing } from '../theme/tokens';
 
@@ -35,10 +35,9 @@ interface PosterProps {
   titleSize: number;
   titleColor: string;
   dotColor: string;
-  overline: string;
-  overlineColor: string;
-  overlineTabular?: boolean;
-  children?: React.ReactNode;
+  body: string;
+  bodyColor: string;
+  bottomInset: number;
 }
 
 function Poster({
@@ -48,44 +47,46 @@ function Poster({
   titleSize,
   titleColor,
   dotColor,
-  overline,
-  overlineColor,
-  overlineTabular,
-  children,
+  body,
+  bodyColor,
+  bottomInset,
 }: PosterProps) {
   return (
-    <View style={{ width, flex: 1, backgroundColor: background, justifyContent: 'center', paddingHorizontal: spacing.s24 }}>
+    <View
+      style={{
+        width,
+        flex: 1,
+        backgroundColor: background,
+        justifyContent: 'center',
+        paddingHorizontal: spacing.s24,
+        // Alt blok (CTA + noktalar) mutlak konumlu; paragraf onun altına girmesin
+        paddingBottom: bottomInset,
+      }}
+    >
       <View style={{ gap: spacing.s16 }}>
         {/* Poster noktası: §3.3 whitelist'inin "onboarding manifesto noktaları" maddesi */}
         <Text
           style={{
             fontSize: titleSize,
-            lineHeight: titleSize * 1.02,
+            // Türkçe İ/Ğ gibi harflerin üstü kırpılmasın diye ascender payı bırakılır
+            lineHeight: titleSize * 1.16,
             fontWeight: '900',
             letterSpacing: titleSize * -0.03,
-            textTransform: 'uppercase',
             color: titleColor,
           }}
           allowFontScaling={false}
         >
-          {title}
+          {upper(title)}
           <Text style={{ color: dotColor }}>.</Text>
         </Text>
+        {/* Açıklama cümle düzeninde: manifesto başlığı bağırır, gövde anlatır */}
         <Text
-          style={{
-            fontSize: 11,
-            fontWeight: '800',
-            letterSpacing: 11 * 0.14,
-            textTransform: 'uppercase',
-            color: overlineColor,
-            ...(overlineTabular ? { fontVariant: ['tabular-nums' as const] } : {}),
-          }}
-          allowFontScaling={false}
+          style={{ fontSize: 17, lineHeight: 25, fontWeight: '400', color: bodyColor, maxWidth: 460 }}
+          maxFontSizeMultiplier={1.4}
         >
-          {overline}
+          {body}
         </Text>
       </View>
-      {children}
     </View>
   );
 }
@@ -112,6 +113,12 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   const lightBg = scheme === 'dark' ? CREAM_DARK : CREAM;
   const lightInk = scheme === 'dark' ? '#F0F0F2' : colors.ink;
   const lightDot = scheme === 'dark' ? DOT_ON_DARK : DOT_ON_LIGHT;
+  const bodyOnLight = scheme === 'dark' ? '#9B9BA4' : '#5A5A64';
+
+  // Alt blok mutlak konumlu: son sayfada CTA + "şimdi değil" + noktalar taşır,
+  // diğerlerinde yalnız noktalar. Paragraf ikisinin de altına girmesin.
+  const bottomInsetShort = insets.bottom + 72;
+  const bottomInsetTall = insets.bottom + 160;
 
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     setPage(Math.round(event.nativeEvent.contentOffset.x / width));
@@ -145,8 +152,9 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
           titleSize={Math.min(84, width * 0.19)}
           titleColor={lightInk}
           dotColor={lightDot}
-          overline={t('onbSub1')}
-          overlineColor={lightInk}
+          body={t('onbBody1')}
+          bodyColor={bodyOnLight}
+          bottomInset={bottomInsetShort}
         />
 
         {/* S2 — her iki temada siyah; İlke 6'nın poster istisnası */}
@@ -157,9 +165,9 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
           titleSize={Math.min(66, width * 0.155)}
           titleColor="#FFFFFF"
           dotColor={DOT_ON_DARK}
-          overline={t('onbExample2')}
-          overlineColor="#8A8A93"
-          overlineTabular
+          body={t('onbBody2')}
+          bodyColor="#9B9BA4"
+          bottomInset={bottomInsetShort}
         />
 
         <Poster
@@ -169,8 +177,9 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
           titleSize={Math.min(72, width * 0.165)}
           titleColor={lightInk}
           dotColor={lightDot}
-          overline={t('onbSub3')}
-          overlineColor={lightInk}
+          body={t('onbBody3')}
+          bodyColor={bodyOnLight}
+          bottomInset={bottomInsetTall}
         />
       </ScrollView>
 
@@ -211,6 +220,8 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
         )}
 
         <View style={{ flexDirection: 'row', gap: spacing.s8, justifyContent: 'center' }}>
+          {/* Pasif noktalar posterin kendi mürekkebinin soluk hali. Sabit rgba
+              kullanılınca koyu temada koyu zemin üstünde görünmez oluyordu. */}
           {[0, 1, 2].map((index) => (
             <View
               key={index}
@@ -218,14 +229,8 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                 width: 6,
                 height: 6,
                 borderRadius: 3,
-                backgroundColor:
-                  index === page
-                    ? page === 1
-                      ? '#FFFFFF'
-                      : lightInk
-                    : page === 1
-                      ? 'rgba(255,255,255,0.3)'
-                      : 'rgba(20,20,22,0.2)',
+                backgroundColor: page === 1 ? '#FFFFFF' : lightInk,
+                opacity: index === page ? 1 : 0.3,
               }}
             />
           ))}

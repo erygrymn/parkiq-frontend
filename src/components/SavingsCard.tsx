@@ -106,6 +106,21 @@ export function SavingsCard({ data }: { data: SavingsCardData }) {
     data.saved !== null && data.currency ? formatMoney(data.saved, data.currency, locale) : null;
   const heroSaved = savedText !== null && data.saved !== null && data.saved > 0;
 
+  // Satır sırası dile bağlı: İngilizcede "SAVED / ₺20", Türkçede "₺20 / CEBİNDE".
+  // Ters sırada Türkçe devrik düşüyor ("CEBİNDE ₺20").
+  const moneyFirst = locale === 'tr';
+  const heroWord = heroSaved ? t('savedWord') : t('parkedWord');
+  const heroValue = heroSaved && savedText ? savedText : formatDurationStamp(data.durationMs);
+  const heroLines = moneyFirst ? [heroValue, heroWord] : [heroWord, heroValue];
+
+  // Sabit 288 punto uzun kelimeleri (TR "CEBİNDE") satır ortasından bölüyordu.
+  // En uzun satır kart genişliğine sığacak şekilde küçültülür; ~0.62 bu ağırlıktaki
+  // sans için karakter başına ortalama genişlik oranı.
+  const HERO_MAX = 288;
+  const usableWidth = CARD_WIDTH - 96 * 2;
+  const longestLine = Math.max(heroLines[0].length, heroLines[1].length + 1); // +1: imza noktası
+  const heroSize = Math.min(HERO_MAX, Math.floor(usableWidth / (longestLine * 0.62)));
+
   return (
     <View
       style={{
@@ -124,12 +139,14 @@ export function SavingsCard({ data }: { data: SavingsCardData }) {
           {['PARKIQ', data.placeName?.toUpperCase()].filter(Boolean).join(' · ')}
         </Text>
 
-        {/* Hero — karttaki TEK imza noktası */}
-        <Text style={{ fontSize: 288, lineHeight: 288 * 0.98, fontWeight: '900', color: '#FFFFFF' }}>
-          {heroSaved ? t('savedWord') : t('parkedWord')}
+        {/* Hero — karttaki TEK imza noktası. Nokta her zaman en son satırda. */}
+        <Text
+          style={{ fontSize: heroSize, lineHeight: heroSize * 1.06, fontWeight: '900', color: '#FFFFFF' }}
+        >
+          <Text style={{ color: moneyFirst ? GREEN : '#FFFFFF' }}>{heroLines[0]}</Text>
           {'\n'}
-          <Text style={{ color: GREEN }}>
-            {heroSaved ? savedText : formatDurationStamp(data.durationMs)}
+          <Text style={{ color: moneyFirst ? '#FFFFFF' : GREEN }}>
+            {heroLines[1]}
             <Text style={{ color: GREEN }}>.</Text>
           </Text>
         </Text>
