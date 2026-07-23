@@ -45,11 +45,10 @@ const inputStyle = (bg: string, ink: string) => ({
 });
 
 /** §7.2 idle sheet: filtre çipleri + en yakın otopark kartı + "I Parked". */
-export function IdleSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
+export function IdleSheet() {
   const { colors } = useTheme();
   const locale = getLocale();
   const park = useSessionStore((s) => s.park);
-  const isPremium = useIsPremium();
   const filter = useDiscoveryStore((s) => s.filter);
   const discoveryState = useDiscoveryStore((s) => s.state);
   const pois = useDiscoveryStore((s) => s.pois);
@@ -109,19 +108,8 @@ export function IdleSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
         <View style={{ height: 56, borderRadius: radius.r12, backgroundColor: colors.inset }} />
       )}
 
-      {/* Otopark bulma premium (ürün kararı): free'de köprü gösterilir */}
-      {!isPremium && (
-        <Pressable accessibilityRole="button" onPress={onOpenPaywall} hitSlop={4}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s8, height: 44 }}>
-            <SymbolView name="lock.fill" size={15} tintColor={colors.disabled} weight="regular" />
-            <Caption color={colors.textSecondary} style={{ flex: 1 }}>{t('findParkingPro')}</Caption>
-            <SymbolView name="chevron.right" size={13} tintColor={colors.disabled} weight="semibold" />
-          </View>
-        </Pressable>
-      )}
-
       {/* §7.2 pin detay kartı: ad, mesafe/yürüme, tarife hafızası varsa özet, Directions */}
-      {isPremium && visible.slice(0, 3).map((poi) => {
+      {visible.slice(0, 3).map((poi) => {
         const remembered = rememberedTariffFor(poi);
         return (
           <View key={poi.id} style={{ gap: spacing.s4 }}>
@@ -445,7 +433,6 @@ export function ActiveSheet() {
   const notificationState = useSessionStore((s) => s.notificationState);
   const { requestEnd, keep, confirmEnd } = useSessionStore.getState();
   const online = useNetworkStore((s) => s.online);
-  const isPremium = useIsPremium();
   const warnThresholdMin = useSettingsStore((s) => s.warnThresholdMin);
   const [findOpen, setFindOpen] = useState(false);
   const now = useNow(1000);

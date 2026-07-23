@@ -6,7 +6,6 @@ import * as StoreReview from 'expo-store-review';
 import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
 import { Alert, Linking, Pressable, Switch, Text, TextInput, View } from 'react-native';
-import { useVehicleStore } from '../state/vehicleStore';
 import { useIsPremium, usePremiumStore } from '../state/premiumStore';
 import { ChipGroup } from '../components/ChipGroup';
 import { PageSheet, Section } from '../components/PageSheet';
@@ -103,9 +102,6 @@ export function SettingsSheet({
   const isPremium = useIsPremium();
   const devUnlock = usePremiumStore((s) => s.devUnlock);
   const setDevUnlock = usePremiumStore((s) => s.setDevUnlock);
-  const vehicles = useVehicleStore((s) => s.vehicles);
-  const activeVehicleId = useVehicleStore((s) => s.activeVehicleId);
-  const { addVehicle, removeVehicle, setActiveVehicle } = useVehicleStore.getState();
   const [newVehicle, setNewVehicle] = useState('');
   const { themeMode, locale, currency, warnThresholdMin, autoDetectEnabled } = useSettingsStore();
   const { setThemeMode, setLocalePref, setCurrency, setWarnThreshold, setAutoDetect } =
@@ -187,71 +183,6 @@ export function SettingsSheet({
           <Pressable accessibilityRole="button" onPress={onOpenPaywall} hitSlop={8}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', height: 44 }}>
               <Text style={{ fontSize: 15, color: colors.ink }}>{t('goPro')}</Text>
-              <SymbolView name="chevron.right" size={13} tintColor={colors.disabled} weight="semibold" />
-            </View>
-          </Pressable>
-        )}
-      </Section>
-
-      <Section title={t('vehicles')}>
-        {vehicles.map((vehicle) => (
-          <View key={vehicle.id} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s8 }}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ selected: vehicle.id === activeVehicleId }}
-              onPress={() => setActiveVehicle(vehicle.id)}
-              hitSlop={4}
-              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.s8, height: 44 }}
-            >
-              <SymbolView
-                name={vehicle.id === activeVehicleId ? 'checkmark.circle.fill' : 'circle'}
-                size={19}
-                tintColor={vehicle.id === activeVehicleId ? colors.accentFill : colors.disabled}
-                weight="regular"
-              />
-              <Text style={{ fontSize: 15, color: colors.ink }}>{vehicle.name}</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t('delete')}
-              onPress={() => removeVehicle(vehicle.id)}
-              hitSlop={8}
-            >
-              <SymbolView name="minus.circle" size={19} tintColor={colors.textSecondary} weight="regular" />
-            </Pressable>
-          </View>
-        ))}
-
-        {isPremium || vehicles.length === 0 ? (
-          <View style={{ flexDirection: 'row', gap: spacing.s8, alignItems: 'center' }}>
-            <TextInput
-              value={newVehicle}
-              onChangeText={setNewVehicle}
-              placeholder={t('vehicleNamePlaceholder')}
-              placeholderTextColor={colors.textSecondary}
-              onSubmitEditing={() => {
-                addVehicle(newVehicle);
-                setNewVehicle('');
-              }}
-              style={{
-                flex: 1,
-                height: 44,
-                borderRadius: radius.r12,
-                backgroundColor: colors.inset,
-                paddingHorizontal: spacing.s12,
-                fontSize: 15,
-                color: colors.ink,
-              }}
-            />
-          </View>
-        ) : (
-          // Free: tek araç + kilitli satır → paywall köprüsü (§7.9)
-          <Pressable accessibilityRole="button" onPress={onOpenPaywall} hitSlop={4}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s8, height: 44 }}>
-              <SymbolView name="lock.fill" size={15} tintColor={colors.disabled} weight="regular" />
-              <Caption color={colors.textSecondary} style={{ flex: 1 }}>
-                {t('multiVehiclePro')}
-              </Caption>
               <SymbolView name="chevron.right" size={13} tintColor={colors.disabled} weight="semibold" />
             </View>
           </Pressable>

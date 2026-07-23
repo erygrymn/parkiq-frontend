@@ -19,7 +19,6 @@ import { useNetworkStore } from './src/state/networkStore';
 import { useIsPremium, usePremiumStore } from './src/state/premiumStore';
 import { useSessionStore, type SessionPhase } from './src/state/sessionStore';
 import { useSettingsStore } from './src/state/settingsStore';
-import { useVehicleStore } from './src/state/vehicleStore';
 import { ThemeProvider, useTheme } from './src/theme';
 import { radius, shadow, spacing } from './src/theme/tokens';
 
@@ -77,7 +76,7 @@ function SheetContent({ phase, onOpenPaywall }: { phase: SessionPhase; onOpenPay
 
   switch (phase) {
     case 'idle':
-      return selectedPoi ? <PoiSheet poi={selectedPoi} /> : <IdleSheet onOpenPaywall={onOpenPaywall} />;
+      return selectedPoi ? <PoiSheet poi={selectedPoi} /> : <IdleSheet />;
     case 'parking':
       return <ParkingSheet onOpenPaywall={onOpenPaywall} />;
     case 'active':
@@ -216,7 +215,6 @@ export default function App() {
     useSettingsStore.getState().hydrate();
     useSessionStore.getState().hydrate();
     usePremiumStore.getState().init();
-    useVehicleStore.getState().hydrate();
     return useSettingsStore.getState().locale;
   });
   const currentLocale = useSettingsStore((s) => s.locale);
