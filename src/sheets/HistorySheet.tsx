@@ -157,14 +157,23 @@ export function HistorySheet({
   }
 
   return (
-    <PageSheet visible={visible} title={t('history')} onClose={close}>
-      {sessions.length > 0 && <StatTiles stats={stats} />}
-      {sessions.length > 0 && (
-        <MonthlySavingsChart
-          buckets={monthlySavings(sessions, Date.now())}
-          currency={stats.savedCurrency}
-        />
-      )}
+    <PageSheet
+      visible={visible}
+      title={t('history')}
+      onClose={close}
+      // Özet sabit kalır, yalnız oturum listesi kayar.
+      header={
+        sessions.length > 0 ? (
+          <>
+            <StatTiles stats={stats} />
+            <MonthlySavingsChart
+              buckets={monthlySavings(sessions, Date.now())}
+              currency={stats.savedCurrency}
+            />
+          </>
+        ) : null
+      }
+    >
 
       {/* §11.1 aylık özet kartı — geçmişin viral bacağı */}
       {stats.totalSaved !== null && stats.totalSaved > 0 && (

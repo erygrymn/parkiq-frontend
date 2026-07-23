@@ -20,6 +20,9 @@ interface DiscoveryStore {
    */
   cameraTarget: Coords | null;
   cameraToken: number;
+  /** Haritada seçili otopark — keşif paneli yerine o kartı gösterir. */
+  selectedPoiId: string | null;
+  selectPoi: (id: string | null) => void;
   setFilter: (filter: PoiFilter) => void;
   load: (center: Coords) => void;
   /** Kamerayı oraya taşı + o çevrenin otoparklarını çek. */
@@ -39,6 +42,9 @@ export const useDiscoveryStore = create<DiscoveryStore>((set, get) => ({
   center: null,
   cameraTarget: null,
   cameraToken: 0,
+  selectedPoiId: null,
+
+  selectPoi: (id) => set({ selectedPoiId: id }),
 
   setFilter: (filter) => set({ filter }),
 

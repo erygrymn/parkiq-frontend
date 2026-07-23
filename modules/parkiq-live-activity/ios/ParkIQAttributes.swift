@@ -1,8 +1,13 @@
+// ⚠️ İKİZ DOSYA — targets/widget/ParkIQAttributes.swift ile BİREBİR AYNI kalmalı.
+//
+// Live Activity'de app ve widget extension ayrı ikililerdir; ActivityKit tipleri
+// isim + Codable gösterimi üzerinden eşleştirir, o yüzden tanımın iki hedefte de
+// derlenmesi gerekir (Apple'ın kendi örnekleri de dosyayı iki hedefe ekler).
+// Bu kopya olmadan modülün Swift'i `ParkIQAttributes`'ı göremez.
+// Biri değişirse diğeri de değişecek.
+
 import ActivityKit
 import Foundation
-
-// ⚠️ İKİZ DOSYA — modules/parkiq-live-activity/ios/ParkIQAttributes.swift ile
-// BİREBİR AYNI kalmalı. Sebebi için oradaki nota bak.
 
 // design.md §8 — Live Activity veri sözleşmesi.
 //

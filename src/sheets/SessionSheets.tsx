@@ -6,6 +6,7 @@ import { GhostButton, PrimaryCta } from '../components/Buttons';
 import { ChipGroup } from '../components/ChipGroup';
 import { MoneyBox } from '../components/MoneyBox';
 import { PhotoField } from '../components/PhotoField';
+import { DetailRow, PopupSheet } from '../components/PopupSheet';
 import { SearchBar } from '../components/SearchBar';
 import type { SavingsCardData } from '../components/SavingsCard';
 import { ShareCardRenderer } from '../components/ShareCardRenderer';
@@ -163,6 +164,9 @@ export function IdleSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   );
 }
 
+/** Park formunda popup'ı açık olan alan. */
+type ParkField = 'floor' | 'note' | 'photo' | 'backdate' | 'reminder' | 'tariff';
+
 export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   const { colors } = useTheme();
   const session = useSessionStore((s) => s.session);
@@ -185,7 +189,10 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
     removePhoto,
     scanTariff,
   } = useSessionStore.getState();
+  const cancelPark = useSessionStore((s) => s.cancelPark);
   const [customReminder, setCustomReminder] = useState(false);
+  const [openField, setOpenField] = useState<ParkField | null>(null);
+  const closeField = () => setOpenField(null);
   if (!session) return null;
 
   // Chip seçimleri oturumdan türer — ayrı state tutulmaz (tek kaynak).
@@ -204,10 +211,29 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
 
   return (
     <View style={{ paddingHorizontal: spacing.s20, paddingBottom: spacing.s20, gap: spacing.s16 }}>
-      <View style={{ gap: spacing.s4 }}>
-        <Overline>{overline}</Overline>
-        {/* PARKED. — §3.3 yeşil nokta whitelist'i: park onayı damgası */}
-        <DisplayStamp text={t('parkedStamp').replace(/\.$/, '')} dotColor={colors.accentText} />
+      {/* Geri: kayıt silinir, keşfe dönülür. Paneli aşağı çekmek de aynı yolu izler. */}
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.s12 }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('back')}
+          onPress={cancelPark}
+          hitSlop={8}
+          style={({ pressed }) => ({
+            width: 32,
+            height: 32,
+            borderRadius: radius.r12,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: pressed ? colors.insetPressed : colors.inset,
+          })}
+        >
+          <SymbolView name="chevron.left" size={14} tintColor={colors.ink} weight="semibold" />
+        </Pressable>
+        <View style={{ flex: 1, gap: spacing.s4 }}>
+          <Overline>{overline}</Overline>
+          {/* PARKED. — §3.3 yeşil nokta whitelist'i: park onayı damgası */}
+          <DisplayStamp text={t('parkedStamp').replace(/\.$/, '')} dotColor={colors.accentText} />
+        </View>
       </View>
 
       {locationState === 'denied' && <StatusLine label={t('locationOff')} onPress={openAppSettings} />}
@@ -241,33 +267,81 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
         </View>
       )}
 
+      {/* Her alan kendi popup'ında. Hepsi tek panele yığılınca ekrana sığmıyor,
+          CTA erişilemez kalıyordu; satırlar aynı zamanda ne doldurulduğunu özetler. */}
       <View style={{ gap: spacing.s8 }}>
-        <Overline>{t('floor')}</Overline>
+        <DetailRow
+          label={t('floor')}
+          value={session.floor}
+          placeholder={t('floorPlaceholder')}
+          onPress={() => setOpenField('floor')}
+        />
+        <DetailRow
+          label={t('note')}
+          value={session.note}
+          placeholder={t('notePlaceholder')}
+          onPress={() => setOpenField('note')}
+        />
+        <DetailRow
+          label={t('photo')}
+          value={session.photoUri ? t('photoAdded') : null}
+          placeholder={t('addPhoto')}
+          onPress={() => setOpenField('photo')}
+        />
+        <DetailRow
+          label={t('parkedWhen')}
+          value={backdateMinutes === 0 ? t('justNow') : t('minutesAgo', { minutes: backdateMinutes })}
+          placeholder={t('justNow')}
+          onPress={() => setOpenField('backdate')}
+        />
+        <DetailRow
+          label={t('remindMe')}
+          value={reminderMinutes === 0 ? null : t('minutesShort', { minutes: reminderMinutes })}
+          placeholder={t('reminderOff')}
+          onPress={() => setOpenField('reminder')}
+        />
+        <DetailRow
+          label={t('tariff')}
+          value={session.tariff ? formatTariffSummary(session.tariff, getLocale()) : null}
+          placeholder={t('tariffNone')}
+          onPress={() => setOpenField('tariff')}
+        />
+      </View>
+
+      <PrimaryCta label={t('done')} onPress={confirmDetails} style={{ marginTop: spacing.s4 }} />
+
+      <PopupSheet visible={openField === 'floor'} title={t('floor')} onClose={closeField}>
         <BottomSheetTextInput
           defaultValue={session.floor}
           onChangeText={setFloor}
           placeholder={t('floorPlaceholder')}
           placeholderTextColor={colors.textSecondary}
+          autoFocus
+          returnKeyType="done"
+          onSubmitEditing={closeField}
           style={inputStyle(colors.inset, colors.ink)}
         />
-      </View>
+      </PopupSheet>
 
-      <View style={{ gap: spacing.s8 }}>
-        <Overline>{t('note')}</Overline>
+      <PopupSheet visible={openField === 'note'} title={t('note')} onClose={closeField}>
         <BottomSheetTextInput
           defaultValue={session.note}
           onChangeText={setNote}
           placeholder={t('notePlaceholder')}
           placeholderTextColor={colors.textSecondary}
+          autoFocus
+          returnKeyType="done"
+          onSubmitEditing={closeField}
           style={inputStyle(colors.inset, colors.ink)}
         />
-      </View>
+      </PopupSheet>
 
-      <PhotoField uri={session.photoUri} onCapture={capturePhoto} onRemove={removePhoto} />
-      {cameraState === 'denied' && <StatusLine label={t('cameraOff')} onPress={openAppSettings} />}
+      <PopupSheet visible={openField === 'photo'} title={t('photo')} onClose={closeField}>
+        <PhotoField uri={session.photoUri} onCapture={capturePhoto} onRemove={removePhoto} />
+        {cameraState === 'denied' && <StatusLine label={t('cameraOff')} onPress={openAppSettings} />}
+      </PopupSheet>
 
-      <View style={{ gap: spacing.s8 }}>
-        <Overline>{t('parkedWhen')}</Overline>
+      <PopupSheet visible={openField === 'backdate'} title={t('parkedWhen')} onClose={closeField}>
         <ChipGroup<number>
           options={[
             { key: 0, label: t('justNow') },
@@ -276,10 +350,9 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
           value={backdateMinutes}
           onChange={setBackdateMinutes}
         />
-      </View>
+      </PopupSheet>
 
-      <View style={{ gap: spacing.s8 }}>
-        <Overline>{t('remindMe')}</Overline>
+      <PopupSheet visible={openField === 'reminder'} title={t('remindMe')} onClose={closeField}>
         <ChipGroup<number>
           options={[
             { key: 0, label: t('reminderOff') },
@@ -305,17 +378,20 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
               if (Number.isFinite(parsed) && parsed > 0) setReminderMinutes(Math.round(parsed));
             }}
             keyboardType="number-pad"
+            autoFocus
+            returnKeyType="done"
+            onSubmitEditing={closeField}
             placeholder={t('customMinutes')}
             placeholderTextColor={colors.textSecondary}
             style={{ ...inputStyle(colors.inset, colors.ink), fontVariant: ['tabular-nums'] }}
           />
         )}
-      </View>
+      </PopupSheet>
 
-      {/* key: tarife dışarıdan set edilince (öneri kabulü / OCR) form kendini tazeler */}
-      <TariffForm key={externalTariffVersion} value={session.tariff} onChange={setTariff} />
+      <PopupSheet visible={openField === 'tariff'} title={t('tariff')} onClose={closeField}>
+        {/* key: tarife dışarıdan set edilince (öneri kabulü / OCR) form kendini tazeler */}
+        <TariffForm key={externalTariffVersion} value={session.tariff} onChange={setTariff} />
 
-      <View style={{ gap: spacing.s8 }}>
         <Pressable
           accessibilityRole="button"
           onPress={scanTariff}
@@ -348,9 +424,7 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
             <Caption color={colors.accentText}>{t('scanPro')}</Caption>
           </Pressable>
         )}
-      </View>
-
-      <PrimaryCta label={t('done')} onPress={confirmDetails} style={{ marginTop: spacing.s4 }} />
+      </PopupSheet>
     </View>
   );
 }
@@ -382,11 +456,11 @@ export function ActiveSheet() {
   const hasLocation = session.latitude !== null && session.longitude !== null;
 
   // Live Activity dakikada bir tazelenir: sayaç sistemde akar, çubuk/amber burada güncellenir.
+  // §4.10: premium kontrolü YOK — Live Activity işletim sistemi yeteneğidir, satılmaz.
   useEffect(() => {
-    if (!isPremium) return;
     const id = setInterval(() => refreshSessionActivity(session, warnThresholdMin), 60_000);
     return () => clearInterval(id);
-  }, [isPremium, session, warnThresholdMin]);
+  }, [session, warnThresholdMin]);
   const elapsed = formatElapsed(now - session.startedAtMs);
   const locale = getLocale();
 

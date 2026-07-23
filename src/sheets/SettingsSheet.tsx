@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import Constants from 'expo-constants';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -30,6 +31,17 @@ import { radius, spacing } from '../theme/tokens';
 const TERMS_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
 const PRIVACY_URL = 'https://www.twiceapps.co/privacy';
 const SUPPORT_EMAIL = 'info@twiceapps.co';
+
+/** Bölüm içi alt alan: küçük etiket + kontrol. Başlık gürültüsü yaratmaz. */
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  const { colors } = useTheme();
+  return (
+    <View style={{ gap: spacing.s8, marginBottom: spacing.s16 }}>
+      <Text style={{ fontSize: 13, color: colors.textSecondary }}>{label}</Text>
+      {children}
+    </View>
+  );
+}
 
 /** iOS abonelik yönetimi sistem sayfası — iptal/değiştirme oradan yapılır. */
 function openSubscriptionSettings(): void {
@@ -122,43 +134,47 @@ export function SettingsSheet({
 
   return (
     <PageSheet visible={visible} title={t('settings')} onClose={onClose}>
-      <Section title={t('appearance')}>
-        <ChipGroup<ThemeMode>
-          options={[
-            { key: 'light', label: t('themeLight') },
-            { key: 'dark', label: t('themeDark') },
-            { key: 'system', label: t('themeSystem') },
-          ]}
-          value={themeMode}
-          onChange={setThemeMode}
-        />
-      </Section>
+      {/* Dört ayrı başlık yerine tek "Tercihler" bloğu: hepsi aynı cinsten
+          seçim; ayrı ayrı başlıklandırınca sayfa başlık çorbasına dönüyordu. */}
+      <Section title={t('preferences')}>
+        <Field label={t('appearance')}>
+          <ChipGroup<ThemeMode>
+            options={[
+              { key: 'light', label: t('themeLight') },
+              { key: 'dark', label: t('themeDark') },
+              { key: 'system', label: t('themeSystem') },
+            ]}
+            value={themeMode}
+            onChange={setThemeMode}
+          />
+        </Field>
 
-      <Section title={t('language')}>
-        <ChipGroup<Locale>
-          options={[
-            { key: 'en', label: 'English' },
-            { key: 'tr', label: 'Türkçe' },
-          ]}
-          value={locale}
-          onChange={setLocalePref}
-        />
-      </Section>
+        <Field label={t('language')}>
+          <ChipGroup<Locale>
+            options={[
+              { key: 'en', label: 'English' },
+              { key: 'tr', label: 'Türkçe' },
+            ]}
+            value={locale}
+            onChange={setLocalePref}
+          />
+        </Field>
 
-      <Section title={t('currency')}>
-        <ChipGroup<Currency>
-          options={CURRENCIES.map((c) => ({ key: c, label: c }))}
-          value={currency}
-          onChange={setCurrency}
-        />
-      </Section>
+        <Field label={t('currency')}>
+          <ChipGroup<Currency>
+            options={CURRENCIES.map((c) => ({ key: c, label: c }))}
+            value={currency}
+            onChange={setCurrency}
+          />
+        </Field>
 
-      <Section title={t('alertThreshold')}>
-        <ChipGroup<number>
-          options={WARN_THRESHOLDS.map((m) => ({ key: m, label: t('minutesShort', { minutes: m }) }))}
-          value={warnThresholdMin}
-          onChange={setWarnThreshold}
-        />
+        <Field label={t('alertThreshold')}>
+          <ChipGroup<number>
+            options={WARN_THRESHOLDS.map((m) => ({ key: m, label: t('minutesShort', { minutes: m }) }))}
+            value={warnThresholdMin}
+            onChange={setWarnThreshold}
+          />
+        </Field>
       </Section>
 
       <Section title={t('goPro')}>

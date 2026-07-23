@@ -59,14 +59,20 @@ public class ParkiqLiveActivityModule: Module {
 
     /// Widget'ın okuduğu paylaşılan kutu (§8.3). Oturum yoksa alanlar temizlenir.
     Function("setWidgetData") { (payload: [String: Any]) in
-      let defaults = UserDefaults(suiteName: self.appGroup)
-      if let startedAtMs = payload["startedAtMs"] as? Double {
-        defaults?.set(startedAtMs, forKey: "startedAtMs")
-      } else {
-        defaults?.removeObject(forKey: "startedAtMs")
+      // suiteName nil dönerse App Group entitlement'ı sağlanmamıştır: widget
+      // hiçbir zaman veri göremez ve sonsuza dek "No active session" der.
+      // Sessizce geçmek yerine sebebi loga bas.
+      guard let defaults = UserDefaults(suiteName: self.appGroup) else {
+        NSLog("[ParkIQ] App group \(self.appGroup) is not provisioned — the widget cannot read session data")
+        return
       }
-      defaults?.set(payload["placeName"] as? String, forKey: "placeName")
-      defaults?.set(payload["monthlySavedText"] as? String, forKey: "monthlySavedText")
+      if let startedAtMs = payload["startedAtMs"] as? Double {
+        defaults.set(startedAtMs, forKey: "startedAtMs")
+      } else {
+        defaults.removeObject(forKey: "startedAtMs")
+      }
+      defaults.set(payload["placeName"] as? String, forKey: "placeName")
+      defaults.set(payload["monthlySavedText"] as? String, forKey: "monthlySavedText")
       if #available(iOS 14.0, *) {
         WidgetCenter.shared.reloadAllTimelines()
       }

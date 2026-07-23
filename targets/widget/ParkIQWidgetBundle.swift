@@ -271,6 +271,41 @@ struct ParkIQWidgetView: View {
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     .padding(16)
     .containerBackground(Palette.card, for: .widget)
+    // Oturum varken app'i aç; yokken doğrudan park kaydına git.
+    .widgetURL(URL(string: entry.startedAt == nil ? "parkiq://park" : "parkiq://session"))
+  }
+}
+
+/// Tek işi olan kısayol: dokunulunca app açılır ve park kaydı başlar.
+/// "Park" her iki dilde de okunur, bu yüzden extension'a ayrı sözlük taşımıyoruz.
+struct ParkIQQuickParkView: View {
+  var body: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      BrandGlyph()
+      Spacer(minLength: 0)
+      Text("Park")
+        .font(.system(size: 28, weight: .black))
+        .foregroundStyle(.white)
+      Text("Tap to save your spot")
+        .font(.system(size: 11))
+        .foregroundStyle(Palette.muted)
+        .lineLimit(2)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    .padding(16)
+    .containerBackground(Palette.card, for: .widget)
+    .widgetURL(URL(string: "parkiq://park"))
+  }
+}
+
+struct ParkIQQuickParkWidget: Widget {
+  var body: some WidgetConfiguration {
+    StaticConfiguration(kind: "ParkIQQuickPark", provider: ParkIQWidgetProvider()) { _ in
+      ParkIQQuickParkView()
+    }
+    .configurationDisplayName("Park")
+    .description("Save where you parked in one tap.")
+    .supportedFamilies([.systemSmall])
   }
 }
 
@@ -289,6 +324,7 @@ struct ParkIQWidget: Widget {
 struct ParkIQWidgetBundle: WidgetBundle {
   var body: some Widget {
     ParkIQWidget()
+    ParkIQQuickParkWidget()
     ParkIQLiveActivity()
   }
 }

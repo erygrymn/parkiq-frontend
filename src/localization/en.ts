@@ -29,6 +29,11 @@ export const en = {
   filterCovered: 'Covered',
   myLocation: 'My location',
   noResults: 'No places found.',
+  photoAdded: 'Added',
+  close: 'Close',
+  noTariffYet: 'No tariff saved for this spot yet',
+  editTariff: 'Edit tariff',
+  preferences: 'Preferences',
   poiParking: 'Parking',
   poiCharging: 'Charging point',
   directions: 'Directions',
@@ -122,7 +127,6 @@ export const en = {
   noActiveSession: 'No active session',
 
   // Paywall (§7.10) — "unlock/amazing" tipi pazarlama dolgusu yasak (§10)
-  proOverline: 'PARKIQ PRO',
   proHeadline: 'PRO DETECTS PARKING',
   proBody: 'You never think about it.',
   proFeatureAuto: 'Auto-detection when you leave the car',

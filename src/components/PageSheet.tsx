@@ -13,6 +13,8 @@ export function PageSheet({
   title,
   onClose,
   onBack,
+  fullScreen,
+  header,
   children,
 }: {
   visible: boolean;
@@ -20,11 +22,23 @@ export function PageSheet({
   onClose: () => void;
   /** Verilirse başlığın soluna geri oku çıkar (liste → detay gezinmesi). */
   onBack?: () => void;
+  /** Paywall gibi karar ekranları tam ekran açılır: arkadaki app dikkat dağıtmasın. */
+  fullScreen?: boolean;
+  /**
+   * Kaydırma alanının ÜSTÜNDE sabit kalan blok (geçmişteki KPI + grafik gibi).
+   * Böylece uzun listede özet ekrandan kaçmaz.
+   */
+  header?: ReactNode;
   children: ReactNode;
 }) {
   const { colors } = useTheme();
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle={fullScreen ? 'fullScreen' : 'pageSheet'}
+      onRequestClose={onClose}
+    >
       <View style={{ flex: 1, backgroundColor: colors.bg }}>
         <View
           style={{
@@ -84,6 +98,8 @@ export function PageSheet({
             <SymbolView name="xmark" size={14} tintColor={colors.ink} weight="semibold" />
           </Pressable>
         </View>
+
+        {header && <View style={{ paddingHorizontal: spacing.s20 }}>{header}</View>}
 
         <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.s20, paddingBottom: spacing.s40 }}>
           {children}

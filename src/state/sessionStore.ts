@@ -70,6 +70,8 @@ interface SessionStore {
   /** §7.4b oto-algılama tetiklediğinde çağrılır (premium). */
   autoPark: () => void;
   dismissAutoPark: () => void;
+  /** Park formundan çıkış: kayıt silinir, keşfe dönülür. */
+  cancelPark: () => void;
   /** Bu oturum oto-algılamayla mı başladı — yanlış algı geri alma satırı için. */
   autoDetected: boolean;
   acceptSuggestedTariff: () => void;
@@ -304,8 +306,18 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
   /** §7.4b yanlış algı: kullanıcı "ben park etmedim" derse kayıt tamamen silinir. */
   dismissAutoPark: () => {
-    const { session, autoDetected } = get();
-    if (!session || !autoDetected) return;
+    if (!get().autoDetected) return;
+    get().cancelPark();
+  },
+
+  /**
+   * Park formundan geri çıkış — kayıt tamamen silinir ve keşfe dönülür.
+   * Yalnız `parking` fazında geçerli: oturum bir kez başladıktan (active) sonra
+   * çıkış yolu "Bitir"dir, sessizce silmek geçmişi bozar.
+   */
+  cancelPark: () => {
+    const { session, phase } = get();
+    if (!session || phase !== 'parking') return;
     if (session.photoUri) deleteSpotPhoto(session.photoUri);
     try {
       repo().deleteSession(session.id);
@@ -313,7 +325,14 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       /* silinemezse bellek durumu yine sıfırlanır */
     }
     void cancelSessionAlerts();
-    set({ phase: 'idle', session: null, autoDetected: false, suggestedTariff: null });
+    set({
+      phase: 'idle',
+      session: null,
+      autoDetected: false,
+      suggestedTariff: null,
+      ocrState: 'idle',
+      locationState: 'idle',
+    });
   },
 
   scanTariff: () => {

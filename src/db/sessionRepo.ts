@@ -6,7 +6,7 @@ import type { ParkSession } from '../state/sessionStore';
 // Aktif oturum = endedAtMs IS NULL; tek aktif oturum kuralını store korur.
 // Şema sürümü PRAGMA user_version ile taşınır — cihazdaki eski kayıtlar korunur.
 
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 let db: SQLiteDatabase | null = null;
 
@@ -56,6 +56,20 @@ function migrate(database: SQLiteDatabase): void {
       // Eski kayıtlarda kayıt anı = başlangıç anı (backdate yoktu).
       database.execSync('UPDATE sessions SET recordedAtMs = startedAtMs WHERE recordedAtMs IS NULL');
     }
+  }
+
+  if (current < 5) {
+    // Bir yere park etmeden de tarife kaydedilebilsin (harita üzerindeki otopark
+    // kartından). Oturum geçmişinden türeyen hafızanın önüne geçer.
+    database.execSync(`
+      CREATE TABLE IF NOT EXISTS place_tariffs (
+        id TEXT PRIMARY KEY,
+        latitude REAL NOT NULL,
+        longitude REAL NOT NULL,
+        tariffJson TEXT NOT NULL,
+        updatedAtMs INTEGER NOT NULL
+      );
+    `);
   }
 
   database.execSync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
@@ -173,6 +187,23 @@ export function listEndedSessions(): ParkSession[] {
 export function findRememberedTariff(latitude: number, longitude: number): Tariff | null {
   const deltaLat = 0.0011; // ~120m
   const deltaLng = 0.0011 / Math.max(0.2, Math.cos((latitude * Math.PI) / 180));
+
+  // Elle girilen yer tarifesi önceliklidir: kullanıcı panoyu okuyup kaydetmişse
+  // eski bir oturumdan kalan tahminden daha günceldir.
+  const place = getDb().getFirstSync<{ tariffJson: string }>(
+    `SELECT tariffJson FROM place_tariffs
+      WHERE latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ?
+      ORDER BY updatedAtMs DESC LIMIT 1`,
+    [latitude - deltaLat, latitude + deltaLat, longitude - deltaLng, longitude + deltaLng],
+  );
+  if (place) {
+    try {
+      return JSON.parse(place.tariffJson) as Tariff;
+    } catch {
+      /* bozuk kayıt: oturum geçmişine düş */
+    }
+  }
+
   const row = getDb().getFirstSync<SessionRow>(
     `SELECT * FROM sessions
       WHERE tariffJson IS NOT NULL
@@ -182,4 +213,19 @@ export function findRememberedTariff(latitude: number, longitude: number): Tarif
     [latitude - deltaLat, latitude + deltaLat, longitude - deltaLng, longitude + deltaLng],
   );
   return row ? rowToSession(row).tariff : null;
+}
+
+/** Harita kartından girilen yer tarifesi — park etmeden kaydedilir. */
+export function savePlaceTariff(latitude: number, longitude: number, tariff: Tariff): void {
+  getDb().runSync(
+    `INSERT OR REPLACE INTO place_tariffs (id, latitude, longitude, tariffJson, updatedAtMs)
+     VALUES (?, ?, ?, ?, ?)`,
+    [
+      `${latitude.toFixed(5)},${longitude.toFixed(5)}`,
+      latitude,
+      longitude,
+      JSON.stringify(tariff),
+      Date.now(),
+    ],
+  );
 }

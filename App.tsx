@@ -2,7 +2,7 @@ import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { StatusBar } from 'expo-status-bar';
 import { SymbolView, type SFSymbol } from 'expo-symbols';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, useWindowDimensions, View } from 'react-native';
+import { Linking, Pressable, useWindowDimensions, View } from 'react-native';
 import { t } from './src/localization';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,9 +10,11 @@ import { MapCanvas } from './src/screens/MapCanvas';
 import { Onboarding } from './src/screens/Onboarding';
 import { HistorySheet } from './src/sheets/HistorySheet';
 import { PaywallSheet } from './src/sheets/PaywallSheet';
+import { PoiSheet } from './src/sheets/PoiSheet';
 import { SettingsSheet } from './src/sheets/SettingsSheet';
 import { ActiveSheet, EndedSheet, IdleSheet, ParkingSheet } from './src/sheets/SessionSheets';
 import { startAutoDetect } from './modules/parkiq-autodetect';
+import { useDiscoveryStore } from './src/state/discoveryStore';
 import { useNetworkStore } from './src/state/networkStore';
 import { useIsPremium, usePremiumStore } from './src/state/premiumStore';
 import { useSessionStore, type SessionPhase } from './src/state/sessionStore';
@@ -68,9 +70,14 @@ function FloatingIconButton({
 }
 
 function SheetContent({ phase, onOpenPaywall }: { phase: SessionPhase; onOpenPaywall: () => void }) {
+  // Haritada bir pin seçiliyse keşif panelinin yerini o otoparkın kartı alır.
+  const selectedPoiId = useDiscoveryStore((s) => s.selectedPoiId);
+  const pois = useDiscoveryStore((s) => s.pois);
+  const selectedPoi = selectedPoiId ? (pois.find((p) => p.id === selectedPoiId) ?? null) : null;
+
   switch (phase) {
     case 'idle':
-      return <IdleSheet onOpenPaywall={onOpenPaywall} />;
+      return selectedPoi ? <PoiSheet poi={selectedPoi} /> : <IdleSheet onOpenPaywall={onOpenPaywall} />;
     case 'parking':
       return <ParkingSheet onOpenPaywall={onOpenPaywall} />;
     case 'active':
@@ -94,10 +101,29 @@ function Root() {
   // diğer fazlarda tek kademe olan içerik yüksekliği.
   useEffect(() => {
     sheetRef.current?.snapToIndex(0);
+    // Keşiften çıkarken haritada seçili kalan pin temizlenir.
+    if (phase !== 'idle') useDiscoveryStore.getState().selectPoi(null);
   }, [phase]);
+
+  // Haritada pin seçilince kart kompakt kademede yarım kalmasın.
+  const selectedPoiId = useDiscoveryStore((s) => s.selectedPoiId);
+  useEffect(() => {
+    sheetRef.current?.snapToIndex(selectedPoiId ? 1 : 0);
+  }, [selectedPoiId]);
 
   // §5.11 offline satırı için ağ durumu dinlenir.
   useEffect(() => useNetworkStore.getState().subscribe(), []);
+
+  // Widget kısayolu: parkiq://park app'i açar ve kaydı başlatır. Oturum zaten
+  // varsa `park()` kendi içinde yok sayar — tek aktif oturum kuralı korunur.
+  useEffect(() => {
+    const handle = (url: string | null) => {
+      if (url?.startsWith('parkiq://park')) useSessionStore.getState().park();
+    };
+    void Linking.getInitialURL().then(handle);
+    const sub = Linking.addEventListener('url', (event) => handle(event.url));
+    return () => sub.remove();
+  }, []);
 
   // §7.4b oto-algılama (premium): araç bağlantısı kopunca otomatik kayıt.
   const isPremium = useIsPremium();
@@ -142,7 +168,10 @@ function Root() {
         snapPoints={snapPoints}
         enableDynamicSizing
         maxDynamicContentSize={maxSheetHeight}
-        enablePanDownToClose={false}
+        // Park formu aşağı çekilerek de terk edilebilir (kayıt silinir, keşfe döner).
+        // Diğer fazlarda panel kapanamaz: harita tek başına çıkışsız bir ekran olurdu.
+        enablePanDownToClose={phase === 'parking'}
+        onClose={() => useSessionStore.getState().cancelPark()}
         keyboardBehavior="interactive"
         keyboardBlurBehavior="restore"
         backgroundStyle={backgroundStyle}

@@ -1,7 +1,7 @@
 import Mapbox, { Camera, LocationPuck, MapView, MarkerView } from '@rnmapbox/maps';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MAPBOX_PUBLIC_TOKEN, MAPBOX_STYLE_URL_DARK, MAPBOX_STYLE_URL_LIGHT } from '../config';
 import { applyFilter, type PoiKind } from '../lib/parkingPoi';
 import { useDiscoveryStore } from '../state/discoveryStore';
@@ -58,7 +58,7 @@ function CarPin() {
 }
 
 /** §5.8 küçük POI pini: otopark ink, şarj yeşil (yeşil = para + şarj + canlı). */
-function PoiPin({ kind }: { kind: PoiKind }) {
+function PoiPin({ kind, selected }: { kind: PoiKind; selected?: boolean }) {
   const { colors } = useTheme();
   const charging = kind === 'charging';
   return (
@@ -70,7 +70,9 @@ function PoiPin({ kind }: { kind: PoiKind }) {
         backgroundColor: charging ? colors.accentFill : colors.ink,
         alignItems: 'center',
         justifyContent: 'center',
-        opacity: 0.9,
+        // Seçili pin tam opak ve biraz büyük — hangisine baktığın belli olsun
+        opacity: selected ? 1 : 0.9,
+        transform: [{ scale: selected ? 1.25 : 1 }],
         // §2.2: krem harita üstündeki renkli işaret beyaz ring taşır
         borderWidth: 1.5,
         borderColor: colors.card,
@@ -94,6 +96,8 @@ export function MapboxCanvas() {
   const filter = useDiscoveryStore((s) => s.filter);
   const cameraTarget = useDiscoveryStore((s) => s.cameraTarget);
   const cameraToken = useDiscoveryStore((s) => s.cameraToken);
+  const selectedPoiId = useDiscoveryStore((s) => s.selectedPoiId);
+  const selectPoi = useDiscoveryStore((s) => s.selectPoi);
   const visiblePois = applyFilter(pois, filter);
   const cameraRef = useRef<Camera>(null);
 
@@ -155,7 +159,15 @@ export function MapboxCanvas() {
             anchor={{ x: 0.5, y: 0.5 }}
             allowOverlap={false}
           >
-            <PoiPin kind={poi.kind} />
+            {/* Pine dokunmak keşif panelini o otoparkın kartıyla değiştirir */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={poi.name ?? undefined}
+              onPress={() => selectPoi(poi.id)}
+              hitSlop={10}
+            >
+              <PoiPin kind={poi.kind} selected={poi.id === selectedPoiId} />
+            </Pressable>
           </MarkerView>
         ))}
 

@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native';
 import { PrimaryCta } from '../components/Buttons';
 import { PageSheet } from '../components/PageSheet';
-import { Body, Caption, Overline } from '../components/Typography';
+import { Body, Caption } from '../components/Typography';
 import { t, upper } from '../localization';
 import type { PlanPeriod, PurchasePlan } from '../lib/purchases';
 import { usePremiumStore } from '../state/premiumStore';
@@ -129,10 +129,16 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
   const busy = purchaseState !== 'idle';
 
   return (
-    <PageSheet visible={visible} title={t('goPro')} onClose={busy ? () => undefined : onClose}>
+    <PageSheet
+      visible={visible}
+      title={t('goPro')}
+      onClose={busy ? () => undefined : onClose}
+      fullScreen
+    >
       <View style={{ gap: spacing.s24 }}>
+        {/* Üstteki overline sheet başlığının aynısıydı — iki kez "PARKIQ PRO"
+            okunuyordu. Başlık kabukta kalır, burada yalnız vaat ve gövde var. */}
         <View style={{ gap: spacing.s8 }}>
-          <Overline>{t('proOverline')}</Overline>
           {/* Başlıkta nokta YOK (§7.10) */}
           <Text
             style={{

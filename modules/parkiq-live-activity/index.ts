@@ -45,36 +45,55 @@ try {
   native = null;
 }
 
+/**
+ * Sessiz yutulan hatalar yüzünden "Live Activity hiç gelmedi" durumunu teşhis
+ * etmek imkânsızdı: modül bulunamasa da, ActivityKit reddetse de aynı sonuç
+ * görünüyordu. Artık sebep loga düşer — app yine çalışmaya devam eder.
+ */
+function warn(stage: string, error?: unknown): void {
+  console.warn(`[LiveActivity] ${stage}`, error ?? '');
+}
+
+if (native === null) {
+  warn('native module ParkiqLiveActivity not found — running without Live Activity');
+}
+
 export const isLiveActivityAvailable = native !== null && (native?.isSupported() ?? false);
 
+if (native !== null && !isLiveActivityAvailable) {
+  warn('ActivityKit reports Live Activities disabled (Settings > ParkIQ > Live Activities)');
+}
+
 export async function startLiveActivity(payload: LiveActivityPayload): Promise<void> {
+  if (!native) return;
   try {
-    await native?.start(payload);
-  } catch {
-    // Live Activity başarısızsa oturum normal çalışmaya devam eder.
+    const id = await native.start(payload);
+    if (id === null) warn('start returned null — Activity.request was rejected');
+  } catch (error) {
+    warn('start failed', error);
   }
 }
 
 export async function updateLiveActivity(payload: LiveActivityPayload): Promise<void> {
   try {
     await native?.update(payload);
-  } catch {
-    /* yoksay */
+  } catch (error) {
+    warn('update failed', error);
   }
 }
 
 export async function endLiveActivity(payload: LiveActivityPayload | null): Promise<void> {
   try {
     await native?.end(payload ?? ({} as Record<string, never>));
-  } catch {
-    /* yoksay */
+  } catch (error) {
+    warn('end failed', error);
   }
 }
 
 export function setWidgetData(payload: WidgetPayload): void {
   try {
     native?.setWidgetData(payload);
-  } catch {
-    /* yoksay */
+  } catch (error) {
+    warn('setWidgetData failed', error);
   }
 }
