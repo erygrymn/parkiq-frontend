@@ -1,4 +1,5 @@
 import Mapbox, { Camera, LocationPuck, MapView, MarkerView } from '@rnmapbox/maps';
+import * as Location from 'expo-location';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -94,37 +95,95 @@ export function MapboxCanvas() {
   const phase = useSessionStore((s) => s.phase);
   const pois = useDiscoveryStore((s) => s.pois);
   const filter = useDiscoveryStore((s) => s.filter);
-  const cameraTarget = useDiscoveryStore((s) => s.cameraTarget);
-  const cameraToken = useDiscoveryStore((s) => s.cameraToken);
+  const pinTarget = useDiscoveryStore((s) => s.pinTarget);
+  const pinToken = useDiscoveryStore((s) => s.pinToken);
+  const followToken = useDiscoveryStore((s) => s.followToken);
+  const load = useDiscoveryStore((s) => s.load);
   const selectedPoiId = useDiscoveryStore((s) => s.selectedPoiId);
   const selectPoi = useDiscoveryStore((s) => s.selectPoi);
   const visiblePois = applyFilter(pois, filter);
   const cameraRef = useRef<Camera>(null);
-
-  // Konuma dön / arama sonucu: token her artışta kamera hedefe uçar.
-  useEffect(() => {
-    if (cameraToken === 0 || !cameraTarget) return;
-    cameraRef.current?.setCamera({
-      centerCoordinate: [cameraTarget.longitude, cameraTarget.latitude],
-      zoomLevel: DEFAULT_ZOOM,
-      animationDuration: 600,
-    });
-  }, [cameraToken, cameraTarget]);
-
-  const styleURL =
-    scheme === 'dark'
-      ? (MAPBOX_STYLE_URL_DARK ?? Mapbox.StyleURL.Dark)
-      : (MAPBOX_STYLE_URL_LIGHT ?? Mapbox.StyleURL.Light);
 
   const carCoords =
     session?.latitude != null && session.longitude != null
       ? ([session.longitude, session.latitude] as [number, number])
       : null;
 
-  // Oturum varken kamera arabaya kilitlenir; yokken kullanıcıyı takip eder.
-  const followUser = carCoords === null || phase === 'idle';
-
   const active = phase !== 'idle';
+
+  // Callback'ler içinden güncel değeri okumak için ref'ler (kapanış tuzağı yok).
+  const followingRef = useRef(true);
+  const userCoordsRef = useRef<[number, number] | null>(null);
+  const hasCarRef = useRef(false);
+  hasCarRef.current = carCoords !== null && active;
+
+  // Konumu KENDİMİZ dinleriz. `followUserLocation` + kontrollü zoom çakışınca
+  // takip kilitleniyordu; imperatif setCamera ile tam kontrol sağlanır.
+  useEffect(() => {
+    let sub: Location.LocationSubscription | null = null;
+    let cancelled = false;
+    void (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted' || cancelled) return;
+      sub = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.Balanced, distanceInterval: 8, timeInterval: 4000 },
+        (pos) => {
+          const c: [number, number] = [pos.coords.longitude, pos.coords.latitude];
+          const first = userCoordsRef.current === null;
+          userCoordsRef.current = c;
+          // Takip modundayken (ve araba sahnede değilken) kamera kullanıcıyla gider.
+          // İlk konumda her hâlükârda ortala — açılışta harita boş okyanusta kalmasın.
+          if ((followingRef.current || first) && !hasCarRef.current) {
+            cameraRef.current?.setCamera({ centerCoordinate: c, animationDuration: 500 });
+            load({ latitude: c[1], longitude: c[0] });
+          }
+        },
+      );
+    })();
+    return () => {
+      cancelled = true;
+      sub?.remove();
+    };
+  }, [load]);
+
+  // Arama sonucu / POI: sabit koordinata git, takibi kes.
+  useEffect(() => {
+    if (pinToken === 0 || !pinTarget) return;
+    followingRef.current = false;
+    cameraRef.current?.setCamera({
+      centerCoordinate: [pinTarget.longitude, pinTarget.latitude],
+      zoomLevel: DEFAULT_ZOOM,
+      animationDuration: 600,
+    });
+  }, [pinToken, pinTarget]);
+
+  // Konuma dön butonu: takibe geri dön, kullanıcıya anında uç.
+  useEffect(() => {
+    if (followToken === 0) return;
+    followingRef.current = true;
+    const c = userCoordsRef.current;
+    if (c) {
+      cameraRef.current?.setCamera({ centerCoordinate: c, zoomLevel: DEFAULT_ZOOM, animationDuration: 600 });
+      load({ latitude: c[1], longitude: c[0] });
+    }
+  }, [followToken, load]);
+
+  // Oturum arabası: varken kameraya kilitle ve takibi kes; keşfe dönünce takip açılır.
+  useEffect(() => {
+    if (carCoords && active) {
+      followingRef.current = false;
+      cameraRef.current?.setCamera({ centerCoordinate: carCoords, zoomLevel: DEFAULT_ZOOM, animationDuration: 600 });
+    } else if (phase === 'idle') {
+      followingRef.current = true;
+    }
+    // carCoords referansı her render değişmesin diye bileşenlerine bağlanır
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [carCoords?.[0], carCoords?.[1], active, phase]);
+
+  const styleURL =
+    scheme === 'dark'
+      ? (MAPBOX_STYLE_URL_DARK ?? Mapbox.StyleURL.Dark)
+      : (MAPBOX_STYLE_URL_LIGHT ?? Mapbox.StyleURL.Light);
 
   return (
     <View style={StyleSheet.absoluteFill}>
@@ -137,17 +196,10 @@ export function MapboxCanvas() {
         scaleBarEnabled={false}
         compassEnabled={false}
       >
-      <Camera
-        ref={cameraRef}
-        defaultSettings={{ zoomLevel: DEFAULT_ZOOM }}
-        zoomLevel={DEFAULT_ZOOM}
-        // Kullanıcı haritayı elle kaydırdıysa takip kopar; "konuma dön" ve arama
-        // sonucu bu yüzden takip bayrağına değil, açık setCamera'ya bağlı (aşağıda).
-        followUserLocation={followUser}
-        followZoomLevel={DEFAULT_ZOOM}
-        centerCoordinate={followUser ? undefined : (carCoords ?? undefined)}
-        animationDuration={600}
-      />
+      {/* Kamera YALNIZ ref üzerinden sürülür (yukarıdaki efektler). Kontrollü
+          zoomLevel/centerCoordinate + followUserLocation birlikteyken takibi
+          kilitliyordu; hepsi kaldırıldı. */}
+      <Camera ref={cameraRef} defaultSettings={{ zoomLevel: DEFAULT_ZOOM }} />
       <LocationPuck puckBearingEnabled puckBearing="heading" />
 
       {/* §7.2 keşif pinleri — aktif oturumda gizlenir, sahne arabaya ait olur */}

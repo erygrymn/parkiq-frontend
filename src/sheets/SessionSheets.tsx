@@ -52,7 +52,7 @@ export function IdleSheet() {
   const filter = useDiscoveryStore((s) => s.filter);
   const discoveryState = useDiscoveryStore((s) => s.state);
   const pois = useDiscoveryStore((s) => s.pois);
-  const { setFilter, load, focus } = useDiscoveryStore.getState();
+  const { setFilter, load, pinTo, requestFollow } = useDiscoveryStore.getState();
 
   // Kullanıcı konumu alınınca yakındakiler çekilir (mesafe eşiğiyle tekrar sorgu engellenir).
   useEffect(() => {
@@ -76,19 +76,15 @@ export function IdleSheet() {
     }
   };
 
-  // `focus` hem kamerayı taşır hem veriyi çeker — yalnız `load` kamerayı oynatmıyordu.
-  const locateMe = () => {
-    void captureCurrentPlace().then((outcome) => {
-      if (outcome.status === 'ok') {
-        focus({ latitude: outcome.place.latitude, longitude: outcome.place.longitude });
-      }
-    });
-  };
+  // Konuma dön: haritanın kendi konum akışına "kullanıcıyı takip et" der.
+  // Anlık koordinatı harita zaten biliyor; burada tekrar konum çekmiyoruz.
+  const locateMe = () => requestFollow();
 
   return (
     <View style={{ paddingHorizontal: spacing.s20, paddingBottom: spacing.s20, gap: spacing.s16 }}>
-      {/* Hedefi ara → ORANIN çevresindeki otoparklar (evden çıkmadan planlama) */}
-      <SearchBar onPick={(result) => focus(result.coords)} onLocate={locateMe} />
+      {/* Hedefi ara → ORANIN çevresindeki otoparklar (evden çıkmadan planlama).
+          Arama sabit bir noktaya pinler; takip kesilir. */}
+      <SearchBar onPick={(result) => pinTo(result.coords)} onLocate={locateMe} />
 
       {/* CTA doğrudan aramanın altında: kompakt kademede görünen tek şey bu ikisi.
           Filtreler ve liste aşağıda kalır, panel yukarı çekilince ortaya çıkar. */}

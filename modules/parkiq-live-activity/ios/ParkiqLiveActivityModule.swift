@@ -21,6 +21,11 @@ public class ParkiqLiveActivityModule: Module {
 
     AsyncFunction("start") { (payload: [String: Any]) -> String? in
       guard #available(iOS 16.2, *) else { return nil }
+      // Idempotent: cold start bir kez daha çağırabilir; önce mevcutları kapat ki
+      // aynı oturum için iki Live Activity üst üste binmesin.
+      for existing in Activity<ParkIQAttributes>.activities {
+        await existing.end(nil, dismissalPolicy: .immediate)
+      }
       let attributes = ParkIQAttributes(
         placeName: payload["placeName"] as? String,
         floor: payload["floor"] as? String
@@ -33,6 +38,7 @@ public class ParkiqLiveActivityModule: Module {
         )
         return activity.id
       } catch {
+        NSLog("[ParkIQ] Activity.request failed: \(error.localizedDescription)")
         return nil
       }
     }

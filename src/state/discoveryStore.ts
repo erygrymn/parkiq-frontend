@@ -14,19 +14,24 @@ interface DiscoveryStore {
   /** Sonuçların ait olduğu merkez — gereksiz tekrar sorguyu engeller. */
   center: Coords | null;
   /**
-   * Haritanın gitmesi istenen nokta. `load` yalnız veri çeker; kamerayı oynatmak
-   * ayrı bir niyettir (konuma dön butonu, arama sonucu) — bu yüzden ayrı alan.
-   * Token her istekte artar: aynı koordinata art arda dönmek de kamerayı hareket ettirir.
+   * Kamera niyeti iki ayrı sinyaldir çünkü davranışları zıt:
+   * - PIN: sabit bir koordinata git ve orada DUR (arama sonucu). Takibi keser.
+   * - FOLLOW: kullanıcıyı takip etmeye dön (konuma dön butonu / ilk açılış).
+   * Token'lar her istekte artar; harita bunları izler, `followUserLocation`
+   * ile kontrollü zoom'un çakışması yüzünden takip kilitleniyordu.
    */
-  cameraTarget: Coords | null;
-  cameraToken: number;
+  pinTarget: Coords | null;
+  pinToken: number;
+  followToken: number;
   /** Haritada seçili otopark — keşif paneli yerine o kartı gösterir. */
   selectedPoiId: string | null;
   selectPoi: (id: string | null) => void;
   setFilter: (filter: PoiFilter) => void;
   load: (center: Coords) => void;
-  /** Kamerayı oraya taşı + o çevrenin otoparklarını çek. */
-  focus: (center: Coords) => void;
+  /** Sabit koordinata git + orada otopark ara (arama sonucu, POI). */
+  pinTo: (center: Coords) => void;
+  /** Kullanıcıyı takibe dön (konuma dön butonu). */
+  requestFollow: () => void;
   visiblePois: () => ParkingPoi[];
 }
 
@@ -40,18 +45,21 @@ export const useDiscoveryStore = create<DiscoveryStore>((set, get) => ({
   pois: [],
   filter: 'all',
   center: null,
-  cameraTarget: null,
-  cameraToken: 0,
+  pinTarget: null,
+  pinToken: 0,
+  followToken: 0,
   selectedPoiId: null,
 
   selectPoi: (id) => set({ selectedPoiId: id }),
 
   setFilter: (filter) => set({ filter }),
 
-  focus: (center) => {
-    set({ cameraTarget: center, cameraToken: get().cameraToken + 1 });
+  pinTo: (center) => {
+    set({ pinTarget: center, pinToken: get().pinToken + 1 });
     get().load(center);
   },
+
+  requestFollow: () => set({ followToken: get().followToken + 1 }),
 
   load: (center) => {
     const { center: previous, state } = get();

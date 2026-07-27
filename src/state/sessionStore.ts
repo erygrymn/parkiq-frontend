@@ -163,8 +163,15 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         ? { hydrated: true, phase: 'active', session: active, locationState: active.latitude === null ? 'idle' : 'ok' }
         : { hydrated: true },
     );
-    // Soğuk açılışta uyarıları tazele ama izin sorma — kullanıcı app'i yeni açtı.
-    if (active) syncAlerts(active, false, set);
+    if (active) {
+      // Soğuk açılışta uyarıları tazele ama izin sorma — kullanıcı app'i yeni açtı.
+      syncAlerts(active, false, set);
+      // Widget/Live Activity'yi gerçek duruma getir: app yeniden açıldığında (veya
+      // ilk widget yerleştirildiğinde) paylaşılan kutu boşsa widget "park edilmemiş"
+      // kalıyordu. `start` idempotent (mevcut LA'yı kapatıp yeniden kurar) ve
+      // paylaşılan kutuya da yazar — bu yüzden refresh değil start.
+      syncLiveActivity('start');
+    }
   },
 
   park: () => {
