@@ -15,7 +15,7 @@ import {
   relativeBearing,
 } from '../lib/geo';
 import { openInMaps } from '../lib/maps';
-import { ArFindMyCar } from './ArFindMyCar';
+import { ArFindMyCar, isArAvailable } from './ArFindMyCar';
 import { getLocale, t } from '../localization';
 import type { ParkSession } from '../state/sessionStore';
 import { useTheme } from '../theme';
@@ -197,7 +197,7 @@ export function FindMyCar({
 
           {/* AR yalnız yön hesaplanabildiğinde anlamlı: kapalı otoparkta pusula
               yalan söyler, orada foto/kat kartı doğru araçtır. */}
-          {!indoor && bearing !== null && (
+          {!indoor && carCoords !== null && isArAvailable && (
             <Pressable
               onPress={() => setArOpen(true)}
               accessibilityRole="button"
@@ -274,16 +274,18 @@ export function FindMyCar({
       </View>
 
       <Modal visible={arOpen} animationType="slide" onRequestClose={() => setArOpen(false)}>
-        <ArFindMyCar
-          visible={arOpen}
-          relativeBearingDeg={bearing !== null && heading !== null ? relativeBearing(bearing, heading) : null}
-          distanceM={distance}
-          onClose={() => setArOpen(false)}
-          onFound={() => {
-            setArOpen(false);
-            onFound();
-          }}
-        />
+        {carCoords && (
+          <ArFindMyCar
+            car={carCoords}
+            user={userCoords}
+            distanceM={distance}
+            onClose={() => setArOpen(false)}
+            onFound={() => {
+              setArOpen(false);
+              onFound();
+            }}
+          />
+        )}
       </Modal>
 
       <Modal visible={photoOpen} animationType="fade" onRequestClose={() => setPhotoOpen(false)}>

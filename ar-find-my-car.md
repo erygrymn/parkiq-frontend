@@ -1,5 +1,14 @@
 # AR Find My Car — Uygulama Dokümanı (v1 + v2)
 
+## Durum (2026-08-15)
+
+v1 UYGULANDI: `modules/parkiq-ar` — ARWorldTrackingConfiguration +
+`worldAlignment = .gravityAndHeading`, RealityKit sahnesi (huzme, taban halkası,
+zemin okları), CoachingOverlay ve her GPS düzeltmesinde hedefin kameranın o anki
+dünya konumundan yeniden bağlanması. Aşağıdaki plan bundan sonrası içindir
+(v2 Directions rotası, kapalı alan davranışı, ince ayarlar).
+
+
 Bu doküman, ParkIQ'nun AR "arabamı bul" özelliğini sıfır sohbet bağlamıyla uygulayabilmek için yazıldı.
 Uygulamaya başlamadan önce ZORUNLU okuma sırası: kökteki **CLAUDE.md** (bağlayıcı kurallar) →
 **design.md** (görsel dil; §5.8 pin, §8 koyu yüzey ailesi) → **screens.md §7b** (checklist).
