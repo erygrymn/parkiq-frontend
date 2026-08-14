@@ -24,3 +24,24 @@ describe('dilim süresinin görünen birimi', () => {
     }
   });
 });
+
+import { formatRangeStart } from '../tierUnits';
+
+describe('dilim aralığının başlangıcı', () => {
+  it('ilk dilim sıfırdan başlar', () => {
+    expect(formatRangeStart(0, 'hour')).toBe('0');
+    expect(formatRangeStart(0, 'min')).toBe('0');
+  });
+
+  it('satırın kendi birimiyle yazar', () => {
+    expect(formatRangeStart(180, 'hour')).toBe('3');
+    expect(formatRangeStart(30, 'min')).toBe('30');
+  });
+
+  it('dönüşmeyen değeri kendi birimiyle gösterir', () => {
+    // Önceki dilim 30 dk bitiyor, bu satır saatle yazılmış: "0.5" yazmak yerine
+    // "30dk" yazmak doğruyu söyler.
+    expect(formatRangeStart(30, 'hour')).toBe('30dk');
+    expect(formatRangeStart(90, 'hour')).toBe('90dk');
+  });
+});

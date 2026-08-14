@@ -53,6 +53,11 @@ export function PopupSheet({
         <View
           style={{
             backgroundColor: colors.card,
+            // Panel ekranı AŞAMAZ: içerik uzayınca başlık ekranın üstünden
+            // taşıp erişilemez hale geliyordu (çok dilimli tarife girişinde
+            // en yukarı kaydırmak imkânsızdı). Sınır konunca kaydırma
+            // panelin İÇİNDE gerçekleşir.
+            maxHeight: '88%',
             borderTopLeftRadius: radius.r24,
             borderTopRightRadius: radius.r24,
             paddingHorizontal: spacing.s20,
@@ -96,8 +101,8 @@ export function PopupSheet({
           <ScrollView
             bounces={false}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ gap: spacing.s16 }}
-            style={{ flexGrow: 0 }}
+            contentContainerStyle={{ gap: spacing.s16, paddingBottom: spacing.s4 }}
+            style={{ flexGrow: 0, flexShrink: 1 }}
           >
             {children}
           </ScrollView>

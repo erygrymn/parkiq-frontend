@@ -28,6 +28,7 @@ export const tr: Record<CopyKey, string> = {
   shareCard: 'Kartı Paylaş',
 
   whereTo: 'Nereye?',
+  noNearbyForFilter: 'Bu filtreye uyan yakın yer yok',
   filterAll: 'Tümü',
   filterCharging: 'Şarj',
   filterCovered: 'Kapalı',
@@ -82,7 +83,7 @@ export const tr: Record<CopyKey, string> = {
   tariffHourly: 'Saatlik',
   tariffFlat: 'Sabit',
   tariffTiered: 'Dilimli',
-  untilDuration: 'Şu kadara kadar',
+  untilDuration: 'Süre',
   unitMinShort: 'dk',
   unitHourShort: 'sa',
   unitToggle: 'Birimi değiştir',

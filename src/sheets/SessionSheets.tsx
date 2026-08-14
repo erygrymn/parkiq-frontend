@@ -104,6 +104,12 @@ export function IdleSheet() {
         <View style={{ height: 56, borderRadius: radius.r12, backgroundColor: colors.inset }} />
       )}
 
+      {/* Filtre sonuç vermeyince sessiz boşluk kalıyordu — "Kapalı" özellikle
+          seyrek, çünkü OSM çoğu otoparkı kapalı/açık diye etiketlemiyor. */}
+      {discoveryState === 'ready' && pois.length > 0 && visible.length === 0 && (
+        <Caption>{t('noNearbyForFilter')}</Caption>
+      )}
+
       {/* §7.2 pin detay kartı: ad, mesafe/yürüme, tarife hafızası varsa özet, Directions */}
       {visible.slice(0, 3).map((poi) => {
         const remembered = rememberedTariffFor(poi);

@@ -29,6 +29,7 @@ export const en = {
 
   // Keşif
   whereTo: 'Where to?',
+  noNearbyForFilter: 'Nothing nearby matches this filter',
   filterAll: 'All',
   filterCharging: 'Charging',
   filterCovered: 'Covered',
@@ -86,7 +87,7 @@ export const en = {
   tariffHourly: 'Hourly',
   tariffFlat: 'Flat',
   tariffTiered: 'Tiers',
-  untilDuration: 'Up to',
+  untilDuration: 'Duration',
   unitMinShort: 'min',
   unitHourShort: 'hr',
   unitToggle: 'Change unit',

@@ -14,3 +14,15 @@ export function fromMinutes(endMin: number): { amount: string; unit: TierUnit } 
     ? { amount: String(endMin / 60), unit: 'hour' }
     : { amount: String(endMin), unit: 'min' };
 }
+
+/**
+ * Bir dilimin BAŞLANGICI, o satırın birimine göre okunur biçimde.
+ * Başlangıç önceki dilimin bitişidir; birimler satır satır değişebildiği için
+ * ("30 dk" sonra "3 sa") dönüşmeyen değer kendi birimiyle yazılır.
+ */
+export function formatRangeStart(previousEndMin: number, unit: TierUnit): string {
+  if (previousEndMin <= 0) return '0';
+  if (unit === 'min') return String(previousEndMin);
+  if (previousEndMin % 60 === 0) return String(previousEndMin / 60);
+  return `${previousEndMin}dk`;
+}

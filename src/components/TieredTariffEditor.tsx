@@ -4,18 +4,20 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { t } from '../localization';
 import { sanitizeTiers, type TariffTier } from '../lib/tariffMath';
-import { fromMinutes, minutesOf, type TierUnit } from '../lib/tierUnits';
+import { formatRangeStart, fromMinutes, minutesOf, type TierUnit } from '../lib/tierUnits';
 import { useTheme } from '../theme';
 import { radius, spacing } from '../theme/tokens';
 import { Caption, Overline } from './Typography';
 
-// §7.4 dilimli tarife girişi: "0–30 dk ₺50 / 1–2 sa ₺100" gibi panolar için.
-// Kullanıcı SÜRE girer, fiyat KÜMÜLATİF toplamdır (§5.9 veri modeli) —
-// alan etiketleri bunu açıkça söyler, yoksa artımlı girip yanlış uyarı alır.
+// §7.4 dilimli tarife girişi.
 //
-// Süre her satırda KENDİ birimini taşır. Tek birim (saat) dayatmak yarım
-// saatlik dilimleri "0.5" diye yazdırıyordu; panolarda öyle bir şey yazmaz,
-// pano "30 DK" der. Birim rozetine dokunmak dk ↔ sa arasında geçirir.
+// Satır ARALIK olarak okunur — panonun kendisi de öyle yazar: "0 – 3 sa  ₺0",
+// "3 – 4 sa  ₺150". Tek bir "kaç saate kadar" kutusu, dilimin nerede başladığını
+// göstermediği için ne girildiğini anlamayı zorlaştırıyordu.
+//
+// Başlangıç DÜZENLENMEZ: önceki dilimin bitişidir. Elle girilebilir olsaydı iki
+// satır çelişebilir ve boşluk/çakışma oluşurdu; türetilmesi bunu imkânsız kılar.
+// Fiyat KÜMÜLATİF toplamdır (§5.9 veri modeli) — alan etiketi bunu söyler.
 
 interface DraftRow {
   amount: string;
@@ -23,12 +25,13 @@ interface DraftRow {
   price: string;
 }
 
+function endMinOf(row: DraftRow): number {
+  return Number(row.amount.replace(',', '.')) * minutesOf(row.unit);
+}
+
 function toTiers(rows: DraftRow[]): TariffTier[] {
   const parsed = rows
-    .map((row) => ({
-      endMin: Number(row.amount.replace(',', '.')) * minutesOf(row.unit),
-      cumulativePrice: Number(row.price.replace(',', '.')),
-    }))
+    .map((row) => ({ endMin: endMinOf(row), cumulativePrice: Number(row.price.replace(',', '.')) }))
     .filter((tier) => Number.isFinite(tier.endMin) && Number.isFinite(tier.cumulativePrice));
   return sanitizeTiers(parsed);
 }
@@ -43,10 +46,7 @@ export function TieredTariffEditor({
   const { colors } = useTheme();
   const [rows, setRows] = useState<DraftRow[]>(() =>
     initialTiers && initialTiers.length > 0
-      ? initialTiers.map((tier) => ({
-          ...fromMinutes(tier.endMin),
-          price: String(tier.cumulativePrice),
-        }))
+      ? initialTiers.map((tier) => ({ ...fromMinutes(tier.endMin), price: String(tier.cumulativePrice) }))
       : [
           { amount: '1', unit: 'hour', price: '' },
           { amount: '2', unit: 'hour', price: '' },
@@ -77,10 +77,8 @@ export function TieredTariffEditor({
 
   const removeRow = (index: number) => update(rows.filter((_, i) => i !== index));
 
-  const fieldStyle = {
+  const numberField = {
     height: 44,
-    borderRadius: radius.r12,
-    backgroundColor: colors.inset,
     paddingHorizontal: spacing.s12,
     fontSize: 15,
     color: colors.ink,
@@ -90,79 +88,104 @@ export function TieredTariffEditor({
   return (
     <View style={{ gap: spacing.s8 }}>
       <View style={{ flexDirection: 'row', gap: spacing.s8 }}>
-        <Overline style={{ flex: 1 }}>{t('untilDuration')}</Overline>
+        <Overline style={{ flex: 1.35 }}>{t('untilDuration')}</Overline>
         <Overline style={{ flex: 1 }}>{t('totalSoFar')}</Overline>
-        <View style={{ width: 32 }} />
+        <View style={{ width: 30 }} />
       </View>
 
-      {rows.map((row, index) => (
-        <View key={index} style={{ flexDirection: 'row', gap: spacing.s8, alignItems: 'center' }}>
-          {/* Süre + birim tek bir alan gibi görünür; rozet dk ↔ sa geçirir. */}
-          <View
-            style={{
-              flex: 1,
-              height: 44,
-              borderRadius: radius.r12,
-              backgroundColor: colors.inset,
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingRight: spacing.s4,
-            }}
-          >
+      {rows.map((row, index) => {
+        // Bu dilim önceki dilimin bittiği yerde başlar.
+        const previousEnd = index === 0 ? 0 : endMinOf(rows[index - 1]);
+        const start = formatRangeStart(Number.isFinite(previousEnd) ? previousEnd : 0, row.unit);
+
+        return (
+          <View key={index} style={{ flexDirection: 'row', gap: spacing.s8, alignItems: 'center' }}>
+            {/* Aralık: [başlangıç] – [bitiş] [birim] */}
+            <View style={{ flex: 1.35, flexDirection: 'row', alignItems: 'center', gap: spacing.s4 }}>
+              <Text
+                style={{
+                  fontSize: 15,
+                  color: colors.textSecondary,
+                  fontVariant: ['tabular-nums'],
+                  minWidth: 18,
+                  textAlign: 'right',
+                }}
+              >
+                {start}
+              </Text>
+              <Text style={{ fontSize: 15, color: colors.disabled }}>–</Text>
+
+              <View
+                style={{
+                  flex: 1,
+                  height: 44,
+                  borderRadius: radius.r12,
+                  backgroundColor: colors.inset,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingRight: spacing.s4,
+                }}
+              >
+                <BottomSheetTextInput
+                  value={row.amount}
+                  onChangeText={(amount) => setRow(index, { amount })}
+                  keyboardType="number-pad"
+                  placeholder={row.unit === 'min' ? '30' : '1'}
+                  placeholderTextColor={colors.textSecondary}
+                  style={[numberField, { flex: 1, paddingHorizontal: spacing.s8 }]}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t('unitToggle')}
+                  onPress={() => toggleUnit(index)}
+                  hitSlop={8}
+                  style={({ pressed }) => ({
+                    height: 30,
+                    minWidth: 34,
+                    paddingHorizontal: spacing.s4,
+                    borderRadius: radius.r8,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: pressed ? colors.card : colors.insetPressed,
+                  })}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.ink }}>
+                    {t(row.unit === 'min' ? 'unitMinShort' : 'unitHourShort')}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+
             <BottomSheetTextInput
-              value={row.amount}
-              onChangeText={(amount) => setRow(index, { amount })}
-              keyboardType="number-pad"
-              placeholder={row.unit === 'min' ? '30' : '1'}
+              value={row.price}
+              onChangeText={(price) => setRow(index, { price })}
+              keyboardType="decimal-pad"
+              placeholder="50"
               placeholderTextColor={colors.textSecondary}
-              style={[fieldStyle, { flex: 1, backgroundColor: 'transparent' }]}
+              style={[
+                numberField,
+                { flex: 1, borderRadius: radius.r12, backgroundColor: colors.inset },
+              ]}
             />
+
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={t('unitToggle')}
-              onPress={() => toggleUnit(index)}
+              accessibilityLabel={t('delete')}
+              onPress={() => removeRow(index)}
+              disabled={rows.length <= 1}
               hitSlop={8}
-              style={({ pressed }) => ({
-                height: 32,
-                minWidth: 40,
-                paddingHorizontal: spacing.s8,
-                borderRadius: radius.r8,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: pressed ? colors.card : colors.insetPressed,
-              })}
+              style={{ width: 30, alignItems: 'center' }}
             >
-              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.ink }}>
-                {t(row.unit === 'min' ? 'unitMinShort' : 'unitHourShort')}
-              </Text>
+              <SymbolView
+                name="minus.circle"
+                size={19}
+                tintColor={rows.length <= 1 ? colors.disabled : colors.textSecondary}
+                weight="regular"
+              />
             </Pressable>
           </View>
-
-          <BottomSheetTextInput
-            value={row.price}
-            onChangeText={(price) => setRow(index, { price })}
-            keyboardType="decimal-pad"
-            placeholder="50"
-            placeholderTextColor={colors.textSecondary}
-            style={[fieldStyle, { flex: 1 }]}
-          />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('delete')}
-            onPress={() => removeRow(index)}
-            disabled={rows.length <= 1}
-            hitSlop={8}
-            style={{ width: 32, alignItems: 'center' }}
-          >
-            <SymbolView
-              name="minus.circle"
-              size={19}
-              tintColor={rows.length <= 1 ? colors.disabled : colors.textSecondary}
-              weight="regular"
-            />
-          </Pressable>
-        </View>
-      ))}
+        );
+      })}
 
       <Pressable
         accessibilityRole="button"
