@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useDiscoveryStore } from './discoveryStore';
 import {
   trackParkEnded,
   trackParkStarted,
@@ -20,6 +21,9 @@ import { useSettingsStore } from './settingsStore';
 // Tek aktif oturum kuralı bağlayıcı; geçişler yalnız tanımlı fazlardan yapılır.
 // Kalıcılık: her mutasyon SQLite'a yazılır (src/db/sessionRepo); cold start'ta
 // hydrate() aktif oturumu geri yükler.
+
+/** Haritadan pin bırakmayı kim başlattı — dönüşte o yüzeye geri dönülür. */
+export type PickTarget = 'park' | 'filter';
 
 export type SessionPhase = 'idle' | 'parking' | 'active' | 'ending' | 'ended';
 export type LocationState = 'idle' | 'capturing' | 'ok' | 'weak' | 'denied' | 'unavailable';
@@ -81,11 +85,17 @@ interface SessionStore {
    * o anki konumdur ama başlatmadan önce düzeltilebilir.
    */
   setParkLocation: (place: { latitude: number; longitude: number; placeName: string | null }) => void;
-  /** Haritadan pin bırakma modu — harita ortasındaki artı işareti konumu belirler. */
-  pickingLocation: boolean;
+  /**
+   * Haritadan pin bırakma modu — harita ortasındaki artı işareti konumu belirler.
+   * Değer aynı zamanda AÇANI söyler: seçim bitince o popup geri açılır.
+   */
+  pickingLocation: PickTarget | null;
   /** Pin modundayken haritanın o anki merkezi. */
   pickedCenter: { latitude: number; longitude: number } | null;
-  startPickingLocation: () => void;
+  /** Seçim bitti: bu popup yeniden açılmalı. Tek kullanımlık işaret. */
+  reopenAfterPick: PickTarget | null;
+  clearReopenAfterPick: () => void;
+  startPickingLocation: (target?: PickTarget) => void;
   setPickedCenter: (coords: { latitude: number; longitude: number }) => void;
   cancelPickingLocation: () => void;
   confirmPickedLocation: () => void;
@@ -181,8 +191,9 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   ocrState: 'idle',
   ocrSchedule: null,
   ocrPartial: false,
-  pickingLocation: false,
+  pickingLocation: null,
   pickedCenter: null,
+  reopenAfterPick: null,
   autoDetected: false,
 
   hydrate: () => {
@@ -450,15 +461,20 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     set({ session: next, locationState: 'ok', suggestedTariff: remembered });
   },
 
-  startPickingLocation: () => {
+  clearReopenAfterPick: () => set({ reopenAfterPick: null }),
+
+  startPickingLocation: (target = 'park') => {
     const { phase, session } = get();
-    if (phase !== 'parking') return;
-    // Haritaya hiç dokunulmazsa onaylanacak değer mevcut konumdur.
+    if (target === 'park' && phase !== 'parking') return;
+    // Haritaya hiç dokunulmazsa onaylanacak değer başlangıç noktasıdır:
+    // park için arabanın bilinen yeri, filtre için aramanın mevcut merkezi.
     const current =
-      session?.latitude != null && session.longitude != null
-        ? { latitude: session.latitude, longitude: session.longitude }
-        : null;
-    set({ pickingLocation: true, pickedCenter: current });
+      target === 'park'
+        ? session?.latitude != null && session.longitude != null
+          ? { latitude: session.latitude, longitude: session.longitude }
+          : null
+        : useDiscoveryStore.getState().center;
+    set({ pickingLocation: target, pickedCenter: current, reopenAfterPick: null });
   },
 
   setPickedCenter: (coords) => {
@@ -466,12 +482,21 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     set({ pickedCenter: coords });
   },
 
-  cancelPickingLocation: () => set({ pickingLocation: false, pickedCenter: null }),
+  // Vazgeçmek de popup'ı geri açar: kullanıcı onu kapatmadı, biz geçici olarak
+  // çekildik. Eli boş haritada bırakmak akışı koparıyordu.
+  cancelPickingLocation: () =>
+    set({ reopenAfterPick: get().pickingLocation, pickingLocation: null, pickedCenter: null }),
 
   confirmPickedLocation: () => {
-    const { pickedCenter } = get();
-    set({ pickingLocation: false, pickedCenter: null });
+    const { pickedCenter, pickingLocation: target } = get();
+    set({ reopenAfterPick: target, pickingLocation: null, pickedCenter: null });
     if (!pickedCenter) return;
+
+    if (target === 'filter') {
+      // Filtre için işaretlenen nokta aramanın yeni merkezidir.
+      useDiscoveryStore.getState().pinTo(pickedCenter);
+      return;
+    }
     // Ters geocoding beklenmez: konum hemen uygulanır, ad gelince tazelenir.
     get().setParkLocation({ ...pickedCenter, placeName: null });
     void describeCoords(pickedCenter).then((place) => {

@@ -104,7 +104,8 @@ export function MapboxCanvas() {
   const selectedPoiId = useDiscoveryStore((s) => s.selectedPoiId);
   const selectPoi = useDiscoveryStore((s) => s.selectPoi);
   const pickingLocation = useSessionStore((s) => s.pickingLocation);
-  const visiblePois = applyFilter(pois, filter);
+  const radiusM = useDiscoveryStore((s) => s.radiusM);
+  const visiblePois = applyFilter(pois, filter, radiusM);
   const cameraRef = useRef<Camera>(null);
 
   const carCoords =

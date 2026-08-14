@@ -36,7 +36,7 @@ interface DiscoveryStore {
   selectedPoiId: string | null;
   selectPoi: (id: string | null) => void;
   setFilter: (filter: PoiFilter) => void;
-  load: (center: Coords) => void;
+  load: (center: Coords, force?: boolean) => void;
   /** Sabit koordinata git + orada otopark ara (arama sonucu, POI). */
   pinTo: (center: Coords) => void;
   /** Kullanıcıyı takibe dön (konuma dön butonu). */
@@ -66,11 +66,12 @@ export const useDiscoveryStore = create<DiscoveryStore>((set, get) => ({
 
   setRadius: (radiusM) => {
     if (radiusM === get().radiusM) return;
-    // Yarıçap değişince eldeki sonuçlar artık soruyu yanıtlamıyor: merkezi
-    // koruyup yeniden sor.
+    // Yarıçap değişince eldeki sonuçlar artık soruyu yanıtlamıyor. `force`
+    // şart: sürmekte olan bir sorgu varsa normal `load` sessizce vazgeçiyor ve
+    // yeni yarıçap hiç sorulmuyordu.
     const center = get().center;
     set({ radiusM, center: null });
-    if (center) get().load(center);
+    if (center) get().load(center, true);
   },
 
   pinTo: (center) => {
@@ -80,9 +81,9 @@ export const useDiscoveryStore = create<DiscoveryStore>((set, get) => ({
 
   requestFollow: () => set({ followToken: get().followToken + 1 }),
 
-  load: (center) => {
+  load: (center, force = false) => {
     const { center: previous, state } = get();
-    if (state === 'loading') return;
+    if (state === 'loading' && !force) return;
     if (previous && distanceMeters(previous, center) < REFRESH_DISTANCE_M && get().pois.length > 0) {
       return;
     }
@@ -100,5 +101,5 @@ export const useDiscoveryStore = create<DiscoveryStore>((set, get) => ({
     });
   },
 
-  visiblePois: () => applyFilter(get().pois, get().filter),
+  visiblePois: () => applyFilter(get().pois, get().filter, get().radiusM),
 }));

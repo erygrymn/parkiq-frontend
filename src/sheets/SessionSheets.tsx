@@ -74,7 +74,8 @@ export function IdleSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
     });
   }, [load]);
 
-  const visible = applyFilter(pois, filter);
+  const radiusM = useDiscoveryStore((s) => s.radiusM);
+  const visible = applyFilter(pois, filter, radiusM);
 
   // Tarife hafızası: bu otoparka daha önce park edildiyse girilen tarife gösterilir.
   const rememberedTariffFor = (poi: { latitude: number; longitude: number }) => {
@@ -201,12 +202,30 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
     removePhoto,
     scanTariff,
     setParkLocation,
-    startPickingLocation,
   } = useSessionStore.getState();
   const cancelPark = useSessionStore((s) => s.cancelPark);
   const [customReminder, setCustomReminder] = useState(false);
   const [openField, setOpenField] = useState<ParkField | null>(null);
   const closeField = () => setOpenField(null);
+
+  // Pin bırakılırken bu panel tamamen unmount olur (harita tek başına kalır),
+  // yani `openField` kaybolur. Dönüşte popup'ı geri açan işaret store'da durur.
+  const reopenAfterPick = useSessionStore((s) => s.reopenAfterPick);
+  useEffect(() => {
+    if (reopenAfterPick !== 'park') return;
+    useSessionStore.getState().clearReopenAfterPick();
+    setOpenField('location');
+  }, [reopenAfterPick]);
+
+  const pickOnMap = () => {
+    // Seçim arabanın bilinen yerinden başlar; kullanıcı oradan düzeltir.
+    const current = useSessionStore.getState().session;
+    if (current?.latitude != null && current.longitude != null) {
+      useDiscoveryStore.getState().pinTo({ latitude: current.latitude, longitude: current.longitude });
+    }
+    useSessionStore.getState().startPickingLocation('park');
+  };
+
   if (!session) return null;
 
   // Chip seçimleri oturumdan türer — ayrı state tutulmaz (tek kaynak).
@@ -338,12 +357,10 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
             setParkLocation({ ...result.coords, placeName: result.label });
             closeField();
           }}
-          onLocate={() => {
-            void captureCurrentPlace().then((outcome) => {
-              if (outcome.status === 'ok') setParkLocation(outcome.place);
-              closeField();
-            });
-          }}
+          // Adres aramanın yetmediği yerler için: otoparkın içi, sokak arası.
+          trailingSymbol="mappin.and.ellipse"
+          trailingLabel={t('pickOnMap')}
+          onLocate={pickOnMap}
         />
         <GhostButton
           label={t('useMyLocation')}
@@ -354,20 +371,7 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
             });
           }}
         />
-        {/* Adres aramanın yetmediği yerler için: otoparkın içi, sokak arası. */}
-        <GhostButton
-          label={t('pickOnMap')}
-          onPress={() => {
-            closeField();
-            // Seçim arabanın bilinen yerinden başlar; kullanıcı oradan düzeltir.
-            if (session.latitude !== null && session.longitude !== null) {
-              useDiscoveryStore
-                .getState()
-                .pinTo({ latitude: session.latitude, longitude: session.longitude });
-            }
-            startPickingLocation();
-          }}
-        />
+        <GhostButton label={t('pickOnMap')} onPress={pickOnMap} />
       </PopupSheet>
 
       <PopupSheet visible={openField === 'floor'} title={t('floor')} onClose={closeField}>

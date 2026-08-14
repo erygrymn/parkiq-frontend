@@ -22,7 +22,7 @@ import { startAutoDetect } from './modules/parkiq-autodetect';
 import { useDiscoveryStore } from './src/state/discoveryStore';
 import { useNetworkStore } from './src/state/networkStore';
 import { useIsPremium, usePremiumStore } from './src/state/premiumStore';
-import { useSessionStore, type SessionPhase } from './src/state/sessionStore';
+import { useSessionStore, type PickTarget, type SessionPhase } from './src/state/sessionStore';
 import { useSettingsStore } from './src/state/settingsStore';
 import { ThemeProvider, useTheme } from './src/theme';
 import { radius, shadow, spacing } from './src/theme/tokens';
@@ -97,10 +97,11 @@ function SheetContent({ phase, onOpenPaywall }: { phase: SessionPhase; onOpenPay
  * ORTASINDA sabit durur. Sürüklenebilir marker yerine bu kalıp seçildi — parmak
  * hedefi kapatmaz ve tek elle kullanılır.
  */
-function PickLocationLayer() {
+function PickLocationLayer({ target }: { target: PickTarget }) {
   const { colors, scheme } = useTheme();
   const insets = useSafeAreaInsets();
   const { cancelPickingLocation, confirmPickedLocation } = useSessionStore.getState();
+  const forPark = target === 'park';
 
   return (
     <>
@@ -120,7 +121,12 @@ function PickLocationLayer() {
               shadowOpacity: scheme === 'dark' ? 0 : 1,
             }}
           >
-            <SymbolView name="car.fill" size={17} tintColor={colors.card} weight="regular" />
+            <SymbolView
+              name={forPark ? 'car.fill' : 'magnifyingglass'}
+              size={17}
+              tintColor={colors.card}
+              weight="regular"
+            />
           </View>
           <View
             style={{
@@ -161,8 +167,8 @@ function PickLocationLayer() {
           shadowOpacity: scheme === 'dark' ? 0 : 1,
         }}
       >
-        <Caption>{t('pickOnMapHint')}</Caption>
-        <PrimaryCta label={t('usePin')} onPress={confirmPickedLocation} />
+        <Caption>{t(forPark ? 'pickOnMapHint' : 'pickAreaHint')}</Caption>
+        <PrimaryCta label={t(forPark ? 'usePin' : 'useThisArea')} onPress={confirmPickedLocation} />
         <GhostButton label={t('cancel')} onPress={cancelPickingLocation} />
       </View>
     </>
@@ -234,7 +240,7 @@ function Root() {
     <View style={{ flex: 1 }}>
       <MapCanvas />
 
-      {pickingLocation && <PickLocationLayer />}
+      {pickingLocation && <PickLocationLayer target={pickingLocation} />}
 
       {/* §5.4 kare cam ikon butonlar — harita üstünde yüzen kontroller */}
       {!pickingLocation && (
@@ -307,7 +313,12 @@ function Root() {
           setPaywallOpen(true);
         }}
       />
-      <FilterSheet visible={filterOpen} onClose={() => setFilterOpen(false)} />
+      {/* Pin bırakılırken filtre GEÇİCİ olarak çekilir; `filterOpen` bozulmadığı
+          için onay ya da vazgeç sonrası kendiliğinden geri gelir. */}
+      <FilterSheet
+        visible={filterOpen && pickingLocation !== 'filter'}
+        onClose={() => setFilterOpen(false)}
+      />
       <PaywallSheet visible={paywallOpen} onClose={() => setPaywallOpen(false)} />
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
     </View>

@@ -1,5 +1,5 @@
 import * as Location from 'expo-location';
-import { SymbolView } from 'expo-symbols';
+import { SymbolView, type SFSymbol } from 'expo-symbols';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 import { t } from '../localization';
@@ -44,7 +44,18 @@ async function geocode(query: string): Promise<SearchResult[]> {
   }
 }
 
-export function SearchBar({ onPick, onLocate }: { onPick: (result: SearchResult) => void; onLocate: () => void }) {
+export function SearchBar({
+  onPick,
+  onLocate,
+  trailingSymbol = 'location.north.fill',
+  trailingLabel,
+}: {
+  onPick: (result: SearchResult) => void;
+  /** Sondaki kare butonun eylemi — konuma dön ya da haritadan pin bırak. */
+  onLocate: () => void;
+  trailingSymbol?: SFSymbol;
+  trailingLabel?: string;
+}) {
   const { colors, scheme } = useTheme();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -113,7 +124,7 @@ export function SearchBar({ onPick, onLocate }: { onPick: (result: SearchResult)
         {/* §5.4 kare cam ikon buton — konuma dön */}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={t('myLocation')}
+          accessibilityLabel={trailingLabel ?? t('myLocation')}
           onPress={onLocate}
           style={({ pressed }) => ({
             width: 44,
@@ -128,7 +139,7 @@ export function SearchBar({ onPick, onLocate }: { onPick: (result: SearchResult)
             shadowOpacity: scheme === 'dark' ? 0 : 1,
           })}
         >
-          <SymbolView name="location.north.fill" size={17} tintColor={colors.ink} weight="light" />
+          <SymbolView name={trailingSymbol} size={17} tintColor={colors.ink} weight="light" />
         </Pressable>
       </View>
 

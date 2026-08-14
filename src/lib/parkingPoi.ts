@@ -131,10 +131,23 @@ export async function fetchNearbyParking(
 
 export type PoiFilter = 'all' | 'charging' | 'covered';
 
-export function applyFilter(pois: ParkingPoi[], filter: PoiFilter): ParkingPoi[] {
-  if (filter === 'charging') return pois.filter((p) => p.kind === 'charging');
-  if (filter === 'covered') return pois.filter((p) => p.kind === 'parking' && p.covered === true);
-  return pois;
+/**
+ * Tür + MESAFE süzgeci.
+ *
+ * Yarıçap istemcide de uygulanır: sorgu yenilenene kadar elde eski (daha geniş)
+ * sonuçlar durur ve kullanıcı "500 m" seçmişken 1,1 km'lik yer görüyordu.
+ * Gösterilen liste her zaman seçili ayara uyar.
+ */
+export function applyFilter(
+  pois: ParkingPoi[],
+  filter: PoiFilter,
+  radiusM?: number,
+): ParkingPoi[] {
+  let out = pois;
+  if (filter === 'charging') out = out.filter((p) => p.kind === 'charging');
+  else if (filter === 'covered') out = out.filter((p) => p.kind === 'parking' && p.covered === true);
+  if (radiusM != null) out = out.filter((p) => p.distanceM <= radiusM);
+  return out;
 }
 
 /** Yürüme süresi tahmini — 80 m/dk (şehir içi ortalama). */

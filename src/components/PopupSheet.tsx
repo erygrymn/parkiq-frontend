@@ -6,6 +6,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   View,
 } from 'react-native';
@@ -43,13 +44,17 @@ export function PopupSheet({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1, justifyContent: 'flex-end' }}
       >
-        {/* Zemin: dokunulunca kapanır. Panelin kendisi dokunuşu yutar. */}
+        {/* Karartma TÜM ekranı kaplar (absolute), panelin yanında duran bir
+            flex kardeş değil: öyleyken yuvarlatılmış köşelerin arkası
+            karartmasız kalıyor ve köşede kare bir çıkıntı gibi görünüyordu. */}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('close')}
           onPress={onClose}
-          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }}
-        />
+          style={StyleSheet.absoluteFill}
+        >
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)' }]} />
+        </Pressable>
         <View
           style={{
             backgroundColor: colors.card,

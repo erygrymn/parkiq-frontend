@@ -1,5 +1,6 @@
 import { SymbolView } from 'expo-symbols';
 import { Pressable, Text, View } from 'react-native';
+import { GhostButton } from '../components/Buttons';
 import { ChipGroup } from '../components/ChipGroup';
 import { PopupSheet } from '../components/PopupSheet';
 import { SearchBar } from '../components/SearchBar';
@@ -46,6 +47,7 @@ export function FilterSheet({ visible, onClose }: { visible: boolean; onClose: (
   const state = useDiscoveryStore((s) => s.state);
   const { setFilter, setRadius, pinTo, requestFollow, visiblePois, selectPoi } =
     useDiscoveryStore.getState();
+  const startPickingLocation = useSessionStore((s) => s.startPickingLocation);
 
   const results = visiblePois();
 
@@ -66,7 +68,21 @@ export function FilterSheet({ visible, onClose }: { visible: boolean; onClose: (
         <Overline>{t('parkLocation')}</Overline>
         <SearchBar
           onPick={(result) => pinTo(result.coords)}
+          // Sondaki buton haritadan alan seçer: popup çekilir, kullanıcı haritayı
+          // kaydırır, onaylayınca buraya geri döner. Kendi konumu alttaki butonda.
+          trailingSymbol="mappin.and.ellipse"
+          trailingLabel={t('pickArea')}
           onLocate={() => {
+            // Kamerayı aramanın mevcut merkezine getir: artı işareti ile onaya
+            // gidecek değer aynı noktayı göstersin (park akışındaki kalıp).
+            const center = useDiscoveryStore.getState().center;
+            if (center) pinTo(center);
+            startPickingLocation('filter');
+          }}
+        />
+        <GhostButton
+          label={t('useMyLocation')}
+          onPress={() => {
             requestFollow();
             void captureCurrentPlace().then((outcome) => {
               if (outcome.status === 'ok') {

@@ -8,6 +8,7 @@ import { Alert, Linking, Pressable, Switch, Text, TextInput, View } from 'react-
 import { useIsPremium, usePremiumStore } from '../state/premiumStore';
 import { ChipGroup } from '../components/ChipGroup';
 import { PageSheet, Section } from '../components/PageSheet';
+import { SelectRow } from '../components/SelectRow';
 import { openAppSettings, StatusLine } from '../components/StatusLine';
 import { Caption } from '../components/Typography';
 import { t } from '../localization';
@@ -147,32 +148,31 @@ export function SettingsSheet({
           />
         </Field>
 
-        <Field label={t('language')}>
-          <ChipGroup<Locale>
-            options={[
-              { key: 'en', label: 'English' },
-              { key: 'tr', label: 'Türkçe' },
-            ]}
-            value={locale}
-            onChange={setLocalePref}
-          />
-        </Field>
+        {/* Bunlar liste seçimi, iki durumlu geçiş değil: çip grubu satırı taşırıyor
+            ve seçili değeri bir bakışta okutmuyordu. */}
+        <SelectRow<Locale>
+          label={t('language')}
+          options={[
+            { key: 'en', label: 'English' },
+            { key: 'tr', label: 'Türkçe' },
+          ]}
+          value={locale}
+          onChange={setLocalePref}
+        />
 
-        <Field label={t('currency')}>
-          <ChipGroup<Currency>
-            options={CURRENCIES.map((c) => ({ key: c, label: c }))}
-            value={currency}
-            onChange={setCurrency}
-          />
-        </Field>
+        <SelectRow<Currency>
+          label={t('currency')}
+          options={CURRENCIES.map((c) => ({ key: c, label: c }))}
+          value={currency}
+          onChange={setCurrency}
+        />
 
-        <Field label={t('alertThreshold')}>
-          <ChipGroup<number>
-            options={WARN_THRESHOLDS.map((m) => ({ key: m, label: t('minutesShort', { minutes: m }) }))}
-            value={warnThresholdMin}
-            onChange={setWarnThreshold}
-          />
-        </Field>
+        <SelectRow<number>
+          label={t('alertThreshold')}
+          options={WARN_THRESHOLDS.map((m) => ({ key: m, label: t('minutesShort', { minutes: m }) }))}
+          value={warnThresholdMin}
+          onChange={setWarnThreshold}
+        />
       </Section>
 
       <Section title={t('goPro')}>

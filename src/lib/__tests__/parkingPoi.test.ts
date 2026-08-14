@@ -97,6 +97,22 @@ describe('applyFilter', () => {
   it('covered → yalnız kapalılığı KESİN olanlar (bilinmeyen dahil değil)', () => {
     expect(applyFilter(pois, 'covered').map((p) => p.id)).toEqual(['a']);
   });
+
+  it('yarıçap verilince ötesindekiler düşer', () => {
+    expect(applyFilter(pois, 'all', 25).map((p) => p.id)).toEqual(['a', 'b']);
+  });
+
+  it('yarıçap sınırındaki dahil edilir', () => {
+    expect(applyFilter(pois, 'all', 20).map((p) => p.id)).toEqual(['a', 'b']);
+  });
+
+  it('yarıçap ve tür birlikte uygulanır', () => {
+    expect(applyFilter(pois, 'charging', 25)).toHaveLength(0);
+  });
+
+  it('yarıçap verilmezse mesafe süzgeci çalışmaz', () => {
+    expect(applyFilter(pois, 'all')).toHaveLength(4);
+  });
 });
 
 describe('walkMinutes', () => {
