@@ -132,6 +132,16 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   setLocalePref: (locale) => {
     write('locale', locale);
     setLocale(locale); // t() modül seviyesinde okur; ağaç locale key'iyle tazelenir
+    // Widget'ın etiketleri App Group kutusunda yaşar — dil değişince yeniden yaz.
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const la = require('../lib/liveActivity') as typeof import('../lib/liveActivity');
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const session = (require('./sessionStore') as typeof import('./sessionStore')).useSessionStore.getState().session;
+      la.syncWidget(session);
+    } catch {
+      /* native modül yoksa (Expo Go) sessizce geç */
+    }
     set({ locale });
   },
 

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { isIndoorLike } from '../lib/geo';
-import { endSessionActivity, refreshSessionActivity, startSessionActivity } from '../lib/liveActivity';
+import { endSessionActivity, refreshSessionActivity, startSessionActivity, syncWidget } from '../lib/liveActivity';
 import { captureCurrentPlace } from '../lib/location';
 import { cancelSessionAlerts, notifyAutoParked, scheduleSessionAlerts } from '../lib/notifications';
 import { scanTariffBoard } from '../lib/ocr';
@@ -99,8 +99,8 @@ function persist(session: ParkSession): void {
 }
 
 /**
- * Live Activity yaşam döngüsü. PREMIUM özelliktir: kilit kapalıysa hiç başlatılmaz.
- * Payload tamamen tariffMath çıktısından türer (§8 tek kaynak).
+ * Live Activity yaşam döngüsü. Payload tamamen tariffMath çıktısından türer
+ * (§8 tek kaynak); görünen metinler liveActivity.ts'te dile çevrilir.
  */
 function syncLiveActivity(action: 'start' | 'refresh' | 'end'): void {
   const session = useSessionStore.getState().session;
@@ -110,7 +110,7 @@ function syncLiveActivity(action: 'start' | 'refresh' | 'end'): void {
 
   const threshold = useSettingsStore.getState().warnThresholdMin;
   if (action === 'end') {
-    endSessionActivity(session, null);
+    endSessionActivity(session);
     return;
   }
   if (action === 'start') startSessionActivity(session, threshold);
@@ -171,6 +171,10 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       // kalıyordu. `start` idempotent (mevcut LA'yı kapatıp yeniden kurar) ve
       // paylaşılan kutuya da yazar — bu yüzden refresh değil start.
       syncLiveActivity('start');
+    } else {
+      // Oturum yokken de kutuyu tazele: widget dil metinlerini ve aylık
+      // tasarrufu buradan alır, aksi halde ilk kurulumda İngilizce kalır.
+      syncWidget(null);
     }
   },
 

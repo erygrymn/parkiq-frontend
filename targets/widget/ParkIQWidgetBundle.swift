@@ -5,6 +5,12 @@ import WidgetKit
 // design.md §8 — Live Activity + Dynamic Island + widget.
 // Kart: #101012, r-24, kenar ışığı, yeşil piksel ≤%10 (tek istisna: §8.5 bitiş karesi).
 // Marka katmanı: sol üst "P." glyph + NOKTASIZ overline. "PARKIQ" yazısı yok.
+//
+// İKİ BAĞLAYICI KURAL:
+// 1. Matematik yok — segment/knob/ton RN'deki tariffMath'ten gelir.
+// 2. Sözlük yok — görünen her etiket dile çevrilmiş halde RN'den gelir
+//    (Live Activity'de ContentState, widget'ta App Group kutusu üzerinden).
+//    Buradaki İngilizce dizgiler yalnız kutu boşken kullanılan son çare.
 
 private enum Palette {
   static let card = Color(red: 0x10 / 255, green: 0x10 / 255, blue: 0x12 / 255)
@@ -17,6 +23,17 @@ private enum Palette {
   /// §5.9 durum makinesi rengi — extension kendi kararını vermez, gelen tone'u çevirir.
   static func fill(for tone: String) -> Color {
     tone == "green" ? green : amber
+  }
+}
+
+/// App Group kutusundan dile çevrilmiş metinler. RN her oturum değişiminde ve
+/// dil değişiminde yazar; kutu boşsa İngilizceye düşülür (ilk kurulum anı).
+private enum Shared {
+  static let defaults = UserDefaults(suiteName: "group.parkiq.shared")
+
+  static func text(_ key: String, _ fallback: String) -> String {
+    let value = defaults?.string(forKey: key)
+    return (value?.isEmpty == false ? value : nil) ?? fallback
   }
 }
 
@@ -34,6 +51,41 @@ private struct BrandGlyph: View {
       }
     }
     .frame(width: 22, height: 22)
+  }
+}
+
+// MARK: - Ortak parçalar
+
+/// Overline: 11/heavy, harf aralıklı, tek satır.
+private struct Overline: View {
+  let text: String
+  var color: Color = Palette.muted
+
+  var body: some View {
+    Text(text)
+      .font(.system(size: 11, weight: .heavy))
+      .tracking(1.5)
+      .foregroundStyle(color)
+      .lineLimit(1)
+  }
+}
+
+/// Geçen süre — HER ZAMAN ileri sayar (0'dan yukarı).
+/// `.timer` stili dar alanda "6:.." gibi kırpılabildiği için burada tek satır +
+/// küçülme payı verilir ve sıkıştırma direnci yükseltilir.
+private struct ElapsedTimer: View {
+  let startedAt: Date
+  var size: CGFloat = 44
+  var color: Color = .white
+
+  var body: some View {
+    Text(startedAt, style: .timer)
+      .font(.system(size: size, weight: .black))
+      .monospacedDigit()
+      .foregroundStyle(color)
+      .lineLimit(1)
+      .minimumScaleFactor(0.5)
+      .layoutPriority(1)
   }
 }
 
@@ -81,82 +133,51 @@ private struct LiveActivityView: View {
   var body: some View {
     // §8.5 bitiş karesi: kart ters çevrilir, TÜM tipografi ink olur.
     if let stamp = state.finalStampText {
-      VStack(alignment: .leading, spacing: 8) {
-        Text(overline)
-          .font(.system(size: 11, weight: .heavy))
-          .tracking(1.5)
-          .foregroundStyle(Palette.ink.opacity(0.7))
+      VStack(alignment: .leading, spacing: 6) {
+        Overline(text: overline, color: Palette.ink.opacity(0.7))
         Text(stamp)
-          .font(.system(size: 44, weight: .black))
+          .font(.system(size: 40, weight: .black))
           .foregroundStyle(Palette.ink)
+          .lineLimit(1)
+          .minimumScaleFactor(0.5)
       }
       .frame(maxWidth: .infinity, alignment: .leading)
       .padding(16)
       .background(Palette.green)
     } else {
-      VStack(alignment: .leading, spacing: 12) {
+      VStack(alignment: .leading, spacing: 10) {
         HStack(spacing: 8) {
           BrandGlyph()
-          Text(overline)
-            .font(.system(size: 11, weight: .heavy))
-            .tracking(1.5)
-            .foregroundStyle(Palette.muted)
-            .lineLimit(1)
+          Overline(text: overline)
+          Spacer(minLength: 0)
         }
 
-        HStack(alignment: .lastTextBaseline) {
-          // §8.1 hero: tarifeliyse sonraki dilime GERİ SAYIM, değilse geçen süre
-          if let boundary = state.nextBoundaryAt {
-            VStack(alignment: .leading, spacing: 2) {
-              Text(state.nextPriceText.map { "NEXT TIER \($0)" } ?? "NEXT TIER")
-                .font(.system(size: 11, weight: .heavy))
-                .tracking(1.5)
-                .foregroundStyle(Palette.muted)
-              Text(timerInterval: Date()...boundary, countsDown: true)
-                .font(.system(size: 44, weight: .black, design: .default))
-                .monospacedDigit()
-                .foregroundStyle(state.barTone == "green" ? .white : Palette.amber)
-            }
-          } else {
-            VStack(alignment: .leading, spacing: 2) {
-              Text("PARKED")
-                .font(.system(size: 11, weight: .heavy))
-                .tracking(1.5)
-                .foregroundStyle(Palette.muted)
-              Text(state.startedAt, style: .timer)
-                .font(.system(size: 44, weight: .black))
-                .monospacedDigit()
-                .foregroundStyle(.white)
-            }
+        // §8.1 hero: TEK sayaç, geçen süre, ileri sayar. Sağda ikinci bir
+        // zaman göstergesi yok — dar alanda kırpılıyor ve iki sayaç okunmuyordu.
+        VStack(alignment: .leading, spacing: 2) {
+          if let label = state.heroLabel {
+            Overline(text: label)
           }
-
-          Spacer()
-
-          if state.nextBoundaryAt != nil {
-            VStack(alignment: .trailing, spacing: 2) {
-              Text("ELAPSED")
-                .font(.system(size: 11, weight: .heavy))
-                .tracking(1.5)
-                .foregroundStyle(Palette.muted)
-              Text(state.startedAt, style: .timer)
-                .font(.system(size: 17, weight: .semibold))
-                .monospacedDigit()
-                .foregroundStyle(.white)
-            }
-          }
+          ElapsedTimer(
+            startedAt: state.startedAt,
+            color: state.barTone == "green" ? .white : Palette.amber
+          )
         }
 
         if !state.segments.isEmpty {
           TariffBar(state: state)
         }
 
-        if let now = state.nowPriceText, let next = state.nextPriceText {
-          Text("Now \(now) · Next \(next)")
+        if let footer = state.footerText {
+          Text(footer)
             .font(.system(size: 13, weight: .heavy))
             .monospacedDigit()
             .foregroundStyle(.white)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
         }
       }
+      .frame(maxWidth: .infinity, alignment: .leading)
       .padding(16)
       .background(Palette.card)
     }
@@ -172,26 +193,45 @@ struct ParkIQLiveActivity: Widget {
         .activityBackgroundTint(Palette.card)
         .activitySystemActionForegroundColor(.white)
     } dynamicIsland: { context in
+      // Genişletilmiş ada kendi bölgelerini kullanır: tüm kartı .center'a
+      // sıkıştırmak metinleri kırpıyordu.
       DynamicIsland {
-        DynamicIslandExpandedRegion(.center) {
-          LiveActivityView(attributes: context.attributes, state: context.state)
+        DynamicIslandExpandedRegion(.leading) {
+          HStack(spacing: 6) {
+            BrandGlyph()
+            Overline(text: (context.attributes.placeName ?? "").uppercased())
+          }
+          .padding(.leading, 4)
+        }
+        DynamicIslandExpandedRegion(.trailing) {
+          ElapsedTimer(startedAt: context.state.startedAt, size: 20)
+            .padding(.trailing, 4)
+        }
+        DynamicIslandExpandedRegion(.bottom) {
+          VStack(alignment: .leading, spacing: 8) {
+            if !context.state.segments.isEmpty {
+              TariffBar(state: context.state)
+            }
+            if let footer = context.state.footerText {
+              Text(footer)
+                .font(.system(size: 13, weight: .heavy))
+                .monospacedDigit()
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            }
+          }
+          .padding(.horizontal, 4)
         }
       } compactLeading: {
         BrandGlyph()
       } compactTrailing: {
-        if let boundary = context.state.nextBoundaryAt {
-          Text(timerInterval: Date()...boundary, countsDown: true)
-            .font(.system(size: 13, weight: .heavy))
-            .monospacedDigit()
-            .foregroundStyle(Palette.fill(for: context.state.barTone))
-            .frame(maxWidth: 52)
-        } else {
-          Text(context.state.startedAt, style: .timer)
-            .font(.system(size: 13, weight: .heavy))
-            .monospacedDigit()
-            .foregroundStyle(.white)
-            .frame(maxWidth: 52)
-        }
+        ElapsedTimer(
+          startedAt: context.state.startedAt,
+          size: 13,
+          color: context.state.barTone == "green" ? .white : Palette.amber
+        )
+        .frame(maxWidth: 56)
       } minimal: {
         BrandGlyph()
       }
@@ -206,14 +246,15 @@ struct ParkIQWidgetEntry: TimelineEntry {
   let startedAt: Date?
   let placeName: String?
   let monthlySavedText: String?
+  /// Dile çevrilmiş etiketler (App Group kutusundan).
+  let noSessionText: String
+  let savedLabel: String
+  let parkTitle: String
+  let parkHint: String
 }
 
 struct ParkIQWidgetProvider: TimelineProvider {
-  private let defaults = UserDefaults(suiteName: "group.parkiq.shared")
-
-  func placeholder(in context: Context) -> ParkIQWidgetEntry {
-    ParkIQWidgetEntry(date: Date(), startedAt: nil, placeName: nil, monthlySavedText: nil)
-  }
+  func placeholder(in context: Context) -> ParkIQWidgetEntry { entry() }
 
   func getSnapshot(in context: Context, completion: @escaping (ParkIQWidgetEntry) -> Void) {
     completion(entry())
@@ -224,12 +265,17 @@ struct ParkIQWidgetProvider: TimelineProvider {
   }
 
   private func entry() -> ParkIQWidgetEntry {
+    let defaults = Shared.defaults
     let started = defaults?.object(forKey: "startedAtMs") as? Double
     return ParkIQWidgetEntry(
       date: Date(),
       startedAt: started.map { Date(timeIntervalSince1970: $0 / 1000) },
       placeName: defaults?.string(forKey: "placeName"),
-      monthlySavedText: defaults?.string(forKey: "monthlySavedText")
+      monthlySavedText: defaults?.string(forKey: "monthlySavedText"),
+      noSessionText: Shared.text("wNoSession", "No active session"),
+      savedLabel: Shared.text("wSavedLabel", "SAVED THIS MONTH"),
+      parkTitle: Shared.text("wParkTitle", "Park"),
+      parkHint: Shared.text("wParkHint", "Tap to save your spot")
     )
   }
 }
@@ -238,33 +284,34 @@ struct ParkIQWidgetView: View {
   var entry: ParkIQWidgetEntry
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 8) {
+    VStack(alignment: .leading, spacing: 6) {
       HStack(spacing: 6) {
         BrandGlyph()
-        if let place = entry.placeName {
-          Text(place.uppercased())
-            .font(.system(size: 11, weight: .heavy))
-            .tracking(1.5)
-            .foregroundStyle(Palette.muted)
-            .lineLimit(1)
+        if entry.startedAt != nil, let place = entry.placeName, !place.isEmpty {
+          Overline(text: place.uppercased())
         }
+        Spacer(minLength: 0)
       }
+
       Spacer(minLength: 0)
+
       if let started = entry.startedAt {
-        Text(started, style: .timer)
-          .font(.system(size: 34, weight: .black))
-          .monospacedDigit()
-          .foregroundStyle(.white)
+        ElapsedTimer(startedAt: started, size: 34)
       } else {
-        // §8.3 oturumsuz durum
-        Text("No active session")
-          .font(.system(size: 13))
-          .foregroundStyle(Palette.muted)
-        if let saved = entry.monthlySavedText {
+        // §8.3 oturumsuz durum: aylık tasarruf öne çıkar, "oturum yok" ikincil.
+        if let saved = entry.monthlySavedText, !saved.isEmpty {
+          Overline(text: entry.savedLabel)
           Text(saved)
-            .font(.system(size: 17, weight: .heavy))
+            .font(.system(size: 28, weight: .black))
             .monospacedDigit()
             .foregroundStyle(Palette.green)
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
+        } else {
+          Text(entry.noSessionText)
+            .font(.system(size: 13))
+            .foregroundStyle(Palette.muted)
+            .lineLimit(2)
         }
       }
     }
@@ -277,16 +324,19 @@ struct ParkIQWidgetView: View {
 }
 
 /// Tek işi olan kısayol: dokunulunca app açılır ve park kaydı başlar.
-/// "Park" her iki dilde de okunur, bu yüzden extension'a ayrı sözlük taşımıyoruz.
 struct ParkIQQuickParkView: View {
+  var entry: ParkIQWidgetEntry
+
   var body: some View {
-    VStack(alignment: .leading, spacing: 8) {
+    VStack(alignment: .leading, spacing: 6) {
       BrandGlyph()
       Spacer(minLength: 0)
-      Text("Park")
+      Text(entry.parkTitle)
         .font(.system(size: 28, weight: .black))
         .foregroundStyle(.white)
-      Text("Tap to save your spot")
+        .lineLimit(1)
+        .minimumScaleFactor(0.6)
+      Text(entry.parkHint)
         .font(.system(size: 11))
         .foregroundStyle(Palette.muted)
         .lineLimit(2)
@@ -300,10 +350,10 @@ struct ParkIQQuickParkView: View {
 
 struct ParkIQQuickParkWidget: Widget {
   var body: some WidgetConfiguration {
-    StaticConfiguration(kind: "ParkIQQuickPark", provider: ParkIQWidgetProvider()) { _ in
-      ParkIQQuickParkView()
+    StaticConfiguration(kind: "ParkIQQuickPark", provider: ParkIQWidgetProvider()) { entry in
+      ParkIQQuickParkView(entry: entry)
     }
-    .configurationDisplayName("Park")
+    .configurationDisplayName("ParkIQ · Park")
     .description("Save where you parked in one tap.")
     .supportedFamilies([.systemSmall])
   }

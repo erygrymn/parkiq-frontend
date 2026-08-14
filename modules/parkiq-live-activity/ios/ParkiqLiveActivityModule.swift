@@ -79,6 +79,14 @@ public class ParkiqLiveActivityModule: Module {
       }
       defaults.set(payload["placeName"] as? String, forKey: "placeName")
       defaults.set(payload["monthlySavedText"] as? String, forKey: "monthlySavedText")
+
+      // Widget'ın sözlüğü yoktur: gördüğü her etiket dile çevrilmiş halde
+      // buradan gelir. Dil değişince RN bunları yeniden yazar.
+      if let strings = payload["strings"] as? [String: String] {
+        for (key, value) in strings {
+          defaults.set(value, forKey: key)
+        }
+      }
       if #available(iOS 14.0, *) {
         WidgetCenter.shared.reloadAllTimelines()
       }
@@ -109,7 +117,9 @@ public class ParkiqLiveActivityModule: Module {
       knobPct: payload["knobPct"] as? Double,
       nowPriceText: payload["nowPriceText"] as? String,
       nextPriceText: payload["nextPriceText"] as? String,
-      finalStampText: payload["finalStampText"] as? String
+      finalStampText: payload["finalStampText"] as? String,
+      heroLabel: payload["heroLabel"] as? String,
+      footerText: payload["footerText"] as? String
     )
   }
 

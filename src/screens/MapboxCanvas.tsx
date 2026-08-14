@@ -2,7 +2,7 @@ import Mapbox, { Camera, LocationPuck, MapView, MarkerView } from '@rnmapbox/map
 import * as Location from 'expo-location';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useRef } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MAPBOX_PUBLIC_TOKEN, MAPBOX_STYLE_URL_DARK, MAPBOX_STYLE_URL_LIGHT } from '../config';
 import { applyFilter, type PoiKind } from '../lib/parkingPoi';
 import { useDiscoveryStore } from '../state/discoveryStore';
@@ -115,7 +115,9 @@ export function MapboxCanvas() {
   const followingRef = useRef(true);
   const userCoordsRef = useRef<[number, number] | null>(null);
   const hasCarRef = useRef(false);
+  const carCoordsRef = useRef<[number, number] | null>(null);
   hasCarRef.current = carCoords !== null && active;
+  carCoordsRef.current = carCoords;
 
   // Konumu KENDİMİZ dinleriz. `followUserLocation` + kontrollü zoom çakışınca
   // takip kilitleniyordu; imperatif setCamera ile tam kontrol sağlanır.
@@ -144,6 +146,22 @@ export function MapboxCanvas() {
       cancelled = true;
       sub?.remove();
     };
+  }, [load]);
+
+  // Widget/Live Activity'den dönüşte harita boş kalıyordu: app arka plandayken
+  // konum akışı askıya alınıyor, öne gelince kamera hiçbir komut almadığı için
+  // sahne kurulmuyordu (kullanıcı bir şeye dokununca düzeliyordu). Öne gelir
+  // gelmez kamerayı bilinen en iyi noktaya sür ve çevreyi tazele.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next !== 'active') return;
+      const car = hasCarRef.current ? carCoordsRef.current : null;
+      const target = car ?? (followingRef.current ? userCoordsRef.current : null);
+      if (!target) return;
+      cameraRef.current?.setCamera({ centerCoordinate: target, animationDuration: 300 });
+      if (!car) load({ latitude: target[1], longitude: target[0] });
+    });
+    return () => sub.remove();
   }, [load]);
 
   // Arama sonucu / POI: sabit koordinata git, takibi kes.

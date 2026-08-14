@@ -22,12 +22,18 @@ export interface LiveActivityPayload {
   nextPriceText?: string | null;
   /** §8.5 bitiş karesi damgası; yalnız end() çağrısında doldurulur. */
   finalStampText?: string | null;
+  /** Sayacın üstündeki etiket — dile çevrilmiş halde gelir. */
+  heroLabel?: string | null;
+  /** Alt satır ("Şimdi ₺150 · Sonra ₺300") — dile çevrilmiş halde gelir. */
+  footerText?: string | null;
 }
 
 export interface WidgetPayload {
   startedAtMs?: number | null;
   placeName?: string | null;
   monthlySavedText?: string | null;
+  /** Widget'ın gösterdiği dile çevrilmiş etiketler (extension'ın sözlüğü yok). */
+  strings?: Record<string, string>;
 }
 
 interface NativeLiveActivity {
