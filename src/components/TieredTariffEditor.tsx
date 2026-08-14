@@ -4,23 +4,29 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { t } from '../localization';
 import { sanitizeTiers, type TariffTier } from '../lib/tariffMath';
+import { fromMinutes, minutesOf, type TierUnit } from '../lib/tierUnits';
 import { useTheme } from '../theme';
 import { radius, spacing } from '../theme/tokens';
 import { Caption, Overline } from './Typography';
 
-// §7.4 dilimli tarife girişi: "0–1s ₺50 / 1–2s ₺100" gibi panolar için.
-// Kullanıcı SÜRE girer (saat), fiyat KÜMÜLATİF toplamdır (§5.9 veri modeli) —
+// §7.4 dilimli tarife girişi: "0–30 dk ₺50 / 1–2 sa ₺100" gibi panolar için.
+// Kullanıcı SÜRE girer, fiyat KÜMÜLATİF toplamdır (§5.9 veri modeli) —
 // alan etiketleri bunu açıkça söyler, yoksa artımlı girip yanlış uyarı alır.
+//
+// Süre her satırda KENDİ birimini taşır. Tek birim (saat) dayatmak yarım
+// saatlik dilimleri "0.5" diye yazdırıyordu; panolarda öyle bir şey yazmaz,
+// pano "30 DK" der. Birim rozetine dokunmak dk ↔ sa arasında geçirir.
 
 interface DraftRow {
-  hours: string;
+  amount: string;
+  unit: TierUnit;
   price: string;
 }
 
 function toTiers(rows: DraftRow[]): TariffTier[] {
   const parsed = rows
     .map((row) => ({
-      endMin: Number(row.hours.replace(',', '.')) * 60,
+      endMin: Number(row.amount.replace(',', '.')) * minutesOf(row.unit),
       cumulativePrice: Number(row.price.replace(',', '.')),
     }))
     .filter((tier) => Number.isFinite(tier.endMin) && Number.isFinite(tier.cumulativePrice));
@@ -38,12 +44,12 @@ export function TieredTariffEditor({
   const [rows, setRows] = useState<DraftRow[]>(() =>
     initialTiers && initialTiers.length > 0
       ? initialTiers.map((tier) => ({
-          hours: String(tier.endMin / 60),
+          ...fromMinutes(tier.endMin),
           price: String(tier.cumulativePrice),
         }))
       : [
-          { hours: '1', price: '' },
-          { hours: '2', price: '' },
+          { amount: '1', unit: 'hour', price: '' },
+          { amount: '2', unit: 'hour', price: '' },
         ],
   );
 
@@ -55,14 +61,23 @@ export function TieredTariffEditor({
   const setRow = (index: number, patch: Partial<DraftRow>) =>
     update(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
 
+  // Birim değişince SAYI OLDUĞU GİBİ KALIR, çevrilmez: "30 dk" → "30 sa".
+  // Çevirmek ondalık üretir ("0.5 sa") ve bu ekranın kaçındığı şey tam olarak o.
+  const toggleUnit = (index: number) =>
+    setRow(index, { unit: rows[index].unit === 'min' ? 'hour' : 'min' });
+
   const addRow = () => {
-    const lastHours = Number(rows[rows.length - 1]?.hours ?? '0');
-    update([...rows, { hours: String(Number.isFinite(lastHours) ? lastHours + 1 : ''), price: '' }]);
+    const last = rows[rows.length - 1];
+    const previous = Number(last?.amount ?? '0');
+    const unit: TierUnit = last?.unit ?? 'hour';
+    // Bir sonraki sınır için makul adım: saatlerde +1, dakikalarda +30.
+    const stepped = Number.isFinite(previous) ? previous + (unit === 'min' ? 30 : 1) : NaN;
+    update([...rows, { amount: Number.isFinite(stepped) ? String(stepped) : '', unit, price: '' }]);
   };
 
   const removeRow = (index: number) => update(rows.filter((_, i) => i !== index));
 
-  const inputStyle = {
+  const fieldStyle = {
     height: 44,
     borderRadius: radius.r12,
     backgroundColor: colors.inset,
@@ -75,28 +90,61 @@ export function TieredTariffEditor({
   return (
     <View style={{ gap: spacing.s8 }}>
       <View style={{ flexDirection: 'row', gap: spacing.s8 }}>
-        <Overline style={{ flex: 1 }}>{t('untilHours')}</Overline>
+        <Overline style={{ flex: 1 }}>{t('untilDuration')}</Overline>
         <Overline style={{ flex: 1 }}>{t('totalSoFar')}</Overline>
         <View style={{ width: 32 }} />
       </View>
 
       {rows.map((row, index) => (
         <View key={index} style={{ flexDirection: 'row', gap: spacing.s8, alignItems: 'center' }}>
-          <BottomSheetTextInput
-            value={row.hours}
-            onChangeText={(hours) => setRow(index, { hours })}
-            keyboardType="decimal-pad"
-            placeholder="1"
-            placeholderTextColor={colors.textSecondary}
-            style={[inputStyle, { flex: 1 }]}
-          />
+          {/* Süre + birim tek bir alan gibi görünür; rozet dk ↔ sa geçirir. */}
+          <View
+            style={{
+              flex: 1,
+              height: 44,
+              borderRadius: radius.r12,
+              backgroundColor: colors.inset,
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingRight: spacing.s4,
+            }}
+          >
+            <BottomSheetTextInput
+              value={row.amount}
+              onChangeText={(amount) => setRow(index, { amount })}
+              keyboardType="number-pad"
+              placeholder={row.unit === 'min' ? '30' : '1'}
+              placeholderTextColor={colors.textSecondary}
+              style={[fieldStyle, { flex: 1, backgroundColor: 'transparent' }]}
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('unitToggle')}
+              onPress={() => toggleUnit(index)}
+              hitSlop={8}
+              style={({ pressed }) => ({
+                height: 32,
+                minWidth: 40,
+                paddingHorizontal: spacing.s8,
+                borderRadius: radius.r8,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: pressed ? colors.card : colors.insetPressed,
+              })}
+            >
+              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.ink }}>
+                {t(row.unit === 'min' ? 'unitMinShort' : 'unitHourShort')}
+              </Text>
+            </Pressable>
+          </View>
+
           <BottomSheetTextInput
             value={row.price}
             onChangeText={(price) => setRow(index, { price })}
             keyboardType="decimal-pad"
             placeholder="50"
             placeholderTextColor={colors.textSecondary}
-            style={[inputStyle, { flex: 1 }]}
+            style={[fieldStyle, { flex: 1 }]}
           />
           <Pressable
             accessibilityRole="button"
