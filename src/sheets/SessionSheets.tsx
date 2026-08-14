@@ -160,6 +160,7 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   const cameraState = useSessionStore((s) => s.cameraState);
   const ocrState = useSessionStore((s) => s.ocrState);
   const ocrSchedule = useSessionStore((s) => s.ocrSchedule);
+  const ocrPartial = useSessionStore((s) => s.ocrPartial);
   const autoDetected = useSessionStore((s) => s.autoDetected);
   const dismissAutoPark = useSessionStore((s) => s.dismissAutoPark);
   const {
@@ -416,6 +417,9 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
             )}
           </Caption>
         )}
+        {/* Yarım okuma sessizce doğru sanılmasın: dilimler geldi ama bazı
+            satırlar okunamadıysa kullanıcıdan kontrol istenir. */}
+        {ocrPartial && <Caption color={colors.warnText}>{t('scanPartial')}</Caption>}
         {ocrState === 'not_detected' && <Caption color={colors.warnText}>{t('scanNotDetected')}</Caption>}
         {ocrState === 'failed' && <Caption color={colors.warnText}>{t('scanFailed')}</Caption>}
         {ocrState === 'unavailable' && <Caption>{t('scanUnavailable')}</Caption>}

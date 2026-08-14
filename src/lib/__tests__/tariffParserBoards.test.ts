@@ -214,3 +214,33 @@ describe('sayı biçimleri ve abonelik satırları', () => {
     ]);
   });
 });
+
+describe('eksik okuma uyarısı', () => {
+  const parse = (lines: string[]) => parseTariffLines(lines, 'TRY');
+
+  it('temiz panoda uyarı çıkarmaz', () => {
+    expect(parse(['0-30 DK ÜCRETSİZ', '30 DK - 1 SAAT 20 TL', '1-3 SAAT 50 TL'])?.missedLines).toBe(0);
+  });
+
+  it('yerleştirilemeyen fiyat satırını sayar', () => {
+    // Fiyatı var ama süresi hiçbir kalıba oturmuyor: tablodan bir şey kaçtı.
+    expect(parse(['0-1 SAAT 50 TL', 'YARIM SAAT 20 TL'])?.missedLines).toBeGreaterThan(0);
+    expect(parse(['0-1 SAAT 50 TL', 'KAYIP BİLET 200 TL'])?.missedLines).toBeGreaterThan(0);
+  });
+
+  it('uyarı/başlık satırlarını eksik saymaz', () => {
+    // Bunlarda para birimi yok — doğru şekilde yok sayılıyorlar, eksik değiller.
+    const result = parse([
+      '0-1 SAAT 50 TL',
+      '24 SAAT AÇIK',
+      'MAKS. 4 SAAT PARK EDİLİR',
+      '15 DK İÇİNDE ÇIKINIZ',
+    ]);
+    expect(result?.missedLines).toBe(0);
+  });
+
+  it('abonelik satırlarını eksik saymaz', () => {
+    const result = parse(['0-1 SAAT 50 TL', '30 GÜNLÜK 1.500,00 TL']);
+    expect(result?.missedLines).toBe(0);
+  });
+});

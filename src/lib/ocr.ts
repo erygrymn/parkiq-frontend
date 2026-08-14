@@ -13,7 +13,7 @@ import type { Tariff } from './tariffMath';
 const PHOTO_QUALITY = 0.6;
 
 export type OcrOutcome =
-  | { status: 'ok'; tariff: Tariff; schedule: ScheduleKind | null }
+  | { status: 'ok'; tariff: Tariff; schedule: ScheduleKind | null; partial: boolean }
   | { status: 'not_detected' }
   | { status: 'denied' }
   | { status: 'canceled' }
@@ -52,7 +52,12 @@ export async function scanTariffBoard(fallbackCurrency: string): Promise<OcrOutc
   // kullanıcı görmeden uygulanmaz.
   const schedule = selectSchedule(lines, new Date(), normalizeLine);
   const parsed = parseTariffLines(schedule.lines, fallbackCurrency, schedule.priceColumn);
-  return parsed
-    ? { status: 'ok', tariff: parsed.tariff, schedule: schedule.kind }
-    : { status: 'not_detected' };
+  if (!parsed) return { status: 'not_detected' };
+  return {
+    status: 'ok',
+    tariff: parsed.tariff,
+    schedule: schedule.kind,
+    // Tarifeye benzeyip okunamayan satır kaldıysa sonuç eksik olabilir.
+    partial: parsed.missedLines > 0,
+  };
 }

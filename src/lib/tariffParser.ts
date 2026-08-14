@@ -345,6 +345,12 @@ export interface ParseResult {
   tariff: Tariff;
   /** Kullanıcıya "kontrol et" demek için: kaç satırdan üretildi. */
   matchedLines: number;
+  /**
+   * Tarife satırına BENZEYİP okunamayan satır sayısı: hem para birimi hem süre
+   * birimi taşıyıp hiçbir kalıba oturmayanlar. Sıfırdan büyükse tarife eksik
+   * çıkmış olabilir — sessizce doğru sanılmasın diye kullanıcı uyarılır.
+   */
+  missedLines: number;
 }
 
 /** Artım zinciri en fazla bu kadar dilim ekler — çubuk okunmaz hale gelmesin. */
@@ -392,6 +398,14 @@ export function parseTariffLines(
   let perHour: number | null = null;
   let flat: number | null = null;
   let matchedLines = 0;
+  let missedLines = 0;
+
+  // Fiyat taşıyıp hiçbir dilime yerleştirilemeyen KISA satır, tablodan bir şey
+  // kaçırdığımızın işaretidir. Uyarı ve dip not satırlarında para birimi
+  // bulunmaz; abonelik satırları zaten yukarıda elenir. Uzun cümleler tablo
+  // satırı değildir, onları saymayız.
+  const hasUnplacedPrice = (line: string) =>
+    line.length <= 40 && CURRENCY_PATTERNS.some((c) => c.match.test(line));
 
   for (const line of normalized) {
     if (SUBSCRIPTION_WORD.test(line)) continue;
@@ -430,6 +444,7 @@ export function parseTariffLines(
     }
 
     if (used) matchedLines++;
+    else if (hasUnplacedPrice(line)) missedLines++;
   }
 
   if (brackets.length > 0) {
@@ -446,7 +461,7 @@ export function parseTariffLines(
     if (flat !== null) tiers.push({ endMin: DAY_MINUTES, cumulativePrice: flat });
 
     const clean = sanitizeTiers(tiers);
-    if (clean.length > 0) return { tariff: { type: 'tiered', currency, tiers: clean }, matchedLines };
+    if (clean.length > 0) return { tariff: { type: 'tiered', currency, tiers: clean }, matchedLines, missedLines };
   }
 
   // Saatlik + günlük tavan: tavansız saatlik gibi sonsuza kadar artmasın.
@@ -462,13 +477,14 @@ export function parseTariffLines(
     }
     tiers.push({ endMin: DAY_MINUTES, cumulativePrice: flat });
     const clean = sanitizeTiers(tiers);
-    if (clean.length > 0) return { tariff: { type: 'tiered', currency, tiers: clean }, matchedLines };
+    if (clean.length > 0) return { tariff: { type: 'tiered', currency, tiers: clean }, matchedLines, missedLines };
   }
 
-  if (perHour !== null) return { tariff: { type: 'hourly', currency, price: perHour }, matchedLines };
+  if (perHour !== null) return { tariff: { type: 'hourly', currency, price: perHour }, matchedLines, missedLines };
   // Tek bir "her ilave saat" satırı da fiilen saatlik tarifedir.
-  if (increment !== null) return { tariff: { type: 'hourly', currency, price: increment.price }, matchedLines };
-  if (flat !== null) return { tariff: { type: 'flat', currency, price: flat }, matchedLines };
+  if (increment !== null)
+    return { tariff: { type: 'hourly', currency, price: increment.price }, matchedLines, missedLines };
+  if (flat !== null) return { tariff: { type: 'flat', currency, price: flat }, matchedLines, missedLines };
 
   return null;
 }

@@ -56,6 +56,8 @@ interface SessionStore {
   ocrState: OcrState;
   /** OCR birden fazla tarifeli panoda hangisini seçti — kullanıcıya söylenir. */
   ocrSchedule: ScheduleKind | null;
+  /** Tarife satırına benzeyen bazı satırlar okunamadıysa true — kullanıcı kontrol etsin. */
+  ocrPartial: boolean;
   hydrate: () => void;
   /** 2 saniye kuralı: dokunulduğu an kayıt biter; konum arkadan işlenir (§7.3). */
   park: () => void;
@@ -152,6 +154,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   cameraState: 'idle',
   ocrState: 'idle',
   ocrSchedule: null,
+  ocrPartial: false,
   autoDetected: false,
 
   hydrate: () => {
@@ -359,7 +362,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       return;
     }
 
-    set({ ocrState: 'scanning', ocrSchedule: null });
+    set({ ocrState: 'scanning', ocrSchedule: null, ocrPartial: false });
     void scanTariffBoard(useSettingsStore.getState().currency).then((outcome) => {
       const current = get().session;
       if (!current || current.id !== session.id) return;
@@ -383,6 +386,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         session: next,
         ocrState: 'idle',
         ocrSchedule: outcome.schedule,
+        ocrPartial: outcome.partial,
         suggestedTariff: null,
         externalTariffVersion: get().externalTariffVersion + 1,
       });
