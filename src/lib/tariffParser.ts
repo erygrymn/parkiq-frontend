@@ -60,6 +60,14 @@ const FREE_WORD = /(UCRETSIZ|BEDAVA|PARASIZ|FREE|NO CHARGE)/;
 
 const DAY_MINUTES = 24 * 60;
 
+/** Gevşek "sayı + birim" kalıbının kabul ettiği en uzun satır (karakter). */
+const TABULAR_MAX_LENGTH = 32;
+
+/** Birim sözcüğünü dakikaya çevirir ("DK" → 1, "SAAT" → 60). */
+function minutesPerUnit(unit: string): number {
+  return /DAKIKA|MIN|DK/.test(unit) ? 1 : 60;
+}
+
 interface BracketLine {
   endMin: number;
   price: number;
@@ -78,7 +86,16 @@ function parseBracket(line: string): BracketLine | null {
   const isMinutes = MINUTE_WORD.test(line) && !HOUR_WORD.test(line);
   const unitMin = isMinutes ? 1 : 60;
 
-  // "0-1 SAAT" / "1-2 SAAT" / "0–1 HOUR" → aralığın üst sınırı
+  // "30 DK - 1 SAAT 20" → aralığın iki ucunun BİRİMİ FARKLI. Üst sınır kendi
+  // birimiyle okunur (1 SAAT = 60 dk). Tek birim varsayıldığında bu satır 30
+  // dakikaya düşüyor, ücretsiz dilimle çakışıyor ve tamamen kayboluyordu.
+  const mixed = line.match(new RegExp(`(\\d+)\\s*(${UNIT})\\b\\s*[-–—]\\s*(\\d+)\\s*(${UNIT})\\b`));
+  if (mixed) {
+    const upper = Number(mixed[3]);
+    if (Number.isFinite(upper) && upper > 0) return { endMin: upper * minutesPerUnit(mixed[4]), price };
+  }
+
+  // "0-1 SAAT" / "1-2 SAAT" / "0–1 HOUR" → aralığın üst sınırı (ortak birim)
   const range = line.match(new RegExp(`(\\d+)\\s*[-–—]\\s*(\\d+)\\s*(?=\\D*(?:${UNIT})\\b)`));
   if (range) {
     const upper = Number(range[2]);
@@ -93,10 +110,16 @@ function parseBracket(line: string): BracketLine | null {
   }
 
   // "İLK 2 SAAT 80" / "FIRST 2 HOURS 80" / "30 DAKIKA 20"
-  const leading = line.match(new RegExp(`(?:ILK|FIRST)?\\s*(\\d+)\\s*(${UNIT})\\b`));
+  // En gevşek kalıp bu: panonun dip notundaki düz cümle de ("...15 DK
+  // içerisinde otoparktan çıkınız") uyar ve sahte dilim üretir. Tablo satırı
+  // kısadır — uzun cümleleri buraya sokma.
+  const leading =
+    line.length <= TABULAR_MAX_LENGTH
+      ? line.match(new RegExp(`(?:ILK|FIRST)?\\s*(\\d+)\\s*(${UNIT})\\b`))
+      : null;
   if (leading && !EXTRA_WORD.test(line)) {
     const amount = Number(leading[1]);
-    const unit = /DAKIKA|MIN|DK/.test(leading[2]) ? 1 : 60;
+    const unit = minutesPerUnit(leading[2]);
     if (Number.isFinite(amount) && amount > 0) return { endMin: amount * unit, price };
   }
 

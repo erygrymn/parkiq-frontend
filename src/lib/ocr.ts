@@ -1,5 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import { isOcrAvailable, recognizeText } from '../../modules/parkiq-ocr';
+import { assembleRows } from './ocrRows';
 import { parseTariffLines } from './tariffParser';
 import type { Tariff } from './tariffMath';
 
@@ -37,10 +38,13 @@ export async function scanTariffBoard(fallbackCurrency: string): Promise<OcrOutc
     return { status: 'failed' };
   }
 
-  const lines = await recognizeText(uri);
-  if (lines === null) return { status: 'failed' };
-  if (lines.length === 0) return { status: 'not_detected' };
+  const blocks = await recognizeText(uri);
+  if (blocks === null) return { status: 'failed' };
+  if (blocks.length === 0) return { status: 'not_detected' };
 
+  // Pano iki sütunlu tablo: süre solda, fiyat sağda ve Vision bunları AYRI
+  // bloklar döndürür. Satırları geometriden geri kur, sonra ayrıştır.
+  const lines = assembleRows(blocks);
   const parsed = parseTariffLines(lines, fallbackCurrency);
   return parsed ? { status: 'ok', tariff: parsed.tariff } : { status: 'not_detected' };
 }
