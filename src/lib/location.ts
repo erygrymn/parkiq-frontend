@@ -27,14 +27,63 @@ function pickPlaceName(result: Location.LocationGeocodedAddress | undefined): st
   return /[A-Za-zÇĞİÖŞÜçğıöşü]/.test(candidate) ? candidate : null;
 }
 
+/**
+ * Kaç konum örneği alınır ve en fazla ne kadar beklenir.
+ *
+ * İlk GPS düzeltmesi genelde en kötüsüdür: alıcı daha uydu topluyordur ve
+ * otopark girişi tam da sinyalin bozulduğu yerdir. Birkaç saniye içinde gelen
+ * örneklerin EN İYİSİ (en küçük yatay hata) seçilir — ortalama almak, kötü bir
+ * örneği iyisine karıştırıp ikisini de bozar.
+ *
+ * "2 saniye kuralı" korunur: park kaydı bunu BEKLEMEZ, konum arkadan işlenir.
+ */
+const SAMPLE_COUNT = 4;
+const SAMPLE_BUDGET_MS = 5000;
+
+/** Ard arda gelen düzeltmelerden en doğrusunu seçer. */
+async function bestFix(): Promise<Location.LocationObject> {
+  const first = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+
+  return new Promise((resolve) => {
+    let best = first;
+    let subscription: Location.LocationSubscription | null = null;
+    let settled = false;
+
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      subscription?.remove();
+      resolve(best);
+    };
+
+    const timer = setTimeout(finish, SAMPLE_BUDGET_MS);
+    let seen = 1;
+
+    void Location.watchPositionAsync(
+      { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 800, distanceInterval: 0 },
+      (position) => {
+        const current = position.coords.accuracy;
+        const known = best.coords.accuracy;
+        if (current != null && (known == null || current < known)) best = position;
+        seen += 1;
+        if (seen >= SAMPLE_COUNT) {
+          clearTimeout(timer);
+          finish();
+        }
+      },
+    ).then((sub) => {
+      if (settled) sub.remove();
+      else subscription = sub;
+    });
+  });
+}
+
 export async function captureCurrentPlace(): Promise<LocationOutcome> {
   try {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== Location.PermissionStatus.GRANTED) return { status: 'denied' };
 
-    const position = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced,
-    });
+    const position = await bestFix();
     const { latitude, longitude } = position.coords;
 
     let placeName: string | null = null;

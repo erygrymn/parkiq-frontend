@@ -43,6 +43,12 @@ export interface ParkSession {
   photoUri: string | null;
   /** Tarifeden bağımsız basit süre hatırlatıcısı (mutlak zaman). */
   reminderAtMs: number | null;
+  /**
+   * Tarife hangi takvimden okundu (hafta içi/sonu, gündüz/gece). Oturum o
+   * takvimin dışına taşarsa fiyat artık geçerli değildir — sessizce yeniden
+   * hesaplamak yerine kullanıcıya söylenir.
+   */
+  tariffSchedule?: ScheduleKind | null;
 }
 
 interface SessionStore {
@@ -223,6 +229,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       placeName: null,
       photoUri: null,
       reminderAtMs: null,
+      tariffSchedule: null,
     };
     persist(session);
     set({ phase: 'parking', session, locationState: 'capturing', suggestedTariff: null });
@@ -409,7 +416,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       }
       trackTariffScan(outcome.partial ? 'partial' : 'ok');
 
-      const next = { ...current, tariff: outcome.tariff };
+      const next = { ...current, tariff: outcome.tariff, tariffSchedule: outcome.schedule };
       persist(next);
       set({
         session: next,

@@ -4,7 +4,9 @@ import { distanceMeters, type Coords } from './geo';
 // Ücretsiz, anahtarsız (CLAUDE.md: Google API yasak). Sunucumuza uğramaz.
 
 const OVERPASS_ENDPOINT = 'https://overpass-api.de/api/interpreter';
-const DEFAULT_RADIUS_M = 1200;
+/** Yarıçap seçenekleri (metre) — filtre popup'ındaki mesafe kademesi. */
+export const RADIUS_OPTIONS = [500, 1000, 2000, 5000] as const;
+export const DEFAULT_RADIUS_M = 1000;
 const MAX_RESULTS = 40;
 
 export type PoiKind = 'parking' | 'charging';
@@ -17,6 +19,8 @@ export interface ParkingPoi {
   longitude: number;
   /** Kapalı otopark mı (multi-storey / underground). Bilinmiyorsa null. */
   covered: boolean | null;
+  /** Otoparkın kendi şarj ünitesi var mı (OSM etiketinden). Bilinmiyorsa false. */
+  hasCharging: boolean;
   /** Kullanıcıya uzaklık (metre) — sorgu merkezine göre hesaplanır. */
   distanceM: number;
 }
@@ -59,6 +63,18 @@ function coveredOf(tags: Record<string, string>): boolean | null {
   return null;
 }
 
+/**
+ * Otoparkın kendi şarj ünitesi. OSM'de tek bir standart yok: bazı otoparklar
+ * `capacity:charging`, bazıları `socket:*` ya da düz `charging_station=yes`
+ * taşır. Hiçbiri yoksa false — "bilinmiyor" ile "yok" arasında ayrım yapmak
+ * kullanıcıya bir şey kazandırmaz, ikisi de "ikon gösterme" demektir.
+ */
+function chargingOf(tags: Record<string, string>): boolean {
+  if (tags['capacity:charging']) return true;
+  if (tags.charging_station === 'yes' || tags['charging_station:output']) return true;
+  return Object.keys(tags).some((key) => key.startsWith('socket:'));
+}
+
 export function parseOverpass(json: unknown, center: Coords): ParkingPoi[] {
   // Overpass yoğunken null/HTML/bozuk gövde dönebilir; erişimden ÖNCE doğrula.
   if (typeof json !== 'object' || json === null) return [];
@@ -85,6 +101,7 @@ export function parseOverpass(json: unknown, center: Coords): ParkingPoi[] {
       latitude: coords.latitude,
       longitude: coords.longitude,
       covered: kind === 'parking' ? coveredOf(tags) : null,
+      hasCharging: kind === 'charging' || chargingOf(tags),
       distanceM: distanceMeters(center, coords),
     });
   }

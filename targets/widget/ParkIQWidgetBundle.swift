@@ -26,6 +26,24 @@ private enum Palette {
   }
 }
 
+/// Widget GALERİSİ metinleri (isim/açıklama) App Group'tan okunamaz: bunlar
+/// widget seçiciye çizilirken RN hiç çalışmamış olabilir. Bu yüzden tek
+/// istisna olarak cihaz dilinden seçilir.
+private enum Gallery {
+  private static var isTurkish: Bool {
+    (Locale.preferredLanguages.first ?? "en").hasPrefix("tr")
+  }
+
+  static var sessionName: String { "ParkIQ" }
+  static var sessionDescription: String {
+    isTurkish ? "Süren ve tarife dilimin." : "Your running session and tariff tier."
+  }
+  static var parkName: String { isTurkish ? "ParkIQ · Park Et" : "ParkIQ · Park" }
+  static var parkDescription: String {
+    isTurkish ? "Tek dokunuşla yerini kaydet." : "Save where you parked in one tap."
+  }
+}
+
 /// App Group kutusundan dile çevrilmiş metinler. RN her oturum değişiminde ve
 /// dil değişiminde yazar; kutu boşsa İngilizceye düşülür (ilk kurulum anı).
 private enum Shared {
@@ -353,8 +371,8 @@ struct ParkIQQuickParkWidget: Widget {
     StaticConfiguration(kind: "ParkIQQuickPark", provider: ParkIQWidgetProvider()) { entry in
       ParkIQQuickParkView(entry: entry)
     }
-    .configurationDisplayName("ParkIQ · Park")
-    .description("Save where you parked in one tap.")
+    .configurationDisplayName(Gallery.parkName)
+    .description(Gallery.parkDescription)
     .supportedFamilies([.systemSmall])
   }
 }
@@ -364,8 +382,8 @@ struct ParkIQWidget: Widget {
     StaticConfiguration(kind: "ParkIQWidget", provider: ParkIQWidgetProvider()) { entry in
       ParkIQWidgetView(entry: entry)
     }
-    .configurationDisplayName("ParkIQ")
-    .description("Your active parking session.")
+    .configurationDisplayName(Gallery.sessionName)
+    .description(Gallery.sessionDescription)
     .supportedFamilies([.systemSmall, .systemMedium])
   }
 }

@@ -72,7 +72,13 @@ export function ArFindMyCar({
           </Text>
           {/* Takip oturmadan huzme yerleştirilmez; kullanıcıya sebebi söylenir. */}
           <Caption color="#8A8A93">
-            {status === 'ready' ? t('arHint') : status === 'failed' ? t('arFailed') : t('arInitializing')}
+            {status === 'near'
+              ? t('youAreClose')
+              : status === 'ready'
+                ? t('arHint')
+                : status === 'failed'
+                  ? t('arFailed')
+                  : t('arInitializing')}
           </Caption>
         </View>
 

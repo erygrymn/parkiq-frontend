@@ -6,7 +6,7 @@ import type { ParkSession } from '../state/sessionStore';
 // Aktif oturum = endedAtMs IS NULL; tek aktif oturum kuralını store korur.
 // Şema sürümü PRAGMA user_version ile taşınır — cihazdaki eski kayıtlar korunur.
 
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 
 let db: SQLiteDatabase | null = null;
 
@@ -72,6 +72,15 @@ function migrate(database: SQLiteDatabase): void {
     `);
   }
 
+  if (current < 6) {
+    // Tarife hangi takvimden okundu (hafta içi/sonu, gündüz/gece). Oturum o
+    // takvimin dışına taşarsa kullanıcı uyarılır.
+    const columns = database.getAllSync<{ name: string }>('PRAGMA table_info(sessions)');
+    if (!columns.some((c) => c.name === 'tariffSchedule')) {
+      database.execSync('ALTER TABLE sessions ADD COLUMN tariffSchedule TEXT');
+    }
+  }
+
   database.execSync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 }
 
@@ -116,6 +125,7 @@ interface SessionRow {
   photoUri: string | null;
   reminderAtMs: number | null;
   recordedAtMs: number | null;
+  tariffSchedule: string | null;
 }
 
 function rowToSession(row: SessionRow): ParkSession {
@@ -140,6 +150,7 @@ function rowToSession(row: SessionRow): ParkSession {
     placeName: row.placeName,
     photoUri: row.photoUri,
     reminderAtMs: row.reminderAtMs,
+    tariffSchedule: (row.tariffSchedule as ParkSession['tariffSchedule']) ?? null,
   };
 }
 
@@ -147,8 +158,8 @@ export function saveSession(session: ParkSession): void {
   getDb().runSync(
     `INSERT OR REPLACE INTO sessions
        (id, startedAtMs, recordedAtMs, endedAtMs, floor, note, tariffJson,
-        latitude, longitude, placeName, photoUri, reminderAtMs)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        latitude, longitude, placeName, photoUri, reminderAtMs, tariffSchedule)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       session.id,
       session.startedAtMs,
@@ -162,6 +173,7 @@ export function saveSession(session: ParkSession): void {
       session.placeName,
       session.photoUri,
       session.reminderAtMs,
+      session.tariffSchedule ?? null,
     ],
   );
 }

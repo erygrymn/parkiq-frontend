@@ -8,11 +8,12 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GhostButton, PrimaryCta } from './src/components/Buttons';
 import { Caption } from './src/components/Typography';
-import { initAnalytics } from './src/lib/analytics';
+import { initAnalytics, trackPaywallShown } from './src/lib/analytics';
 import { ForceUpdateScreen, useForcedUpdate } from './src/screens/ForceUpdateGate';
 import { MapCanvas } from './src/screens/MapCanvas';
 import { Onboarding } from './src/screens/Onboarding';
 import { HistorySheet } from './src/sheets/HistorySheet';
+import { FilterSheet } from './src/sheets/FilterSheet';
 import { PaywallSheet } from './src/sheets/PaywallSheet';
 import { PoiSheet } from './src/sheets/PoiSheet';
 import { SettingsSheet } from './src/sheets/SettingsSheet';
@@ -175,6 +176,7 @@ function Root() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
   const sheetRef = useRef<BottomSheet>(null);
   const insets = useSafeAreaInsets();
 
@@ -243,6 +245,21 @@ function Root() {
           onPress={() => setHistoryOpen(true)}
         />
         <FloatingIconButton symbol="gearshape" label={t('settings')} onPress={() => setSettingsOpen(true)} />
+        {/* Filtre yalnız keşifte anlamlı: oturum başlayınca sahne arabaya aittir. */}
+        {phase === 'idle' && (
+          <FloatingIconButton
+            symbol="line.3.horizontal.decrease"
+            label={t('filters')}
+            onPress={() => {
+              if (!isPremium) {
+                trackPaywallShown('feature');
+                setPaywallOpen(true);
+                return;
+              }
+              setFilterOpen(true);
+            }}
+          />
+        )}
       </View>
       )}
 
@@ -290,6 +307,7 @@ function Root() {
           setPaywallOpen(true);
         }}
       />
+      <FilterSheet visible={filterOpen} onClose={() => setFilterOpen(false)} />
       <PaywallSheet visible={paywallOpen} onClose={() => setPaywallOpen(false)} />
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
     </View>

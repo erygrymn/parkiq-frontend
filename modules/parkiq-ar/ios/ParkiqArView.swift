@@ -28,6 +28,9 @@ private enum Scene {
   static let eyeHeight: Float = 1.5
   /// Hedef bu kadar oynamadıysa sahneyi tazeleme (GPS gürültüsü titretmesin).
   static let repositionThreshold: Float = 1.0
+  /// Bu mesafenin altında araba GÖRÜŞ ALANINDADIR: göğe uzanan huzme artık
+  /// yardımcı değil, engeldir — yerini zemindeki işarete bırakır (geo.NEAR_DISTANCE_M).
+  static let nearDistance: Float = 20
 }
 
 public final class ParkiqArView: ExpoView, ARSessionDelegate {
@@ -206,6 +209,18 @@ public final class ParkiqArView: ExpoView, ARSessionDelegate {
     var direction = target - ground
     direction.y = 0
     let distance = simd_length(direction)
+
+    // Yakın mesafe modu: araba zaten önünde. Huzme kapanır, halka büyür ve
+    // "şurası" demeye başlar; yol okları da gereksizdir.
+    let near = distance <= Scene.nearDistance
+    beam?.isEnabled = !near
+    ring?.scale = near ? [1.6, 1, 1.6] : [1, 1, 1]
+    if near {
+      chevrons.forEach { $0.isEnabled = false }
+      onStatus(["state": "near"])
+      return
+    }
+
     guard distance > 0.1 else {
       chevrons.forEach { $0.isEnabled = false }
       return

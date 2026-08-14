@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 import { distanceMeters, type Coords } from '../lib/geo';
-import { applyFilter, fetchNearbyParking, type ParkingPoi, type PoiFilter } from '../lib/parkingPoi';
+import {
+  applyFilter,
+  DEFAULT_RADIUS_M,
+  fetchNearbyParking,
+  type ParkingPoi,
+  type PoiFilter,
+} from '../lib/parkingPoi';
 
 // §7.2 Keşif: yakındaki otopark/şarj noktaları. Veri OSM Overpass'tan gelir,
 // kendi sunucumuza uğramaz. Sonuç bellekte tutulur; merkez değişince tazelenir.
@@ -11,6 +17,9 @@ interface DiscoveryStore {
   state: DiscoveryState;
   pois: ParkingPoi[];
   filter: PoiFilter;
+  /** Arama yarıçapı (metre) — filtre popup'ından ayarlanır. */
+  radiusM: number;
+  setRadius: (radiusM: number) => void;
   /** Sonuçların ait olduğu merkez — gereksiz tekrar sorguyu engeller. */
   center: Coords | null;
   /**
@@ -44,6 +53,7 @@ export const useDiscoveryStore = create<DiscoveryStore>((set, get) => ({
   state: 'idle',
   pois: [],
   filter: 'all',
+  radiusM: DEFAULT_RADIUS_M,
   center: null,
   pinTarget: null,
   pinToken: 0,
@@ -53,6 +63,15 @@ export const useDiscoveryStore = create<DiscoveryStore>((set, get) => ({
   selectPoi: (id) => set({ selectedPoiId: id }),
 
   setFilter: (filter) => set({ filter }),
+
+  setRadius: (radiusM) => {
+    if (radiusM === get().radiusM) return;
+    // Yarıçap değişince eldeki sonuçlar artık soruyu yanıtlamıyor: merkezi
+    // koruyup yeniden sor.
+    const center = get().center;
+    set({ radiusM, center: null });
+    if (center) get().load(center);
+  },
 
   pinTo: (center) => {
     set({ pinTarget: center, pinToken: get().pinToken + 1 });
@@ -72,7 +91,7 @@ export const useDiscoveryStore = create<DiscoveryStore>((set, get) => ({
     inFlight = new AbortController();
     set({ state: 'loading' });
 
-    void fetchNearbyParking(center, undefined, inFlight.signal).then((pois) => {
+    void fetchNearbyParking(center, get().radiusM, inFlight.signal).then((pois) => {
       if (pois === null) {
         set({ state: 'error' });
         return;

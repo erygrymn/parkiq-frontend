@@ -5,7 +5,7 @@ import type { ViewProps } from 'react-native';
 // ARKit köprüsü. Native modül yalnız `expo run:ios` build'inde vardır;
 // Expo Go'da yüklenmez ve AR butonu hiç gösterilmez.
 
-export type ArStatus = 'initializing' | 'ready' | 'failed' | 'unsupported';
+export type ArStatus = 'initializing' | 'ready' | 'near' | 'failed' | 'unsupported';
 
 export interface ParkiqArViewProps extends ViewProps {
   /** Arabanın koordinatı — huzmenin dikildiği nokta. */

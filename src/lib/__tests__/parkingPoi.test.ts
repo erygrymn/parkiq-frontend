@@ -80,10 +80,10 @@ describe('parseOverpass', () => {
 
 describe('applyFilter', () => {
   const pois: ParkingPoi[] = [
-    { id: 'a', kind: 'parking', name: null, latitude: 0, longitude: 0, covered: true, distanceM: 10 },
-    { id: 'b', kind: 'parking', name: null, latitude: 0, longitude: 0, covered: false, distanceM: 20 },
-    { id: 'c', kind: 'parking', name: null, latitude: 0, longitude: 0, covered: null, distanceM: 30 },
-    { id: 'd', kind: 'charging', name: null, latitude: 0, longitude: 0, covered: null, distanceM: 40 },
+    { id: 'a', kind: 'parking', name: null, latitude: 0, longitude: 0, covered: true, hasCharging: false, distanceM: 10 },
+    { id: 'b', kind: 'parking', name: null, latitude: 0, longitude: 0, covered: false, hasCharging: false, distanceM: 20 },
+    { id: 'c', kind: 'parking', name: null, latitude: 0, longitude: 0, covered: null, hasCharging: false, distanceM: 30 },
+    { id: 'd', kind: 'charging', name: null, latitude: 0, longitude: 0, covered: null, hasCharging: false, distanceM: 40 },
   ];
 
   it('all → hepsi', () => {
@@ -108,5 +108,33 @@ describe('walkMinutes', () => {
   it('çok yakında bile en az 1 dk', () => {
     expect(walkMinutes(5)).toBe(1);
     expect(walkMinutes(0)).toBe(1);
+  });
+});
+
+describe('şarj ünitesi tespiti', () => {
+  const parse = (tags: Record<string, string>) =>
+    parseOverpass(
+      { elements: [{ type: 'node', id: 1, lat: 0, lon: 0, tags: { amenity: 'parking', ...tags } }] },
+      { latitude: 0, longitude: 0 },
+    )[0];
+
+  it.each([
+    ['capacity:charging', { 'capacity:charging': '4' }],
+    ['charging_station', { charging_station: 'yes' }],
+    ['socket etiketi', { 'socket:type2': '2' }],
+  ])('%s taşıyan otoparkı şarjlı sayar', (_label, tags) => {
+    expect(parse(tags).hasCharging).toBe(true);
+  });
+
+  it('etiketi olmayan otoparkı şarjlı saymaz', () => {
+    expect(parse({}).hasCharging).toBe(false);
+  });
+
+  it('şarj istasyonu her zaman şarjlıdır', () => {
+    const poi = parseOverpass(
+      { elements: [{ type: 'node', id: 2, lat: 0, lon: 0, tags: { amenity: 'charging_station' } }] },
+      { latitude: 0, longitude: 0 },
+    )[0];
+    expect(poi.hasCharging).toBe(true);
   });
 });

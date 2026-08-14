@@ -33,6 +33,7 @@ import { useNetworkStore } from '../state/networkStore';
 import { shareParkedLocation } from '../lib/share';
 import { FindMyCar } from '../screens/FindMyCar';
 import { computeExitSummary, computeTariffState } from '../lib/tariffMath';
+import { appliesAt } from '../lib/tariffSchedule';
 import { getLocale, t, upper } from '../localization';
 import { useSessionStore, type ParkSession } from '../state/sessionStore';
 import { useSettingsStore } from '../state/settingsStore';
@@ -532,6 +533,13 @@ export function ActiveSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   const state = computeTariffState(session.tariff, session.startedAtMs, now, warnThresholdMin);
   const hasLocation = session.latitude !== null && session.longitude !== null;
 
+  // Oturum, tarifenin okunduğu takvimin dışına taştı mı (cuma 23:00'te park
+  // edip cumartesiye sarkmak gibi). Fiyat SESSİZCE yeniden hesaplanmaz:
+  // şimdiye kadar biriken tutarı geriye dönük değiştirmek yanlış olurdu.
+  // Doğru olan, artık geçerli olmadığını söylemek.
+  const scheduleExpired =
+    session.tariffSchedule != null && !appliesAt(session.tariffSchedule, new Date(now));
+
   // Live Activity dakikada bir tazelenir: sayaç sistemde akar, çubuk/amber burada güncellenir.
   // §4.10: premium kontrolü YOK — Live Activity işletim sistemi yeteneğidir, satılmaz.
   useEffect(() => {
@@ -594,6 +602,9 @@ export function ActiveSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
       )}
 
       {/* §5.11: çevrimdışıyken sayaç durmaz — satırın işi bunu söylemek */}
+      {/* Tarifenin okunduğu takvim geçti: fiyat artık bu panoyu anlatmıyor. */}
+      {scheduleExpired && <StatusLine label={t('scheduleChanged')} />}
+
       {!online && <StatusLine label={t('offlineTimer')} />}
 
       {/* Tarife var ama bildirim izni yok → uyarı ulaşamaz; §5.11 kalıbı */}

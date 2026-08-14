@@ -28,6 +28,9 @@ export const en = {
   // Keşif
   whereTo: 'Where to?',
   noNearbyForFilter: 'Nothing nearby matches this filter',
+  filters: 'Filters',
+  searchRadius: 'Within',
+  results: '{count} nearby',
   filterAll: 'All',
   filterCharging: 'Charging',
   filterCovered: 'Covered',
@@ -95,6 +98,7 @@ export const en = {
   scheduleWeekend: 'Weekend rate applied',
   scheduleDay: 'Daytime rate applied',
   scheduleNight: 'Night rate applied',
+  scheduleChanged: 'The rate changed — this board prices this time differently. Scan again or edit the tariff.',
   scanBoard: 'Scan board',
   scanning: 'Reading the board',
   scanNotDetected: "Couldn't read the board — get closer, avoid glare, or enter it manually",
