@@ -1,7 +1,6 @@
 // TR karşılıklar. Damga çevirileri design.md §3.3 whitelist'inden:
 // "PARK ETTİN." / "₺X CEBİNDE." — birebir çeviri değil, aynı duygu.
 import type { CopyKey } from './en';
-
 export const tr: Record<CopyKey, string> = {
   onbTitle1: 'PARK ET',
   onbBody1: 'Tek dokunuş arabayı bıraktığın yeri işaretler. Kat, fotoğraf ve not isteğe bağlı — yalnız otopark karışıksa doldur.',
@@ -12,7 +11,6 @@ export const tr: Record<CopyKey, string> = {
   skip: 'Atla',
   enableLocation: 'Devam Et',
   notNow: 'Şimdi değil',
-
   iParked: 'Park Ettim',
   foundIt: 'Buldum',
   arMode: 'Kamera görünümü',
@@ -26,7 +24,6 @@ export const tr: Record<CopyKey, string> = {
   keep: 'Devam',
   undo: 'Geri Al',
   shareCard: 'Kartı Paylaş',
-
   whereTo: 'Nereye?',
   noNearbyForFilter: 'Bu filtreye uyan yakın yer yok',
   filterAll: 'Tümü',
@@ -50,7 +47,6 @@ export const tr: Record<CopyKey, string> = {
   poiCharging: 'Şarj noktası',
   directions: 'Yol tarifi',
   minWalk: '{minutes} dk yürüme',
-
   shareMessage: 'Araba burada.',
   parkedStamp: 'PARK ETTİN.',
   parkedAt: '{time} itibarıyla parkta',
@@ -58,7 +54,6 @@ export const tr: Record<CopyKey, string> = {
   parkedDurationStamp: '{duration} PARK.',
   stillParked: 'Hâlâ {place} konumunda mısın?',
   addTariff: 'Maliyeti görmek için tarife ekle',
-
   exitWithinPay: '{minutes} dk içinde çık, {next} yerine {now} öde',
   exitNowPay: 'Şimdi çık, {next} yerine {now} öde',
   nowNext: 'Şimdi {now} · Sonra {next}',
@@ -67,7 +62,6 @@ export const tr: Record<CopyKey, string> = {
   flatRate: 'Sabit {amount}',
   perHour: '{amount} / saat',
   lastTimeTariff: 'Geçen seferki: {summary} — kullan?',
-
   detailsOptional: 'Detaylar opsiyonel',
   pickOnMap: 'Haritada seç',
   pickOnMapHint: 'Haritayı kaydır, pini arabanın üstüne getir',
@@ -111,10 +105,8 @@ export const tr: Record<CopyKey, string> = {
   paid: 'Ödenen',
   avoided: 'Tasarruf',
   costNow: 'Şu anki maliyet',
-
   locating: 'Konum bulunuyor',
   use: 'Kullan',
-
   youAreClose: 'Yaklaştın — etrafına bak',
   walkToCar: 'Okun gösterdiği yöne yürü',
   indoorHint: 'Burada sinyal zayıf — fotoğrafı ve kat notunu kullan.',
@@ -133,24 +125,24 @@ export const tr: Record<CopyKey, string> = {
   reminderOff: 'Kapalı',
   hoursShort: '{hours} sa',
   simpleReminder: '{duration} süredir parktasın.',
-
   offlineTimer: 'Çevrimdışı — sayaç çalışmaya devam ediyor',
   weakGpsNudge: 'Sinyal zayıf — fotoğraf veya kat notu ekle',
   locationOff: 'Konum kapalı · Aç',
   notificationsOff: 'Bildirimler kapalı · Ayarlar’dan aç',
   cameraOff: 'Kamera kapalı · Ayarlar’dan aç',
-
   noSessions: 'Henüz park yok.',
   firstParkHere: 'İlk parkın buraya düşecek.',
   noActiveSession: 'Aktif oturum yok',
-
   proHeadline: 'PRO PARKI KENDİ ANLAR',
   proBody: 'Sen hiç düşünmezsin.',
   proFeatureAuto: 'Arabadan inince otomatik kayıt',
   proFeatureScan: 'Tarife panolarını kamerayla tara',
   autoRenewNotice: 'Abonelik iptal edilene dek kendini yeniler. Ücret onayda ve her yenilemede Apple kimliğinden tahsil edilir. Ayarlar’dan yönetebilir veya iptal edebilirsin.',
   proFeatureFind: 'Arabaya pusulayla geri dönüş',
-  proFeatureHistory: 'Sınırsız geçmiş ve istatistik',
+  proFeatureFilter: 'Otoparkı şarj, kapalılık ve mesafeye göre filtrele',
+  planPerMonth: 'ayda {price}',
+  planSave: '%{percent} TASARRUF',
+  terms: 'Şartlar (EULA)',
   planYearly: 'Yıllık',
   planMonthly: 'Aylık',
   planLifetime: 'Ömür boyu',
@@ -162,7 +154,6 @@ export const tr: Record<CopyKey, string> = {
   plansError: 'Planlar yüklenemedi. Bağlantını kontrol et.',
   retry: 'Tekrar dene',
   restore: 'Satın alımları geri yükle',
-  terms: 'Şartlar',
   privacy: 'Gizlilik',
   restored: 'Geri yüklendi.',
   noPurchases: 'Satın alım bulunamadı.',
@@ -170,7 +161,6 @@ export const tr: Record<CopyKey, string> = {
   proStamp: 'PRO.',
   goPro: 'ParkIQ Pro',
   proActive: 'Etkin',
-
   updateRequiredTitle: 'GÜNCELLEME GEREKLİ',
   updateRequiredBody: 'Bu sürüm park tutarlarını doğru hesaplayamıyor. Devam etmek için güncelle.',
   updateNow: 'Güncelle',
@@ -205,7 +195,6 @@ export const tr: Record<CopyKey, string> = {
   rateUs: 'ParkIQ’yu değerlendir',
   about: 'Hakkında',
   version: 'Sürüm',
-
   lockedSessions: 'Pro’da {count} kayıt daha',
   history: 'Geçmiş',
   shareMonth: 'Bu ayı paylaş',

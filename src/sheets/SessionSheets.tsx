@@ -51,8 +51,9 @@ const inputStyle = (bg: string, ink: string) => ({
 });
 
 /** §7.2 idle sheet: filtre çipleri + en yakın otopark kartı + "I Parked". */
-export function IdleSheet() {
+export function IdleSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   const { colors } = useTheme();
+  const isPremium = useIsPremium();
   const locale = getLocale();
   const park = useSessionStore((s) => s.park);
   const filter = useDiscoveryStore((s) => s.filter);
@@ -103,7 +104,16 @@ export function IdleSheet() {
           { key: 'covered', label: t('filterCovered') },
         ]}
         value={filter}
-        onChange={setFilter}
+        // Filtreleme premium (ürün kararı). Çipler GÖRÜNÜR kalır — yeteneğin
+        // var olduğunu görmek, dokununca fiyatını öğrenmekten iyidir.
+        onChange={(next) => {
+          if (!isPremium && next !== 'all') {
+            trackPaywallShown('feature');
+            onOpenPaywall();
+            return;
+          }
+          setFilter(next);
+        }}
       />
 
       {discoveryState === 'loading' && pois.length === 0 && (

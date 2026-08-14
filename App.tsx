@@ -80,7 +80,7 @@ function SheetContent({ phase, onOpenPaywall }: { phase: SessionPhase; onOpenPay
 
   switch (phase) {
     case 'idle':
-      return selectedPoi ? <PoiSheet poi={selectedPoi} /> : <IdleSheet />;
+      return selectedPoi ? <PoiSheet poi={selectedPoi} /> : <IdleSheet onOpenPaywall={onOpenPaywall} />;
     case 'parking':
       return <ParkingSheet onOpenPaywall={onOpenPaywall} />;
     case 'active':
@@ -274,14 +274,7 @@ function Root() {
       </BottomSheet>
       )}
 
-      <HistorySheet
-        visible={historyOpen}
-        onClose={() => setHistoryOpen(false)}
-        onOpenPaywall={() => {
-          setHistoryOpen(false);
-          setPaywallOpen(true);
-        }}
-      />
+      <HistorySheet visible={historyOpen} onClose={() => setHistoryOpen(false)} />
       <SettingsSheet
         visible={settingsOpen}
         onClose={() => setSettingsOpen(false)}

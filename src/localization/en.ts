@@ -12,7 +12,6 @@ export const en = {
   skip: 'Skip',
   enableLocation: 'Continue',
   notNow: 'Not now',
-
   iParked: 'I Parked',
   foundIt: 'Found it',
   arMode: 'Camera view',
@@ -26,7 +25,6 @@ export const en = {
   keep: 'Keep',
   undo: 'Undo',
   shareCard: 'Share Card',
-
   // Keşif
   whereTo: 'Where to?',
   noNearbyForFilter: 'Nothing nearby matches this filter',
@@ -51,7 +49,6 @@ export const en = {
   poiCharging: 'Charging point',
   directions: 'Directions',
   minWalk: '{minutes} min walk',
-
   // Oturum
   shareMessage: 'The car is here.',
   parkedStamp: 'PARKED.',
@@ -60,7 +57,6 @@ export const en = {
   parkedDurationStamp: 'PARKED {duration}.',
   stillParked: 'Still parked at {place}?',
   addTariff: 'Add tariff to see cost',
-
   // Tarife / para (§5.9–5.10 formülünden)
   exitWithinPay: 'Leave within {minutes} min and pay {now} instead of {next}',
   exitNowPay: 'Leave now and pay {now} instead of {next}',
@@ -70,7 +66,6 @@ export const en = {
   flatRate: '{amount} flat',
   perHour: '{amount} / hour',
   lastTimeTariff: 'Last time: {summary} — use it?',
-
   // Park sheet'i + tarife formu (§7.3–7.4)
   detailsOptional: 'Details optional',
   pickOnMap: 'Pick on the map',
@@ -115,10 +110,8 @@ export const en = {
   paid: 'Paid',
   avoided: 'Avoided',
   costNow: 'Cost now',
-
   locating: 'Finding location',
   use: 'Use',
-
   // Foto / backdate / hatırlatıcı (§7.3)
   youAreClose: 'You’re close — look around',
   walkToCar: 'Walk toward the arrow',
@@ -138,19 +131,16 @@ export const en = {
   reminderOff: 'Off',
   hoursShort: '{hours} h',
   simpleReminder: "You've been parked for {duration}.",
-
   // Durum satırları (§5.11)
   offlineTimer: 'Offline — timer still running',
   weakGpsNudge: 'Weak signal — add a photo or floor note',
   locationOff: 'Location off · Turn on',
   notificationsOff: 'Notifications off · Turn on in Settings',
   cameraOff: 'Camera off · Turn on in Settings',
-
   // Boş durumlar (§5.12)
   noSessions: 'No sessions yet.',
   firstParkHere: 'Your first park will land here.',
   noActiveSession: 'No active session',
-
   // Paywall (§7.10) — "unlock/amazing" tipi pazarlama dolgusu yasak (§10)
   proHeadline: 'PRO DETECTS PARKING',
   proBody: 'You never think about it.',
@@ -158,7 +148,10 @@ export const en = {
   proFeatureScan: 'Scan tariff boards with the camera',
   autoRenewNotice: 'Subscriptions renew automatically until cancelled. Your Apple ID is charged at confirmation and again at each renewal. Manage or cancel in Settings.',
   proFeatureFind: 'Compass guidance back to the car',
-  proFeatureHistory: 'Unlimited history and stats',
+  proFeatureFilter: 'Filter parking by charger, cover and distance',
+  planPerMonth: '{price} / month',
+  planSave: 'SAVE {percent}%',
+  terms: 'Terms (EULA)',
   planYearly: 'Yearly',
   planMonthly: 'Monthly',
   planLifetime: 'Lifetime',
@@ -170,7 +163,6 @@ export const en = {
   plansError: 'Couldn’t load plans. Check your connection.',
   retry: 'Retry',
   restore: 'Restore',
-  terms: 'Terms',
   privacy: 'Privacy',
   restored: 'Restored.',
   noPurchases: 'No purchases found.',
@@ -178,7 +170,6 @@ export const en = {
   proStamp: 'PRO.',
   goPro: 'ParkIQ Pro',
   proActive: 'Active',
-
   // Ayarlar (§7.9)
   updateRequiredTitle: 'UPDATE REQUIRED',
   updateRequiredBody: 'This version can no longer keep your parking costs accurate. Update to continue.',
@@ -214,7 +205,6 @@ export const en = {
   rateUs: 'Rate ParkIQ',
   about: 'About',
   version: 'Version',
-
   // Geçmiş (§7.8)
   lockedSessions: '{count} more sessions in Pro',
   history: 'History',
@@ -230,5 +220,4 @@ export const en = {
   yesterday: 'Yesterday',
   stillParkedShort: 'Still parked? This session started yesterday.',
 } as const;
-
 export type CopyKey = keyof typeof en;

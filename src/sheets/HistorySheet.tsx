@@ -1,11 +1,10 @@
 import { SymbolView } from 'expo-symbols';
 import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { useIsPremium } from '../state/premiumStore';
 import { PageSheet } from '../components/PageSheet';
 import { GhostButton } from '../components/Buttons';
 import { MonthlySavingsChart } from '../components/MonthlySavingsChart';
-import { trackPaywallShown, trackShareCard } from '../lib/analytics';
+import { trackShareCard } from '../lib/analytics';
 import type { SavingsCardData } from '../components/SavingsCard';
 import { ShareCardRenderer } from '../components/ShareCardRenderer';
 import { StatTiles } from '../components/StatTiles';
@@ -22,7 +21,8 @@ import { useTheme } from '../theme';
 import { radius, spacing } from '../theme/tokens';
 
 // §7.8 Geçmiş — iOS pageSheet. Gün gruplu liste (Today/Yesterday/tarih).
-// Free 3-kayıt kilidi paywall tuğlasıyla birlikte gelecek (screens.md §9).
+// Geçmiş HERKESE AÇIK: 3 kayıt kilidi kaldırıldı (2026-08-15 premium kararı),
+// yerini otopark filtreleme aldı.
 
 interface DayGroup {
   label: string;
@@ -105,20 +105,8 @@ function EmptyState() {
   );
 }
 
-/** §7.8 free kilidi: son 3 kayıt açık, öncesi paywall köprüsü. */
-const FREE_VISIBLE_SESSIONS = 3;
-
-export function HistorySheet({
-  visible,
-  onClose,
-  onOpenPaywall,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  onOpenPaywall: () => void;
-}) {
+export function HistorySheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const locale = getLocale();
-  const isPremium = useIsPremium();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [shareData, setShareData] = useState<SavingsCardData | null>(null);
 
@@ -134,9 +122,7 @@ export function HistorySheet({
 
   // KPI'lar her zaman TÜM oturumlardan hesaplanır (§7.8: free'de de KPI görünür).
   const stats = useMemo(() => computeStats(sessions), [sessions]);
-  const visible_ = isPremium ? sessions : sessions.slice(0, FREE_VISIBLE_SESSIONS);
-  const lockedCount = sessions.length - visible_.length;
-  const groups = useMemo(() => groupByDay(visible_, Date.now(), locale), [visible_, locale]);
+  const groups = useMemo(() => groupByDay(sessions, Date.now(), locale), [sessions, locale]);
   const selected = selectedId ? sessions.find((s) => s.id === selectedId) : undefined;
 
   const close = () => {
@@ -211,15 +197,6 @@ export function HistorySheet({
         ))
       )}
 
-      {lockedCount > 0 && (
-        <LockedRows
-          count={lockedCount}
-          onPress={() => {
-            trackPaywallShown('history');
-            onOpenPaywall();
-          }}
-        />
-      )}
     </PageSheet>
   );
 }
@@ -229,27 +206,3 @@ export function HistorySheet({
  * `text-secondary` — kilitli satırlar okunmak istenen paywall köprüsüdür,
  * bilgi taşıyan metin `disabled` grisiyle yazılamaz (§12).
  */
-function LockedRows({ count, onPress }: { count: number; onPress: () => void }) {
-  const { colors } = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => ({
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.s12,
-        backgroundColor: pressed ? colors.insetPressed : colors.inset,
-        borderRadius: radius.r12,
-        paddingHorizontal: spacing.s16,
-        height: 44,
-      })}
-    >
-      <SymbolView name="lock.fill" size={15} tintColor={colors.disabled} weight="regular" />
-      <Caption color={colors.textSecondary} style={{ flex: 1 }}>
-        {t('lockedSessions', { count })}
-      </Caption>
-      <SymbolView name="chevron.right" size={13} tintColor={colors.disabled} weight="semibold" />
-    </Pressable>
-  );
-}

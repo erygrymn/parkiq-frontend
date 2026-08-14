@@ -16,6 +16,10 @@ export interface PurchasePlan {
   period: PlanPeriod;
   /** Mağazadan gelen yerelleştirilmiş fiyat metni ("₺749,99"). */
   priceLabel: string;
+  /** Ham fiyat + para birimi — planlar arası karşılaştırma (aylık karşılık,
+      yıllıkta kaç tasarruf) yalnız sayıyla yapılabilir. */
+  price: number;
+  currency: string;
   /** Varsa deneme süresi metni ("1 week free"). */
   introLabel: string | null;
 }
@@ -95,9 +99,9 @@ function introLabelOf(pkg: RcPackage): string | null {
  * false olduğundan bu veri shipping'e GİREMEZ; fiyatlar da gerçek değil, örnektir.
  */
 const DEMO_PLANS: PurchasePlan[] = [
-  { id: 'demo_yearly', period: 'yearly', priceLabel: '₺749,99', introLabel: '1 week free' },
-  { id: 'demo_monthly', period: 'monthly', priceLabel: '₺149,99', introLabel: null },
-  { id: 'demo_lifetime', period: 'lifetime', priceLabel: '₺1.999,99', introLabel: null },
+  { id: 'demo_yearly', period: 'yearly', priceLabel: '₺749,99', price: 749.99, currency: 'TRY', introLabel: '1 week free' },
+  { id: 'demo_monthly', period: 'monthly', priceLabel: '₺149,99', price: 149.99, currency: 'TRY', introLabel: null },
+  { id: 'demo_lifetime', period: 'lifetime', priceLabel: '₺1.999,99', price: 1999.99, currency: 'TRY', introLabel: null },
 ];
 
 export function getDemoPlans(): PurchasePlan[] | null {
@@ -120,7 +124,14 @@ export async function loadPlans(): Promise<PurchasePlan[] | null> {
       const period = periodOf(pkg);
       const priceLabel = pkg.product?.priceString;
       if (!period || !priceLabel) continue;
-      plans.push({ id: pkg.identifier, period, priceLabel, introLabel: introLabelOf(pkg) });
+      plans.push({
+        id: pkg.identifier,
+        period,
+        priceLabel,
+        price: pkg.product?.price ?? 0,
+        currency: pkg.product?.currencyCode ?? 'USD',
+        introLabel: introLabelOf(pkg),
+      });
     }
     // Sıra design.md §7.10: Yearly (varsayılan seçili) → Monthly → Lifetime
     const order: PlanPeriod[] = ['yearly', 'monthly', 'lifetime'];
