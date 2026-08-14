@@ -1,5 +1,6 @@
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { REVENUECAT_IOS_KEY } from '../config';
+import { trackPurchase, trackRestore } from './analytics';
 import { PREMIUM_ENTITLEMENT } from './premium';
 
 // RevenueCat köprüsü. Native modül → Expo Go'da yüklenmez (MapCanvas kalıbı).
@@ -54,6 +55,10 @@ interface RcPackage {
   identifier: string;
   packageType?: string;
   product?: {
+    /** Ürün kimliği ve ham fiyat — Twice'a gelir iletmek için gerekir. */
+    identifier?: string;
+    price?: number;
+    currencyCode?: string;
     priceString?: string;
     introPrice?: { periodNumberOfUnits?: number; periodUnit?: string } | null;
   };
@@ -140,7 +145,22 @@ export async function purchasePlan(planId: string): Promise<'purchased' | 'cance
     const pkg = (offerings.current?.availablePackages ?? []).find((p) => p.identifier === planId);
     if (!pkg) return 'failed';
     const result = await purchases.purchasePackage(pkg);
-    return hasPremium((result as { customerInfo?: unknown }).customerInfo) ? 'purchased' : 'failed';
+    if (!hasPremium((result as { customerInfo?: unknown }).customerInfo)) return 'failed';
+
+    // Gelir RevenueCat'te yaşar ama Twice panosunda da görünmeli (CLAUDE.md).
+    // Deneme başlangıcı gelir SAYILMAZ; tipli yardımcı onu ayrı işaretler.
+    const period = periodOf(pkg);
+    const product = pkg.product;
+    if (period && product) {
+      trackPurchase({
+        productId: product.identifier ?? pkg.identifier,
+        price: product.price ?? 0,
+        currency: product.currencyCode ?? 'USD',
+        period,
+        isTrial: introLabelOf(pkg) !== null,
+      });
+    }
+    return 'purchased';
   } catch (error) {
     return (error as { userCancelled?: boolean }).userCancelled ? 'canceled' : 'failed';
   }
@@ -149,7 +169,9 @@ export async function purchasePlan(planId: string): Promise<'purchased' | 'cance
 export async function restorePurchases(): Promise<'restored' | 'none' | 'failed'> {
   if (!ensureConfigured() || !purchases) return 'failed';
   try {
-    return hasPremium(await purchases.restorePurchases()) ? 'restored' : 'none';
+    if (!hasPremium(await purchases.restorePurchases())) return 'none';
+    trackRestore();
+    return 'restored';
   } catch {
     return 'failed';
   }

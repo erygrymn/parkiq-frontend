@@ -1,6 +1,7 @@
 import { Share } from 'react-native';
 import { BACKEND_BASE_URL } from '../config';
 import type { ParkSession } from '../state/sessionStore';
+import { trackLocationShared } from './analytics';
 
 // Konum paylaşımı — ürünün ana organik büyüme döngüsü.
 // GİZLİLİK KURALI (CLAUDE.md): veri linkin HASH parçasında taşınır (#...).
@@ -70,6 +71,7 @@ export async function shareParkedLocation(session: ParkSession, message: string)
   if (!url) return;
   try {
     await Share.share({ message: `${message} ${url}`, url });
+    trackLocationShared(); // ana viral döngü — kaç kez tetiklendiği ölçülür
   } catch {
     // Kullanıcı paylaşım sayfasını kapattıysa sessizce geç.
   }

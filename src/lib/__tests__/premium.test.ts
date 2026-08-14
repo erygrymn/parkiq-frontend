@@ -1,37 +1,27 @@
 import { describe, expect, it } from '@jest/globals';
-import { resolvePremium, UNLOCK_ALL_PREMIUM } from '../premium';
+import { PREMIUM_ENTITLEMENT, resolvePremium } from '../premium';
 
-// Kilitlerin tek kapısı. Jest, __DEV__ = true ile çalışır (geliştirme derlemesi),
-// yani buradaki beklentiler Ayarlar'daki geliştirici anahtarının davranışını yansıtır.
+// Premium kararı tek kapıdan geçer. Yayın derlemesinde ölçüt YALNIZ aboneliktir:
+// geliştirme kolaylığı için konmuş global bir açma anahtarı yoktur.
 
-describe('resolvePremium — geliştirme derlemesi (anahtar belirler)', () => {
-  it('anahtar açıkken abonelik olmadan premium', () => {
-    expect(resolvePremium(false, true)).toBe(true);
+describe('resolvePremium', () => {
+  it('abonelik varsa premium', () => {
+    expect(resolvePremium(true, false)).toBe(true);
   });
 
-  it('anahtar KAPALIYKEN premium değil — paywall ve kilitler görünür', () => {
+  it('abonelik yoksa premium değil', () => {
+    // __DEV__ testlerde true; geliştirici anahtarı kapalıyken kilit devrede.
     expect(resolvePremium(false, false)).toBe(false);
   });
 
-  it('anahtar kapalı olsa da gerçek abonelik premium verir', () => {
-    expect(resolvePremium(true, false)).toBe(true);
+  it('geliştirici anahtarı yalnız geliştirme derlemesinde açar', () => {
+    expect(resolvePremium(false, true)).toBe(__DEV__);
   });
 });
 
-describe('yayın derlemesi davranışı (__DEV__ = false)', () => {
-  // Production'da anahtar tamamen yok sayılır; karar sabit + aboneliktir.
-  const productionResolve = (hasEntitlement: boolean, devUnlock: boolean) =>
-    UNLOCK_ALL_PREMIUM || hasEntitlement;
-
-  it('geliştirici anahtarı yayında hiçbir şeyi açamaz', () => {
-    // Kilit sabiti kapatıldığında (yayın hâli) anahtar true olsa bile etkisizdir.
-    const shipped = (hasEntitlement: boolean, devUnlock: boolean) => false || hasEntitlement;
-    expect(shipped(false, true)).toBe(false);
-    expect(shipped(true, true)).toBe(true);
-  });
-
-  it('şu anki sabit hâlâ geliştirme modunda (yayın öncesi false yapılacak)', () => {
-    expect(UNLOCK_ALL_PREMIUM).toBe(true);
-    expect(productionResolve(false, false)).toBe(true);
+describe('entitlement anahtarı', () => {
+  it('RevenueCat panelindeki değerle aynı kalır', () => {
+    // Değişirse tüm satın almalar sessizce yetkisiz kalır.
+    expect(PREMIUM_ENTITLEMENT).toBe('pro');
   });
 });

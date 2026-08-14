@@ -5,6 +5,7 @@ import { useIsPremium } from '../state/premiumStore';
 import { PageSheet } from '../components/PageSheet';
 import { GhostButton } from '../components/Buttons';
 import { MonthlySavingsChart } from '../components/MonthlySavingsChart';
+import { trackPaywallShown, trackShareCard } from '../lib/analytics';
 import type { SavingsCardData } from '../components/SavingsCard';
 import { ShareCardRenderer } from '../components/ShareCardRenderer';
 import { StatTiles } from '../components/StatTiles';
@@ -179,7 +180,8 @@ export function HistorySheet({
       {stats.totalSaved !== null && stats.totalSaved > 0 && (
         <GhostButton
           label={t('shareMonth')}
-          onPress={() =>
+          onPress={() => {
+            trackShareCard('month');
             setShareData({
               placeName: null,
               durationMs: stats.avgDurationMs ?? 0,
@@ -187,8 +189,8 @@ export function HistorySheet({
               saved: stats.totalSaved,
               currency: stats.savedCurrency,
               tariffState: null,
-            })
-          }
+            });
+          }}
           style={{ marginBottom: spacing.s24 }}
         />
       )}
@@ -209,7 +211,15 @@ export function HistorySheet({
         ))
       )}
 
-      {lockedCount > 0 && <LockedRows count={lockedCount} onPress={onOpenPaywall} />}
+      {lockedCount > 0 && (
+        <LockedRows
+          count={lockedCount}
+          onPress={() => {
+            trackPaywallShown('history');
+            onOpenPaywall();
+          }}
+        />
+      )}
     </PageSheet>
   );
 }

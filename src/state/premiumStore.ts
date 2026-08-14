@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { resolvePremium, UNLOCK_ALL_PREMIUM } from '../lib/premium';
+import { resolvePremium } from '../lib/premium';
 import {
   fetchEntitlement,
   getDemoPlans,
@@ -12,7 +12,7 @@ import {
 } from '../lib/purchases';
 
 // Premium durumu + paywall akışı. Kilitlenecek yüzeyler YALNIZ `isPremium`'a bakar.
-// UNLOCK_ALL_PREMIUM açıkken isPremium her zaman true → hiçbir yüzey kilitli değil.
+// Yayın derlemesinde isPremium yalnız gerçek abonelikle true olur.
 
 export type PlansState = 'idle' | 'loading' | 'ready' | 'error';
 export type PurchaseState = 'idle' | 'purchasing' | 'restoring';
@@ -27,12 +27,11 @@ function repo() {
 
 /** Geliştirici anahtarının kalıcı hali; yalnız __DEV__'de okunur/yazılır. */
 function readDevUnlock(): boolean {
-  if (!__DEV__) return UNLOCK_ALL_PREMIUM;
+  if (!__DEV__) return false;
   try {
-    const stored = repo().readSetting(DEV_UNLOCK_KEY);
-    return stored === null ? UNLOCK_ALL_PREMIUM : stored === '1';
+    return repo().readSetting(DEV_UNLOCK_KEY) === '1';
   } catch {
-    return UNLOCK_ALL_PREMIUM;
+    return false;
   }
 }
 
@@ -63,9 +62,9 @@ interface PremiumStore {
 }
 
 export const usePremiumStore = create<PremiumStore>((set, get) => ({
-  isPremium: resolvePremium(false, UNLOCK_ALL_PREMIUM),
+  isPremium: false,
   hasEntitlement: false,
-  devUnlock: UNLOCK_ALL_PREMIUM,
+  devUnlock: false,
   plans: [],
   plansAreDemo: false,
   plansState: 'idle',
@@ -166,4 +165,3 @@ export function useIsPremium(): boolean {
   return usePremiumStore((s) => s.isPremium);
 }
 
-export { UNLOCK_ALL_PREMIUM };

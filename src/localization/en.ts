@@ -180,6 +180,9 @@ export const en = {
   proActive: 'Active',
 
   // Ayarlar (§7.9)
+  updateRequiredTitle: 'UPDATE REQUIRED',
+  updateRequiredBody: 'This version can no longer keep your parking costs accurate. Update to continue.',
+  updateNow: 'Update',
   settings: 'Settings',
   appearance: 'Appearance',
   themeLight: 'Light',

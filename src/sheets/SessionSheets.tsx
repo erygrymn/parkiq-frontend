@@ -10,6 +10,12 @@ import { DetailRow, PopupSheet } from '../components/PopupSheet';
 import { SearchBar } from '../components/SearchBar';
 import type { SavingsCardData } from '../components/SavingsCard';
 import { ShareCardRenderer } from '../components/ShareCardRenderer';
+import {
+  isOcrRemotelyEnabled,
+  trackFindMyCar,
+  trackPaywallShown,
+  trackShareCard,
+} from '../lib/analytics';
 import { maybeAskForReview, shouldShowCelebrationPaywall } from '../lib/review';
 import { useIsPremium } from '../state/premiumStore';
 import { openAppSettings, StatusLine } from '../components/StatusLine';
@@ -432,6 +438,8 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
         {/* key: tarife dışarıdan set edilince (öneri kabulü / OCR) form kendini tazeler */}
         <TariffForm key={externalTariffVersion} value={session.tariff} onChange={setTariff} />
 
+        {/* Uzaktan kapatıldıysa özellik hiç yokmuş gibi davranır: buton bile çizilmez. */}
+        {isOcrRemotelyEnabled() && (
         <Pressable
           accessibilityRole="button"
           onPress={scanTariff}
@@ -455,6 +463,7 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
             {ocrState === 'scanning' ? t('scanning') : t('scanBoard')}
           </Text>
         </Pressable>
+        )}
 
         {/* Pano birden fazla tarife taşıyorsa hangisinin alındığı söylenir —
             oturum sınırı geçerse kullanıcı elle değiştirebilsin. */}
@@ -609,7 +618,15 @@ export function ActiveSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
               devam eder, CTA paywall'a köprüdür. */}
           <PrimaryCta
             label={t('findMyCar')}
-            onPress={() => (isPremium ? setFindOpen(true) : onOpenPaywall())}
+            onPress={() => {
+              if (!isPremium) {
+                trackPaywallShown('feature');
+                onOpenPaywall();
+                return;
+              }
+              trackFindMyCar(hasLocation ? 'compass' : 'indoor');
+              setFindOpen(true);
+            }}
           />
           <View style={{ flexDirection: 'row', gap: spacing.s8 }}>
             <GhostButton
@@ -682,6 +699,7 @@ export function EndedSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   useEffect(() => {
     if (!session?.endedAtMs || exit.saved === null || exit.saved <= 0) return;
     if (shouldShowCelebrationPaywall(isPremium)) {
+      trackPaywallShown('celebration');
       onOpenPaywall();
       return;
     }
@@ -736,7 +754,13 @@ export function EndedSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
         {/* Paylaşım kartı yalnız tasarruf varken anlamlı (§11.1) */}
         {stamp.green ? (
           <>
-            <PrimaryCta label={t('shareCard')} onPress={() => setShareData(buildCardData())} />
+            <PrimaryCta
+              label={t('shareCard')}
+              onPress={() => {
+                trackShareCard('session');
+                setShareData(buildCardData());
+              }}
+            />
             <GhostButton label={t('done')} onPress={finish} />
           </>
         ) : (

@@ -5,7 +5,9 @@
   "dependencies": {
     "@bacons/apple-targets": "^5.0.0",
     "@gorhom/bottom-sheet": "^5.2.14",
+    "@react-native-async-storage/async-storage": "2.2.0",
     "@rnmapbox/maps": "^10.3.2",
+    "@twiceapps/react-native": "github:Twice-Apps/TwiceSDK#react-expo",
     "expo": "~57.0.7",
     "expo-constants": "~57.0.6",
     "expo-file-system": "~57.0.1",
@@ -46,7 +48,10 @@
     "postinstall": "patch-package"
   },
   "jest": {
-    "preset": "jest-expo"
+    "preset": "jest-expo",
+    "transformIgnorePatterns": [
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@twiceapps/.*))"
+    ]
   },
   "private": true
 }

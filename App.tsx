@@ -8,6 +8,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GhostButton, PrimaryCta } from './src/components/Buttons';
 import { Caption } from './src/components/Typography';
+import { initAnalytics } from './src/lib/analytics';
+import { ForceUpdateScreen, useForcedUpdate } from './src/screens/ForceUpdateGate';
 import { MapCanvas } from './src/screens/MapCanvas';
 import { Onboarding } from './src/screens/Onboarding';
 import { HistorySheet } from './src/sheets/HistorySheet';
@@ -295,6 +297,11 @@ function Root() {
 }
 
 export default function App() {
+  // Twice ilk render'dan önce başlatılır: oturum sayacı ve elde tutma ölçümü
+  // uygulamanın açıldığı andan itibaren işler.
+  useEffect(() => initAnalytics(), []);
+  const forcedUpdate = useForcedUpdate();
+
   // Ayarlar ve aktif oturum ilk render'dan ÖNCE senkron yüklenir:
   // tema/dil doğru başlar, idle→active geçişinde titreme olmaz (§7).
   const [locale] = useState(() => {
@@ -312,7 +319,9 @@ export default function App() {
       <SafeAreaProvider>
         <ThemeProvider>
           {/* key: dil değişince ağaç tazelenir — t() modül seviyesinde okunur */}
-          {onboardingSeen ? (
+          {forcedUpdate ? (
+            <ForceUpdateScreen />
+          ) : onboardingSeen ? (
             <Root key={currentLocale || locale} />
           ) : (
             <Onboarding key={currentLocale || locale} onDone={completeOnboarding} />

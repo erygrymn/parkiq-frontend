@@ -34,3 +34,10 @@ export const BACKEND_BASE_URL = 'https://parkiq-backend-beta.vercel.app';
  * Boşken paywall "planlar yüklenemedi" durumuna düşer, app çalışmaya devam eder.
  */
 export const REVENUECAT_IOS_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? '';
+
+/**
+ * Twice proje anahtarı (tw_*). Analytics, remote config, sürüm kontrolü ve gelir
+ * takibi buradan besleniyor. Diğerleri gibi ortamdan okunur; boşken SDK hiç
+ * başlatılmaz ve app aynen çalışmaya devam eder.
+ */
+export const TWICE_KEY = process.env.EXPO_PUBLIC_TWICE_KEY ?? '';

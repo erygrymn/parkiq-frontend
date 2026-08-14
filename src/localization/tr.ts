@@ -171,6 +171,9 @@ export const tr: Record<CopyKey, string> = {
   goPro: 'ParkIQ Pro',
   proActive: 'Etkin',
 
+  updateRequiredTitle: 'GÜNCELLEME GEREKLİ',
+  updateRequiredBody: 'Bu sürüm park tutarlarını doğru hesaplayamıyor. Devam etmek için güncelle.',
+  updateNow: 'Güncelle',
   settings: 'Ayarlar',
   appearance: 'Görünüm',
   themeLight: 'Açık',

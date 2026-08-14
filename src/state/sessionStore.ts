@@ -1,4 +1,11 @@
 import { create } from 'zustand';
+import {
+  isOcrRemotelyEnabled,
+  trackParkEnded,
+  trackParkStarted,
+  trackTariffScan,
+} from '../lib/analytics';
+import { computeExitSummary } from '../lib/tariffMath';
 import { isIndoorLike } from '../lib/geo';
 import { endSessionActivity, refreshSessionActivity, startSessionActivity, syncWidget } from '../lib/liveActivity';
 import { captureCurrentPlace, describeCoords } from '../lib/location';
@@ -220,6 +227,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     };
     persist(session);
     set({ phase: 'parking', session, locationState: 'capturing', suggestedTariff: null });
+    trackParkStarted(get().autoDetected ? 'auto' : 'manual');
 
     // Konum yakalama kaydı BLOKLAMAZ; sonuç geldiğinde oturuma işlenir.
     void captureCurrentPlace().then((outcome) => {
@@ -372,6 +380,12 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   scanTariff: () => {
     const { session, phase } = get();
     if (!session || phase === 'ended') return;
+    // Panolarda beklenenden kötü çalışırsa panelden kapatılabilir; o zaman
+    // özellik hiç yokmuş gibi davranır (bkz. analytics.isOcrRemotelyEnabled).
+    if (!isOcrRemotelyEnabled()) {
+      set({ ocrState: 'unavailable' });
+      return;
+    }
     // Tarife panosu tarama premium (ürün kararı): kilitliyse paywall köprüsü.
     if (!usePremiumStore.getState().isPremium) {
       set({ ocrState: 'locked' });
@@ -392,9 +406,15 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         return;
       }
       if (outcome.status !== 'ok') {
+        // Yalnız gerçek okuma sonuçları ölçülür; izin reddi/iptal kullanıcı
+        // kararıdır, OCR kalitesi hakkında bir şey söylemez.
+        if (outcome.status === 'not_detected' || outcome.status === 'failed') {
+          trackTariffScan(outcome.status);
+        }
         set({ ocrState: outcome.status });
         return;
       }
+      trackTariffScan(outcome.partial ? 'partial' : 'ok');
 
       const next = { ...current, tariff: outcome.tariff };
       persist(next);
@@ -494,6 +514,13 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     set({ phase: 'ended', session: next });
     void cancelSessionAlerts(); // §8.4: oturum bitince zamanlanmış uyarılar iptal
     syncLiveActivity('end');
+
+    const exit = computeExitSummary(next.tariff, next.startedAtMs, next.endedAtMs ?? Date.now());
+    trackParkEnded({
+      durationMin: ((next.endedAtMs ?? Date.now()) - next.startedAtMs) / 60_000,
+      hadTariff: next.tariff !== null,
+      savedAmount: exit.saved,
+    });
   },
 
   undoEnd: () => {

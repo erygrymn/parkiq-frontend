@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { trackOnboardingDone } from '../lib/analytics';
 import { setLocale, type Locale } from '../localization';
 import { DEFAULT_WARN_THRESHOLD_MIN } from '../lib/tariffMath';
 
@@ -88,6 +89,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   },
 
   completeOnboarding: () => {
+    trackOnboardingDone();
     write('onboardingSeen', '1');
     set({ onboardingSeen: true });
   },
