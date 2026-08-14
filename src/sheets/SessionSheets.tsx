@@ -159,6 +159,7 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   const externalTariffVersion = useSessionStore((s) => s.externalTariffVersion);
   const cameraState = useSessionStore((s) => s.cameraState);
   const ocrState = useSessionStore((s) => s.ocrState);
+  const ocrSchedule = useSessionStore((s) => s.ocrSchedule);
   const autoDetected = useSessionStore((s) => s.autoDetected);
   const dismissAutoPark = useSessionStore((s) => s.dismissAutoPark);
   const {
@@ -400,6 +401,21 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
           </Text>
         </Pressable>
 
+        {/* Pano birden fazla tarife taşıyorsa hangisinin alındığı söylenir —
+            oturum sınırı geçerse kullanıcı elle değiştirebilsin. */}
+        {ocrSchedule !== null && (
+          <Caption color={colors.accentText}>
+            {t(
+              ocrSchedule === 'weekday'
+                ? 'scheduleWeekday'
+                : ocrSchedule === 'weekend'
+                  ? 'scheduleWeekend'
+                  : ocrSchedule === 'day'
+                    ? 'scheduleDay'
+                    : 'scheduleNight',
+            )}
+          </Caption>
+        )}
         {ocrState === 'not_detected' && <Caption color={colors.warnText}>{t('scanNotDetected')}</Caption>}
         {ocrState === 'failed' && <Caption color={colors.warnText}>{t('scanFailed')}</Caption>}
         {ocrState === 'unavailable' && <Caption>{t('scanUnavailable')}</Caption>}

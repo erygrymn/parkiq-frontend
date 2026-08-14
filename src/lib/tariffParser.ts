@@ -29,7 +29,7 @@ const DIACRITICS: Record<string, string> = {
  * Aksanları ASCII'ye katlayıp büyütür — kalıplar tek biçimle yazılabilsin
  * ("GÜNLÜK" → "GUNLUK", "DAKİKA" → "DAKIKA").
  */
-function normalize(line: string): string {
+export function normalizeLine(line: string): string {
   return line
     .replace(/[İIÜÖÇŞĞıüöçşğ]/g, (ch) => DIACRITICS[ch] ?? ch)
     .toUpperCase()
@@ -236,20 +236,43 @@ function numberTokens(line: string): Array<{ value: number; start: number; end: 
  * binek araç fiyatıdır; sonuncuyu almak kullanıcıya minibüs tarifesini okur.
  * Dışında olması önemli: fiyatı olmayan uyarı satırları böylece elenir.
  */
-function priceOutside(line: string, duration: DurationMatch | null, currency: string): number | null {
-  if (FREE_WORD.test(line)) return 0;
+function priceCells(line: string, duration: DurationMatch | null, currency: string): number[] {
+  const cells: Array<{ value: number; at: number }> = [];
+
+  // "ÜCRETSİZ" bir fiyat HÜCRESİDİR (0), sütun sayımında yerini korumalı:
+  // "0-30 DK  ÜCRETSİZ  20 TL" panosunda hafta sonu sütunu ikinci hücredir.
+  const free = /(UCRETSIZ|BEDAVA|PARASIZ|FREE|NO CHARGE)/g;
+  let hit: RegExpExecArray | null;
+  while ((hit = free.exec(line)) !== null) cells.push({ value: 0, at: hit.index });
 
   for (const token of numberTokens(line)) {
     const insideDuration = duration !== null && token.start >= duration.start && token.start < duration.end;
     if (insideDuration) continue;
-
     // "80P" = 80 peni → £0.80. Sadece sterlin panolarında geçerli.
-    if (currency === 'GBP' && /^\s*P\b/.test(line.slice(token.end))) {
-      return token.value / 100;
-    }
-    return token.value;
+    const pence = currency === 'GBP' && /^\s*P/.test(line.slice(token.end));
+    cells.push({ value: pence ? token.value / 100 : token.value, at: token.start });
   }
-  return null;
+
+  return cells.sort((a, b) => a.at - b.at).map((c) => c.value);
+}
+
+/**
+ * Süre ifadesinin DIŞINDA kalan fiyat hücrelerinden İSTENEN SÜTUNU verir.
+ *
+ * Sütun seçimi önemli: çok sütunlu panolarda varsayılan ilk sütundur (binek
+ * araç / hafta içi); takvim seçimi ikinci sütunu isteyebilir. Süre ifadesinin
+ * dışında olması ise fiyatı olmayan uyarı satırlarını eler.
+ */
+function priceOutside(
+  line: string,
+  duration: DurationMatch | null,
+  currency: string,
+  column = 0,
+): number | null {
+  const cells = priceCells(line, duration, currency);
+  if (cells.length === 0) return null;
+  // Hücre birleştirilmişse (tek "ÜCRETSİZ" iki sütunu birden kapsar) en sağdakine düş.
+  return cells[Math.min(column, cells.length - 1)];
 }
 
 interface BracketLine {
@@ -258,10 +281,10 @@ interface BracketLine {
 }
 
 /** Bir dilim satırı: süre ifadesi + ondan ayrı bir fiyat. İkisi de şart. */
-function parseBracket(line: string, currency: string): BracketLine | null {
+function parseBracket(line: string, currency: string, column: number): BracketLine | null {
   const duration = matchDuration(line);
   if (duration === null) return null;
-  const price = priceOutside(line, duration, currency);
+  const price = priceOutside(line, duration, currency, column);
   if (price === null || price < 0) return null;
   return { endMin: duration.endMin, price };
 }
@@ -354,8 +377,12 @@ function extendChain(tiers: TariffTier[], step: IncrementStep, cap: number | nul
   }
 }
 
-export function parseTariffLines(lines: string[], fallbackCurrency: string): ParseResult | null {
-  const normalized = lines.map(normalize).filter((line) => line.length > 0);
+export function parseTariffLines(
+  lines: string[],
+  fallbackCurrency: string,
+  priceColumn = 0,
+): ParseResult | null {
+  const normalized = lines.map(normalizeLine).filter((line) => line.length > 0);
   if (normalized.length === 0) return null;
 
   const currency = detectCurrency(normalized) ?? fallbackCurrency;
@@ -395,7 +422,7 @@ export function parseTariffLines(lines: string[], fallbackCurrency: string): Par
     }
 
     if (!used) {
-      const bracket = parseBracket(line, currency);
+      const bracket = parseBracket(line, currency, priceColumn);
       if (bracket !== null) {
         brackets.push(bracket);
         used = true;

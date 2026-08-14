@@ -1,7 +1,8 @@
 import * as ImagePicker from 'expo-image-picker';
 import { isOcrAvailable, recognizeText } from '../../modules/parkiq-ocr';
 import { assembleRows } from './ocrRows';
-import { parseTariffLines } from './tariffParser';
+import { normalizeLine, parseTariffLines } from './tariffParser';
+import { selectSchedule, type ScheduleKind } from './tariffSchedule';
 import type { Tariff } from './tariffMath';
 
 // §7.4 tarife panosu tarama — TAMAMEN CİHAZDA.
@@ -12,7 +13,7 @@ import type { Tariff } from './tariffMath';
 const PHOTO_QUALITY = 0.6;
 
 export type OcrOutcome =
-  | { status: 'ok'; tariff: Tariff }
+  | { status: 'ok'; tariff: Tariff; schedule: ScheduleKind | null }
   | { status: 'not_detected' }
   | { status: 'denied' }
   | { status: 'canceled' }
@@ -45,6 +46,13 @@ export async function scanTariffBoard(fallbackCurrency: string): Promise<OcrOutc
   // Pano iki sütunlu tablo: süre solda, fiyat sağda ve Vision bunları AYRI
   // bloklar döndürür. Satırları geometriden geri kur, sonra ayrıştır.
   const lines = assembleRows(blocks);
-  const parsed = parseTariffLines(lines, fallbackCurrency);
-  return parsed ? { status: 'ok', tariff: parsed.tariff } : { status: 'not_detected' };
+
+  // Pano birden fazla tarife taşıyorsa (hafta içi/sonu, gündüz/gece) cihaz
+  // saatine göre geçerli olanı seç. Hangisi seçildiği çağırana bildirilir;
+  // kullanıcı görmeden uygulanmaz.
+  const schedule = selectSchedule(lines, new Date(), normalizeLine);
+  const parsed = parseTariffLines(schedule.lines, fallbackCurrency, schedule.priceColumn);
+  return parsed
+    ? { status: 'ok', tariff: parsed.tariff, schedule: schedule.kind }
+    : { status: 'not_detected' };
 }

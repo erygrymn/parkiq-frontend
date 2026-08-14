@@ -4,6 +4,7 @@ import { endSessionActivity, refreshSessionActivity, startSessionActivity, syncW
 import { captureCurrentPlace } from '../lib/location';
 import { cancelSessionAlerts, notifyAutoParked, scheduleSessionAlerts } from '../lib/notifications';
 import { scanTariffBoard } from '../lib/ocr';
+import type { ScheduleKind } from '../lib/tariffSchedule';
 import { captureSpotPhoto, deleteSpotPhoto } from '../lib/photo';
 import type { Tariff } from '../lib/tariffMath';
 import { usePremiumStore } from './premiumStore';
@@ -53,6 +54,8 @@ interface SessionStore {
   notificationState: NotificationState;
   cameraState: CameraState;
   ocrState: OcrState;
+  /** OCR birden fazla tarifeli panoda hangisini seçti — kullanıcıya söylenir. */
+  ocrSchedule: ScheduleKind | null;
   hydrate: () => void;
   /** 2 saniye kuralı: dokunulduğu an kayıt biter; konum arkadan işlenir (§7.3). */
   park: () => void;
@@ -148,6 +151,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   notificationState: 'idle',
   cameraState: 'idle',
   ocrState: 'idle',
+  ocrSchedule: null,
   autoDetected: false,
 
   hydrate: () => {
@@ -355,7 +359,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       return;
     }
 
-    set({ ocrState: 'scanning' });
+    set({ ocrState: 'scanning', ocrSchedule: null });
     void scanTariffBoard(useSettingsStore.getState().currency).then((outcome) => {
       const current = get().session;
       if (!current || current.id !== session.id) return;
@@ -378,6 +382,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       set({
         session: next,
         ocrState: 'idle',
+        ocrSchedule: outcome.schedule,
         suggestedTariff: null,
         externalTariffVersion: get().externalTariffVersion + 1,
       });
