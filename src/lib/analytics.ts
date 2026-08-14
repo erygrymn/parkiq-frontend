@@ -119,15 +119,6 @@ export function trackError(name: string, params?: Params): void {
 
 // --- Remote config ---
 
-/**
- * OCR uzaktan kapatılabilir. Panolarda beklenenden kötü çalışırsa panelden
- * kapatılır; tarama butonu hiç görünmez ve kimse bozuk bir sonuç görmez.
- */
-export function isOcrRemotelyEnabled(): boolean {
-  if (!isAnalyticsEnabled) return true;
-  return TwiceRemoteConfig.getBool('ocr_enabled', true);
-}
-
 /** Uzak yapılandırma değişince yeniden çizmek için. */
 export function onRemoteConfigUpdated(listener: () => void): () => void {
   if (!isAnalyticsEnabled) return () => undefined;

@@ -274,7 +274,14 @@ function Root() {
       </BottomSheet>
       )}
 
-      <HistorySheet visible={historyOpen} onClose={() => setHistoryOpen(false)} />
+      <HistorySheet
+        visible={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        onOpenPaywall={() => {
+          setHistoryOpen(false);
+          setPaywallOpen(true);
+        }}
+      />
       <SettingsSheet
         visible={settingsOpen}
         onClose={() => setSettingsOpen(false)}

@@ -1,22 +1,22 @@
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, Pressable, Text, View } from 'react-native';
 import { GhostButton, PrimaryCta } from '../components/Buttons';
 import { ChipGroup } from '../components/ChipGroup';
 import { MoneyBox } from '../components/MoneyBox';
 import { PhotoField } from '../components/PhotoField';
+import { RatePrompt } from '../components/RatePrompt';
 import { DetailRow, PopupSheet } from '../components/PopupSheet';
 import { SearchBar } from '../components/SearchBar';
 import type { SavingsCardData } from '../components/SavingsCard';
 import { ShareCardRenderer } from '../components/ShareCardRenderer';
 import {
-  isOcrRemotelyEnabled,
   trackFindMyCar,
   trackPaywallShown,
   trackShareCard,
 } from '../lib/analytics';
-import { maybeAskForReview, shouldShowCelebrationPaywall } from '../lib/review';
+import { shouldAskForReview, shouldShowCelebrationPaywall } from '../lib/review';
 import { useIsPremium } from '../state/premiumStore';
 import { openAppSettings, StatusLine } from '../components/StatusLine';
 import { TariffBar } from '../components/TariffBar';
@@ -40,6 +40,9 @@ import { useTheme } from '../theme';
 import { radius, spacing, typeScale } from '../theme/tokens';
 
 // design.md §7 — durum-güdümlü sheet içerikleri. Her ekranda tek siyah CTA (İlke 4).
+
+/** Olumsuz yorum yanıtı mağazaya değil bize gider. */
+const SUPPORT_EMAIL = 'info@twiceapps.co';
 
 const inputStyle = (bg: string, ink: string) => ({
   height: 44,
@@ -448,8 +451,6 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
         {/* key: tarife dışarıdan set edilince (öneri kabulü / OCR) form kendini tazeler */}
         <TariffForm key={externalTariffVersion} value={session.tariff} onChange={setTariff} />
 
-        {/* Uzaktan kapatıldıysa özellik hiç yokmuş gibi davranır: buton bile çizilmez. */}
-        {isOcrRemotelyEnabled() && (
         <Pressable
           accessibilityRole="button"
           onPress={scanTariff}
@@ -473,7 +474,6 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
             {ocrState === 'scanning' ? t('scanning') : t('scanBoard')}
           </Text>
         </Pressable>
-        )}
 
         {/* Pano birden fazla tarife taşıyorsa hangisinin alındığı söylenir —
             oturum sınırı geçerse kullanıcı elle değiştirebilsin. */}
@@ -698,14 +698,16 @@ export function EndedSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   const isPremium = useIsPremium();
   const { undoEnd, finish } = useSessionStore.getState();
   const [shareData, setShareData] = useState<SavingsCardData | null>(null);
+  const [rateOpen, setRateOpen] = useState(false);
 
   const locale = getLocale();
   const exit = session?.endedAtMs
     ? computeExitSummary(session.tariff, session.startedAtMs, session.endedAtMs)
     : { paid: null, saved: null };
 
-  // §7.7 + §11: ilk tasarruf anı hem yorum isteğinin hem paywall'ın tetiğidir.
-  // Aynı anda ikisi birden gösterilmez — paywall varsa yorum isteği bir sonrakine kalır.
+  // §7.7 + §11: tasarruf anı hem yorum isteğinin hem paywall'ın tetiğidir —
+  // kullanıcı ürünün değerini tam o an görüyor. İkisi AYNI ANDA gösterilmez;
+  // paywall çıkarsa yorum isteği bir sonraki tasarruf anına kalır.
   useEffect(() => {
     if (!session?.endedAtMs || exit.saved === null || exit.saved <= 0) return;
     if (shouldShowCelebrationPaywall(isPremium)) {
@@ -713,7 +715,7 @@ export function EndedSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
       onOpenPaywall();
       return;
     }
-    void maybeAskForReview();
+    if (shouldAskForReview()) setRateOpen(true);
   }, [session?.id, session?.endedAtMs, exit.saved, isPremium, onOpenPaywall]);
 
   if (!session || session.endedAtMs === null) return null;
@@ -780,6 +782,13 @@ export function EndedSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
       </View>
 
       <ShareCardRenderer data={shareData} onDone={() => setShareData(null)} />
+
+      {/* İki adımlı yorum isteği: sistem penceresine yalnız memnun olanlar gider. */}
+      <RatePrompt
+        visible={rateOpen}
+        onClose={() => setRateOpen(false)}
+        onFeedback={() => void Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=ParkIQ`)}
+      />
     </View>
   );
 }

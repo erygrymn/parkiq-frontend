@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import {
-  isOcrRemotelyEnabled,
   trackParkEnded,
   trackParkStarted,
   trackTariffScan,
@@ -380,12 +379,6 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   scanTariff: () => {
     const { session, phase } = get();
     if (!session || phase === 'ended') return;
-    // Panolarda beklenenden kötü çalışırsa panelden kapatılabilir; o zaman
-    // özellik hiç yokmuş gibi davranır (bkz. analytics.isOcrRemotelyEnabled).
-    if (!isOcrRemotelyEnabled()) {
-      set({ ocrState: 'unavailable' });
-      return;
-    }
     // Tarife panosu tarama premium (ürün kararı): kilitliyse paywall köprüsü.
     if (!usePremiumStore.getState().isPremium) {
       set({ ocrState: 'locked' });

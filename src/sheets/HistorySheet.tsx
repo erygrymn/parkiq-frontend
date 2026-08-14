@@ -2,9 +2,10 @@ import { SymbolView } from 'expo-symbols';
 import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { PageSheet } from '../components/PageSheet';
+import { useIsPremium } from '../state/premiumStore';
 import { GhostButton } from '../components/Buttons';
 import { MonthlySavingsChart } from '../components/MonthlySavingsChart';
-import { trackShareCard } from '../lib/analytics';
+import { trackPaywallShown, trackShareCard } from '../lib/analytics';
 import type { SavingsCardData } from '../components/SavingsCard';
 import { ShareCardRenderer } from '../components/ShareCardRenderer';
 import { StatTiles } from '../components/StatTiles';
@@ -105,8 +106,18 @@ function EmptyState() {
   );
 }
 
-export function HistorySheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+export function HistorySheet({
+  visible,
+  onClose,
+  onOpenPaywall,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onOpenPaywall: () => void;
+}) {
   const locale = getLocale();
+  const isPremium = useIsPremium();
+  const { colors } = useTheme();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [shareData, setShareData] = useState<SavingsCardData | null>(null);
 
@@ -179,6 +190,34 @@ export function HistorySheet({ visible, onClose }: { visible: boolean; onClose: 
           }}
           style={{ marginBottom: spacing.s24 }}
         />
+      )}
+
+      {/* Pro daveti geçmişte durur: kullanıcı kaç para biriktirdiğini tam
+          burada görüyor. Tek satır, ünlemsiz — akışı kesmez. */}
+      {!isPremium && sessions.length > 0 && (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => {
+            trackPaywallShown('history');
+            onOpenPaywall();
+          }}
+          style={({ pressed }) => ({
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.s12,
+            marginBottom: spacing.s24,
+            padding: spacing.s16,
+            borderRadius: radius.r16,
+            backgroundColor: pressed ? colors.insetPressed : colors.inset,
+          })}
+        >
+          <SymbolView name="sparkle" size={17} tintColor={colors.ink} weight="regular" />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: colors.ink }}>{t('goPro')}</Text>
+            <Caption>{t('goProUpsell')}</Caption>
+          </View>
+          <SymbolView name="chevron.right" size={13} tintColor={colors.disabled} weight="semibold" />
+        </Pressable>
       )}
 
       <ShareCardRenderer data={shareData} onDone={() => setShareData(null)} />

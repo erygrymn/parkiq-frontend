@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import Constants from 'expo-constants';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import * as StoreReview from 'expo-store-review';
 import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
 import { Alert, Linking, Pressable, Switch, Text, TextInput, View } from 'react-native';
@@ -21,6 +20,7 @@ import {
   type Currency,
   type ThemeMode,
 } from '../state/settingsStore';
+import { trackPaywallShown } from '../lib/analytics';
 import { useTheme } from '../theme';
 import { radius, spacing } from '../theme/tokens';
 
@@ -30,6 +30,8 @@ import { radius, spacing } from '../theme/tokens';
 const TERMS_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
 const PRIVACY_URL = 'https://www.twiceapps.co/privacy';
 const SUPPORT_EMAIL = 'info@twiceapps.co';
+/** Doğrudan yorum yazma sayfası — sistem penceresi kotaya takılabilir. */
+const REVIEW_URL = 'https://apps.apple.com/app/id6756688254?action=write-review';
 
 /** Bölüm içi alt alan: küçük etiket + kontrol. Başlık gürültüsü yaratmaz. */
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -180,7 +182,14 @@ export function SettingsSheet({
             <LinkRow label={t('manageSubscription')} onPress={openSubscriptionSettings} />
           </>
         ) : (
-          <Pressable accessibilityRole="button" onPress={onOpenPaywall} hitSlop={8}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              trackPaywallShown('settings');
+              onOpenPaywall();
+            }}
+            hitSlop={8}
+          >
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', height: 44 }}>
               <Text style={{ fontSize: 15, color: colors.ink }}>{t('goPro')}</Text>
               <SymbolView name="chevron.right" size={13} tintColor={colors.disabled} weight="semibold" />
@@ -245,7 +254,7 @@ export function SettingsSheet({
         <LinkRow label={t('privacy')} onPress={() => void Linking.openURL(PRIVACY_URL)} />
         <LinkRow label={t('terms')} onPress={() => void Linking.openURL(TERMS_URL)} />
         <LinkRow label={t('support')} onPress={() => void Linking.openURL(`mailto:${SUPPORT_EMAIL}`)} />
-        <LinkRow label={t('rateUs')} onPress={() => void StoreReview.requestReview()} />
+        <LinkRow label={t('rateUs')} onPress={() => void Linking.openURL(REVIEW_URL)} />
         {/* ODbL: OpenStreetMap verisi kullanıldığı için atıf zorunlu */}
         <Caption style={{ paddingTop: spacing.s8 }}>{t('osmAttribution')}</Caption>
       </Section>
