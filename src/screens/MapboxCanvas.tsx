@@ -42,7 +42,9 @@ function CarPin() {
           shadowOpacity: scheme === 'dark' ? 0 : 1,
         }}
       >
-        <Text style={{ fontSize: 16, fontWeight: '900', color: colors.card }}>P</Text>
+        {/* Araba pini araba ikonu taşır — haritada "P" ile otopark POI'lerinden
+            ayırt edilemiyordu; bu pin ARABANIN yeridir. */}
+        <SymbolView name="car.fill" size={17} tintColor={colors.card} weight="regular" />
       </View>
       <View
         style={{
@@ -101,6 +103,7 @@ export function MapboxCanvas() {
   const load = useDiscoveryStore((s) => s.load);
   const selectedPoiId = useDiscoveryStore((s) => s.selectedPoiId);
   const selectPoi = useDiscoveryStore((s) => s.selectPoi);
+  const pickingLocation = useSessionStore((s) => s.pickingLocation);
   const visiblePois = applyFilter(pois, filter);
   const cameraRef = useRef<Camera>(null);
 
@@ -213,6 +216,16 @@ export function MapboxCanvas() {
         attributionEnabled
         scaleBarEnabled={false}
         compassEnabled={false}
+        // Pin bırakma modunda konumu haritanın MERKEZİ belirler: kullanıcı
+        // haritayı kaydırır, artı işareti sabit durur.
+        onCameraChanged={
+          pickingLocation
+            ? (state) => {
+                const [longitude, latitude] = state.properties.center;
+                useSessionStore.getState().setPickedCenter({ latitude, longitude });
+              }
+            : undefined
+        }
       >
       {/* Kamera YALNIZ ref üzerinden sürülür (yukarıdaki efektler). Kontrollü
           zoomLevel/centerCoordinate + followUserLocation birlikteyken takibi
@@ -241,7 +254,7 @@ export function MapboxCanvas() {
           </MarkerView>
         ))}
 
-      {carCoords && (
+      {carCoords && !pickingLocation && (
         <MarkerView coordinate={carCoords} anchor={{ x: 0.5, y: 1 }}>
           <CarPin />
         </MarkerView>

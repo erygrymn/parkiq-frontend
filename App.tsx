@@ -2,10 +2,12 @@ import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { StatusBar } from 'expo-status-bar';
 import { SymbolView, type SFSymbol } from 'expo-symbols';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, Pressable, useWindowDimensions, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { t } from './src/localization';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GhostButton, PrimaryCta } from './src/components/Buttons';
+import { Caption } from './src/components/Typography';
 import { MapCanvas } from './src/screens/MapCanvas';
 import { Onboarding } from './src/screens/Onboarding';
 import { HistorySheet } from './src/sheets/HistorySheet';
@@ -87,9 +89,87 @@ function SheetContent({ phase, onOpenPaywall }: { phase: SessionPhase; onOpenPay
   }
 }
 
+/**
+ * Haritadan pin bırakma katmanı: harita altta kayar, artı işareti ekranın
+ * ORTASINDA sabit durur. Sürüklenebilir marker yerine bu kalıp seçildi — parmak
+ * hedefi kapatmaz ve tek elle kullanılır.
+ */
+function PickLocationLayer() {
+  const { colors, scheme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { cancelPickingLocation, confirmPickedLocation } = useSessionStore.getState();
+
+  return (
+    <>
+      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <View
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: radius.r12,
+              backgroundColor: colors.ink,
+              alignItems: 'center',
+              justifyContent: 'center',
+              shadowColor: shadow.s2.ambient.color,
+              shadowOffset: { width: 0, height: shadow.s2.ambient.offsetY },
+              shadowRadius: shadow.s2.ambient.blur,
+              shadowOpacity: scheme === 'dark' ? 0 : 1,
+            }}
+          >
+            <SymbolView name="car.fill" size={17} tintColor={colors.card} weight="regular" />
+          </View>
+          <View
+            style={{
+              width: 10,
+              height: 10,
+              marginTop: -5,
+              borderRadius: 2,
+              backgroundColor: colors.ink,
+              transform: [{ rotate: '45deg' }],
+            }}
+          />
+          {/* Pinin ucunun tam olarak nereye denk geldiğini gösteren nokta */}
+          <View
+            style={{
+              width: 5,
+              height: 5,
+              borderRadius: 3,
+              marginTop: 3,
+              backgroundColor: colors.accentFill,
+            }}
+          />
+        </View>
+      </View>
+
+      <View
+        style={{
+          position: 'absolute',
+          left: spacing.s20,
+          right: spacing.s20,
+          bottom: insets.bottom + spacing.s20,
+          gap: spacing.s8,
+          padding: spacing.s16,
+          borderRadius: radius.r24,
+          backgroundColor: colors.card,
+          shadowColor: shadow.s2.ambient.color,
+          shadowOffset: { width: 0, height: shadow.s2.ambient.offsetY },
+          shadowRadius: shadow.s2.ambient.blur,
+          shadowOpacity: scheme === 'dark' ? 0 : 1,
+        }}
+      >
+        <Caption>{t('pickOnMapHint')}</Caption>
+        <PrimaryCta label={t('usePin')} onPress={confirmPickedLocation} />
+        <GhostButton label={t('cancel')} onPress={cancelPickingLocation} />
+      </View>
+    </>
+  );
+}
+
 function Root() {
   const { colors, scheme } = useTheme();
   const phase = useSessionStore((s) => s.phase);
+  const pickingLocation = useSessionStore((s) => s.pickingLocation);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
@@ -150,7 +230,10 @@ function Root() {
     <View style={{ flex: 1 }}>
       <MapCanvas />
 
+      {pickingLocation && <PickLocationLayer />}
+
       {/* §5.4 kare cam ikon butonlar — harita üstünde yüzen kontroller */}
+      {!pickingLocation && (
       <View style={{ position: 'absolute', top: insets.top + spacing.s8, right: spacing.s12, gap: spacing.s8 }}>
         <FloatingIconButton
           symbol="clock.arrow.circlepath"
@@ -159,7 +242,9 @@ function Root() {
         />
         <FloatingIconButton symbol="gearshape" label={t('settings')} onPress={() => setSettingsOpen(true)} />
       </View>
+      )}
 
+      {!pickingLocation && (
       <BottomSheet
         ref={sheetRef}
         index={0}
@@ -185,6 +270,7 @@ function Root() {
           <SheetContent phase={phase} onOpenPaywall={() => setPaywallOpen(true)} />
         </BottomSheetScrollView>
       </BottomSheet>
+      )}
 
       <HistorySheet
         visible={historyOpen}

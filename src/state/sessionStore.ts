@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { isIndoorLike } from '../lib/geo';
 import { endSessionActivity, refreshSessionActivity, startSessionActivity, syncWidget } from '../lib/liveActivity';
-import { captureCurrentPlace } from '../lib/location';
+import { captureCurrentPlace, describeCoords } from '../lib/location';
 import { cancelSessionAlerts, notifyAutoParked, scheduleSessionAlerts } from '../lib/notifications';
 import { scanTariffBoard } from '../lib/ocr';
 import type { ScheduleKind } from '../lib/tariffSchedule';
@@ -69,6 +69,14 @@ interface SessionStore {
    * o anki konumdur ama başlatmadan önce düzeltilebilir.
    */
   setParkLocation: (place: { latitude: number; longitude: number; placeName: string | null }) => void;
+  /** Haritadan pin bırakma modu — harita ortasındaki artı işareti konumu belirler. */
+  pickingLocation: boolean;
+  /** Pin modundayken haritanın o anki merkezi. */
+  pickedCenter: { latitude: number; longitude: number } | null;
+  startPickingLocation: () => void;
+  setPickedCenter: (coords: { latitude: number; longitude: number }) => void;
+  cancelPickingLocation: () => void;
+  confirmPickedLocation: () => void;
   setTariff: (tariff: Tariff | null) => void;
   /** Backdate: "X dk önce park ettim" — recordedAtMs'ten türer, birikmez. */
   setBackdateMinutes: (minutes: number) => void;
@@ -161,6 +169,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   ocrState: 'idle',
   ocrSchedule: null,
   ocrPartial: false,
+  pickingLocation: false,
+  pickedCenter: null,
   autoDetected: false,
 
   hydrate: () => {
@@ -418,6 +428,35 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       }
     }
     set({ session: next, locationState: 'ok', suggestedTariff: remembered });
+  },
+
+  startPickingLocation: () => {
+    const { phase, session } = get();
+    if (phase !== 'parking') return;
+    // Haritaya hiç dokunulmazsa onaylanacak değer mevcut konumdur.
+    const current =
+      session?.latitude != null && session.longitude != null
+        ? { latitude: session.latitude, longitude: session.longitude }
+        : null;
+    set({ pickingLocation: true, pickedCenter: current });
+  },
+
+  setPickedCenter: (coords) => {
+    if (!get().pickingLocation) return;
+    set({ pickedCenter: coords });
+  },
+
+  cancelPickingLocation: () => set({ pickingLocation: false, pickedCenter: null }),
+
+  confirmPickedLocation: () => {
+    const { pickedCenter } = get();
+    set({ pickingLocation: false, pickedCenter: null });
+    if (!pickedCenter) return;
+    // Ters geocoding beklenmez: konum hemen uygulanır, ad gelince tazelenir.
+    get().setParkLocation({ ...pickedCenter, placeName: null });
+    void describeCoords(pickedCenter).then((place) => {
+      if (place.placeName) get().setParkLocation(place);
+    });
   },
 
   acceptSuggestedTariff: () => {

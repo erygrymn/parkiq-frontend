@@ -175,6 +175,7 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
     removePhoto,
     scanTariff,
     setParkLocation,
+    startPickingLocation,
   } = useSessionStore.getState();
   const cancelPark = useSessionStore((s) => s.cancelPark);
   const [customReminder, setCustomReminder] = useState(false);
@@ -325,6 +326,20 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
               if (outcome.status === 'ok') setParkLocation(outcome.place);
               closeField();
             });
+          }}
+        />
+        {/* Adres aramanın yetmediği yerler için: otoparkın içi, sokak arası. */}
+        <GhostButton
+          label={t('pickOnMap')}
+          onPress={() => {
+            closeField();
+            // Seçim arabanın bilinen yerinden başlar; kullanıcı oradan düzeltir.
+            if (session.latitude !== null && session.longitude !== null) {
+              useDiscoveryStore
+                .getState()
+                .pinTo({ latitude: session.latitude, longitude: session.longitude });
+            }
+            startPickingLocation();
           }}
         />
       </PopupSheet>

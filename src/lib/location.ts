@@ -58,3 +58,21 @@ export async function captureCurrentPlace(): Promise<LocationOutcome> {
     return { status: 'unavailable' };
   }
 }
+
+/**
+ * Haritadan seçilen bir noktanın adını çözer. Koordinat kullanıcıya asla ham
+ * gösterilmez; ad bulunamazsa null döner ve yüzeyler onu boş bırakır.
+ */
+export async function describeCoords(coords: {
+  latitude: number;
+  longitude: number;
+}): Promise<CapturedPlace> {
+  let placeName: string | null = null;
+  try {
+    const results = await Location.reverseGeocodeAsync(coords);
+    placeName = pickPlaceName(results[0]);
+  } catch {
+    placeName = null;
+  }
+  return { ...coords, placeName, accuracyM: null };
+}

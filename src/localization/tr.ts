@@ -68,6 +68,9 @@ export const tr: Record<CopyKey, string> = {
   lastTimeTariff: 'Geçen seferki: {summary} — kullan?',
 
   detailsOptional: 'Detaylar opsiyonel',
+  pickOnMap: 'Haritada seç',
+  pickOnMapHint: 'Haritayı kaydır, pini arabanın üstüne getir',
+  usePin: 'Burayı kullan',
   parkLocation: 'Konum',
   useMyLocation: 'Şu anki konumumu kullan',
   floor: 'Kat',

@@ -72,6 +72,9 @@ export const en = {
 
   // Park sheet'i + tarife formu (§7.3–7.4)
   detailsOptional: 'Details optional',
+  pickOnMap: 'Pick on the map',
+  pickOnMapHint: 'Move the map so the pin sits on your car',
+  usePin: 'Use this spot',
   parkLocation: 'Location',
   useMyLocation: 'Use my current location',
   floor: 'Floor',
