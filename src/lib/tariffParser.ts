@@ -6,6 +6,12 @@ import { sanitizeTiers, type Tariff, type TariffTier } from './tariffMath';
 // KÜMÜLATİF KURALI: çıktı fiyatları "o dilimde çıkarsan ödeyeceğin TOPLAM"dır
 // (design.md §5.9). Pano artımlı yazıyorsa ("her ilave saat +30") burada toplama
 // çevrilir; yoksa tüm dilim matematiği ve "şimdi çık ₺X" kopyası yanlış olur.
+//
+// TEMEL AYIRIM: bir tarife satırında SÜRE ifadesi ve FİYAT ayrı sayılardır.
+// Fiyat, süre ifadesinin DIŞINDA kalan ilk sayıdır. Bu tek kural üç şeyi birden
+// çözer: dilim sınırının fiyat sanılmasını ("0-30 DK" → ₺30), fiyatın önde
+// yazıldığı panoları ("£1.20 FOR 1 HOUR") ve fiyatı olmayan uyarı satırlarının
+// dilim sanılmasını ("24 SAAT AÇIK", "15 DK İÇİNDE ÇIKINIZ").
 
 const CURRENCY_PATTERNS: Array<{ match: RegExp; code: string }> = [
   { match: /₺|\bTL\b|\bTRY\b|\bLİRA\b|\bLIRA\b/i, code: 'TRY' },
@@ -40,32 +46,172 @@ function detectCurrency(lines: string[]): string | null {
   return null;
 }
 
-/** Satırdaki son sayıyı fiyat olarak alır (pano düzeni: "0-1 SAAT ... 50 TL"). */
-function lastNumber(line: string): number | null {
-  const matches = line.match(/\d+(?:[.,]\d{1,2})?/g);
-  if (!matches || matches.length === 0) return null;
-  const value = Number(matches[matches.length - 1].replace(',', '.'));
-  return Number.isFinite(value) && value > 0 ? value : null;
-}
+/**
+ * Birim sözcükleri. Sıra önemli: alternasyonda uzun olan önce denenmeli,
+ * yoksa "SAATTEN" içindeki "SAAT" eşleşip ekini dışarıda bırakır.
+ */
+const UNIT =
+  'SAATTEN|SAATTAN|SAATLERI|SAATI|SAAT|HOURS|HOUR|HRS|HR|DAKIKA|MINUTES|MINUTE|MINS|MIN|DK|SA|GUNU|GUNLERI|GUN|DAYS|DAY';
 
-/** Çoğul ekine dayanıklı birim kalıbı: HOUR/HOURS/HR/HRS, MIN/MINS/MINUTE(S). */
-const UNIT = 'SAAT|HOURS?|HRS?|DAKIKA|MINUTES?|MINS?|DK|SA';
+/** Birim sözcüğünü dakikaya çevirir. */
+function minutesPerUnit(unit: string): number {
+  if (/^(GUN|DAY)/.test(unit)) return 24 * 60;
+  if (/^(DAKIKA|DK|MIN)/.test(unit)) return 1;
+  return 60;
+}
 
 const HOUR_WORD = /(SAAT|HOURS?|HRS?|SA\b)/;
 const MINUTE_WORD = /(DAKIKA|MINUTES?|MINS?|DK\b)/;
 const EXTRA_WORD = /(ILAVE|EK\b|SONRAKI|EKSTRA|ADDITIONAL|EXTRA|EACH|HER)/;
-const FLAT_WORD = /(GUNLUK|SABIT|FLAT|ALL DAY|DAILY|GECELIK|24 SAAT)/;
+const FLAT_WORD = /(GUNLUK|SABIT|FLAT|ALL DAY|DAILY|GECELIK|24 SAAT|MAKS|MAXIMUM)/;
 /** AVM otoparklarında çok yaygın: ilk dilim bedava. Fiyatı 0'dır, sayı okunmaz. */
 const FREE_WORD = /(UCRETSIZ|BEDAVA|PARASIZ|FREE|NO CHARGE)/;
+/** "1 saat ÜZERİ" gibi ifadelerde sayı dilimin BAŞIDIR, sonu değil. */
+const TAIL_WORD = '(?:UZERI|UZERINDE|USTU|SONRASI|SONRA|ASKISI)';
 
 const DAY_MINUTES = 24 * 60;
 
 /** Gevşek "sayı + birim" kalıbının kabul ettiği en uzun satır (karakter). */
 const TABULAR_MAX_LENGTH = 32;
 
-/** Birim sözcüğünü dakikaya çevirir ("DK" → 1, "SAAT" → 60). */
-function minutesPerUnit(unit: string): number {
-  return /DAKIKA|MIN|DK/.test(unit) ? 1 : 60;
+/** Kelime sıra sayıları — "İKİNCİ SAAT 30 TL" / "SECOND HOUR $5". */
+const ORDINAL_WORDS: Array<{ pattern: string; nth: number }> = [
+  { pattern: 'ILK|FIRST|BIRINCI|1ST', nth: 1 },
+  { pattern: 'IKINCI|SECOND|2ND', nth: 2 },
+  { pattern: 'UCUNCU|THIRD|3RD', nth: 3 },
+  { pattern: 'DORDUNCU|FOURTH|4TH', nth: 4 },
+  { pattern: 'BESINCI|FIFTH|5TH', nth: 5 },
+];
+
+interface DurationMatch {
+  /** Dilimin BİTİŞİ (dakika). */
+  endMin: number;
+  /** Süre ifadesinin satırdaki yeri — fiyat bunun dışında aranır. */
+  start: number;
+  end: number;
+}
+
+function span(match: RegExpMatchArray, endMin: number): DurationMatch {
+  return { endMin, start: match.index ?? 0, end: (match.index ?? 0) + match[0].length };
+}
+
+/** "1 SAAT 30 DK" gibi bileşik bir üst sınırı dakikaya çevirir. */
+function compoundMinutes(a1: string, u1: string, a2?: string, u2?: string): number {
+  const first = Number(a1) * minutesPerUnit(u1);
+  const second = a2 && u2 ? Number(a2) * minutesPerUnit(u2) : 0;
+  return first + second;
+}
+
+/**
+ * Satırdaki SÜRE ifadesini bulur. Sırayla en özgülden en gevşeğe denenir;
+ * ilk eşleşen kazanır.
+ */
+function matchDuration(line: string): DurationMatch | null {
+  const amount = `(\\d+)\\s*(${UNIT})\\.?`;
+  const compound = `${amount}(?:\\s*(\\d+)\\s*(${UNIT})\\.?)?`;
+
+  // "1 SAAT 30 DK - 2 SAAT" / "30 DK - 1 SAAT": iki ucun birimi ve parça sayısı
+  // farklı olabilir. Üst sınır KENDİ birimleriyle okunur.
+  const ranged = line.match(new RegExp(`${compound}\\s*[-–—]\\s*${compound}`));
+  if (ranged) {
+    const endMin = compoundMinutes(ranged[5], ranged[6], ranged[7], ranged[8]);
+    if (endMin > 0) return span(ranged, endMin);
+  }
+
+  // "0-1 SAAT" — birim ortak, sonda yazılmış.
+  const shared = line.match(new RegExp(`(\\d+)\\s*[-–—]\\s*(\\d+)\\s*(${UNIT})\\.?`));
+  if (shared) {
+    const endMin = Number(shared[2]) * minutesPerUnit(shared[3]);
+    if (endMin > 0) return span(shared, endMin);
+  }
+
+  // "1 SAAT ÜZERİ 40" / "1 SAATTEN SONRA 40" / "OVER 4 HOURS £12":
+  // sayı dilimin BAŞIDIR. Fiyat oradan sonrası için sabittir → günlük tavana
+  // uzanan bir plato olarak modellenir (kümülatif fiyat düşemez).
+  const tailAfter = line.match(new RegExp(`${amount}\\s*${TAIL_WORD}`));
+  if (tailAfter) return span(tailAfter, DAY_MINUTES);
+  const tailBefore = line.match(new RegExp(`(?:OVER|AFTER|BEYOND)\\s*${amount}`));
+  if (tailBefore) return span(tailBefore, DAY_MINUTES);
+
+  // "UP TO 4 HOURS £8" / "EN FAZLA 4 SAAT"
+  const upTo = line.match(new RegExp(`(?:UP TO|EN FAZLA|EN COK)\\s*${amount}`));
+  if (upTo) {
+    const endMin = Number(upTo[1]) * minutesPerUnit(upTo[2]);
+    if (endMin > 0) return span(upTo, endMin);
+  }
+
+  // "1. SAAT" (sıra sayısı = o saatin sonu)
+  const ordinal = line.match(/(\d+)\s*\.\s*(SAAT|SA\b)/);
+  if (ordinal) {
+    const nth = Number(ordinal[1]);
+    if (nth > 0) return span(ordinal, nth * 60);
+  }
+
+  // "1ST HOUR" / "2ND HOUR"
+  const suffixOrdinal = line.match(/(\d+)\s*(?:ST|ND|RD|TH)\s*(HOURS?|HRS?)\b/);
+  if (suffixOrdinal) {
+    const nth = Number(suffixOrdinal[1]);
+    if (nth > 0) return span(suffixOrdinal, nth * 60);
+  }
+
+  // "İLK YARIM SAAT" / "FIRST HALF HOUR" → 30 dk
+  const halfHour = line.match(/(?:ILK|FIRST)\s*(?:YARIM|HALF)\s*(?:AN\s*)?(SAAT|HOUR)\b/);
+  if (halfHour) return span(halfHour, 30);
+
+  // "İLK SAAT ÜCRETSİZ" / "SECOND HOUR $5" — RAKAM YOK, sıra sözcükle yazılı.
+  for (const { pattern, nth } of ORDINAL_WORDS) {
+    const worded = line.match(new RegExp(`(?:${pattern})\\s*(SAAT|HOURS?|HRS?)\\b`));
+    if (worded) return span(worded, nth * 60);
+  }
+
+  // "İLK 2 SAAT 80" / "30 DAKIKA 20" — en gevşek kalıp. Panonun dip notundaki
+  // düz cümle de ("...15 DK içerisinde çıkınız") buna uyar; uzun satırları alma.
+  if (line.length <= TABULAR_MAX_LENGTH) {
+    const leading = line.match(new RegExp(`(?:ILK|FIRST)?\\s*${compound}`));
+    if (leading) {
+      const endMin = compoundMinutes(leading[1], leading[2], leading[3], leading[4]);
+      if (endMin > 0) return span(leading, endMin);
+    }
+  }
+
+  return null;
+}
+
+/** Satırdaki sayı token'ları, konumlarıyla. */
+function numberTokens(line: string): Array<{ value: number; start: number; end: number }> {
+  const out: Array<{ value: number; start: number; end: number }> = [];
+  const re = /\d+(?:[.,]\d{1,2})?/g;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(line)) !== null) {
+    const value = Number(match[0].replace(',', '.'));
+    if (Number.isFinite(value)) {
+      out.push({ value, start: match.index, end: match.index + match[0].length });
+    }
+  }
+  return out;
+}
+
+/**
+ * Süre ifadesinin DIŞINDA kalan İLK sayı = fiyat.
+ *
+ * İlk olması önemli: çok sütunlu panolarda ("0-1 SAAT 50 TL 75 TL") ilk sütun
+ * binek araç fiyatıdır; sonuncuyu almak kullanıcıya minibüs tarifesini okur.
+ * Dışında olması önemli: fiyatı olmayan uyarı satırları böylece elenir.
+ */
+function priceOutside(line: string, duration: DurationMatch | null, currency: string): number | null {
+  if (FREE_WORD.test(line)) return 0;
+
+  for (const token of numberTokens(line)) {
+    const insideDuration = duration !== null && token.start >= duration.start && token.start < duration.end;
+    if (insideDuration) continue;
+
+    // "80P" = 80 peni → £0.80. Sadece sterlin panolarında geçerli.
+    if (currency === 'GBP' && /^\s*P\b/.test(line.slice(token.end))) {
+      return token.value / 100;
+    }
+    return token.value;
+  }
+  return null;
 }
 
 interface BracketLine {
@@ -73,76 +219,101 @@ interface BracketLine {
   price: number;
 }
 
-/**
- * "0-1 SAAT 50" / "1-2 SAAT 100" / "1. SAAT 50" / "İLK 2 SAAT 80" gibi
- * dilim satırlarını yakalar. endMin = dilimin BİTİŞİ (dakika).
- */
-function parseBracket(line: string): BracketLine | null {
-  // "0-1 SAAT ÜCRETSİZ" → fiyat 0. Sayı aramak yanlış olur: satırdaki tek sayı
-  // dilim sınırıdır ("1") ve fiyat sanılırsa kullanıcıya ₺1 denir.
-  const price = FREE_WORD.test(line) ? 0 : lastNumber(line);
-  if (price === null) return null;
+/** Bir dilim satırı: süre ifadesi + ondan ayrı bir fiyat. İkisi de şart. */
+function parseBracket(line: string, currency: string): BracketLine | null {
+  const duration = matchDuration(line);
+  if (duration === null) return null;
+  const price = priceOutside(line, duration, currency);
+  if (price === null || price < 0) return null;
+  return { endMin: duration.endMin, price };
+}
 
-  const isMinutes = MINUTE_WORD.test(line) && !HOUR_WORD.test(line);
-  const unitMin = isMinutes ? 1 : 60;
+/** Artımlı ücret adımı: "HER İLAVE SAAT 20" / "HER İLAVE 30 DAKİKA 15". */
+interface IncrementStep {
+  stepMin: number;
+  price: number;
+}
 
-  // "30 DK - 1 SAAT 20" → aralığın iki ucunun BİRİMİ FARKLI. Üst sınır kendi
-  // birimiyle okunur (1 SAAT = 60 dk). Tek birim varsayıldığında bu satır 30
-  // dakikaya düşüyor, ücretsiz dilimle çakışıyor ve tamamen kayboluyordu.
-  const mixed = line.match(new RegExp(`(\\d+)\\s*(${UNIT})\\b\\s*[-–—]\\s*(\\d+)\\s*(${UNIT})\\b`));
-  if (mixed) {
-    const upper = Number(mixed[3]);
-    if (Number.isFinite(upper) && upper > 0) return { endMin: upper * minutesPerUnit(mixed[4]), price };
-  }
+function parseIncrement(line: string, currency: string): IncrementStep | null {
+  // Artım satırı da bir tablo satırıdır. Uzun cümleler ("...EKSTRA
+  // ÜCRETLENDİRME YAPILACAKTIR" içinde geçen "15 DK") buraya girmemeli:
+  // dakikalık bir adım uydurup zinciri baştan bozuyordu.
+  if (!EXTRA_WORD.test(line) || line.length > TABULAR_MAX_LENGTH) return null;
 
-  // "0-1 SAAT" / "1-2 SAAT" / "0–1 HOUR" → aralığın üst sınırı (ortak birim)
-  const range = line.match(new RegExp(`(\\d+)\\s*[-–—]\\s*(\\d+)\\s*(?=\\D*(?:${UNIT})\\b)`));
-  if (range) {
-    const upper = Number(range[2]);
-    if (Number.isFinite(upper) && upper > 0) return { endMin: upper * unitMin, price };
-  }
+  const duration = matchDuration(line);
+  const price = priceOutside(line, duration, currency);
+  if (price === null || price <= 0) return null;
 
-  // "1. SAAT" / "2.SAAT" (sıra sayısı = o saatin sonu)
-  const ordinal = line.match(/(\d+)\s*\.\s*(SAAT|HOURS?|SA\b)/);
-  if (ordinal) {
-    const nth = Number(ordinal[1]);
-    if (Number.isFinite(nth) && nth > 0) return { endMin: nth * unitMin, price };
-  }
-
-  // "İLK 2 SAAT 80" / "FIRST 2 HOURS 80" / "30 DAKIKA 20"
-  // En gevşek kalıp bu: panonun dip notundaki düz cümle de ("...15 DK
-  // içerisinde otoparktan çıkınız") uyar ve sahte dilim üretir. Tablo satırı
-  // kısadır — uzun cümleleri buraya sokma.
-  const leading =
-    line.length <= TABULAR_MAX_LENGTH
-      ? line.match(new RegExp(`(?:ILK|FIRST)?\\s*(\\d+)\\s*(${UNIT})\\b`))
-      : null;
-  if (leading && !EXTRA_WORD.test(line)) {
-    const amount = Number(leading[1]);
-    const unit = minutesPerUnit(leading[2]);
-    if (Number.isFinite(amount) && amount > 0) return { endMin: amount * unit, price };
-  }
-
+  // "HER YARIM SAAT" — rakamsız yarım saat adımı.
+  if (/(YARIM|HALF)/.test(line)) return { stepMin: 30, price };
+  if (duration !== null) return { stepMin: duration.endMin, price };
+  // Rakamsız adım yalnız saat olabilir ("HER İLAVE SAAT"). Dakikaya düşmek
+  // 1 dakikalık adım üretir ve tarifeyi anlamsız kılar.
+  if (HOUR_WORD.test(line)) return { stepMin: 60, price };
   return null;
 }
 
-/** "HER İLAVE SAAT 30" / "EACH ADDITIONAL HOUR 3" → saat başı ek ücret. */
-function parseExtraPerHour(line: string): number | null {
-  if (!EXTRA_WORD.test(line) || !HOUR_WORD.test(line)) return null;
-  return lastNumber(line);
+/** "SAATLİK 40" / "SAAT BAŞI 40" / "SAATİ 40" / "40 TL/SAAT" / "PER HOUR 4". */
+const PER_HOUR_WORD = /(SAATLIK|SAAT BASI|SAATI\b|PER HOUR|\/\s*SAAT|\/\s*HOUR|\/\s*HR|HOURLY)/;
+
+function parsePerHour(line: string, currency: string): number | null {
+  if (!PER_HOUR_WORD.test(line) || EXTRA_WORD.test(line)) return null;
+  const price = priceOutside(line, matchDuration(line), currency);
+  return price !== null && price > 0 ? price : null;
 }
 
-/** "SAATLİK 40" / "PER HOUR 4" / "40 TL/SAAT" → saat başı tek ücret. */
-function parsePerHour(line: string): number | null {
-  const perHour = /(SAATLIK|PER HOUR|\/\s*SAAT|\/\s*HOUR|\/\s*HR|HOURLY)/.test(line);
-  if (!perHour || EXTRA_WORD.test(line)) return null;
-  return lastNumber(line);
+/** "GÜNLÜK 200" / "ALL DAY $12" — süre ifadesinin dışındaki fiyat. */
+function parseFlat(line: string, currency: string): number | null {
+  if (!FLAT_WORD.test(line)) return null;
+  // "12-24 SAAT 130 ₺" bir DİLİM satırıdır; FLAT_WORD'ün "24 SAAT" kalıbına
+  // takılıp günlük tavan sayılırsa hem o dilim kaybolur hem tavan uydurulur.
+  // Aralık işareti taşıyan satır asla sabit ücret değildir.
+  if (new RegExp(`\\d+\\s*(?:${UNIT})?\\.?\\s*[-–—]\\s*\\d+`).test(line)) return null;
+  // Aynı satırda hem saatlik hem günlük yazılıysa ("SAATLİK 40 GÜNLÜK 200"),
+  // günlük olan SONdaki sayıdır.
+  const tokens = numberTokens(line);
+  if (PER_HOUR_WORD.test(line) && tokens.length >= 2) {
+    const last = tokens[tokens.length - 1];
+    return last.value > 0 ? last.value : null;
+  }
+  const price = priceOutside(line, matchDuration(line), currency);
+  return price !== null && price > 0 ? price : null;
 }
 
 export interface ParseResult {
   tariff: Tariff;
   /** Kullanıcıya "kontrol et" demek için: kaç satırdan üretildi. */
   matchedLines: number;
+}
+
+/** Artım zinciri en fazla bu kadar dilim ekler — çubuk okunmaz hale gelmesin. */
+const MAX_CHAIN_TIERS = 23;
+
+/**
+ * Bir dilim zincirini sabit adımlarla uzatır. Zincir kısa kesilirse fiyat
+ * sonsuza dek DONAR ve app "artık artmıyor" der; bu yüzden son dilim her zaman
+ * günlük tavana (ya da varsa sabit tavana) kadar götürülür.
+ */
+function extendChain(tiers: TariffTier[], step: IncrementStep, cap: number | null): void {
+  const base = tiers[tiers.length - 1];
+  if (!base || step.stepMin <= 0) return;
+
+  let added = 0;
+  for (let i = 1; added < MAX_CHAIN_TIERS; i++) {
+    const endMin = base.endMin + i * step.stepMin;
+    const price = base.cumulativePrice + i * step.price;
+    if (endMin >= DAY_MINUTES) break;
+    if (cap !== null && price >= cap) break;
+    tiers.push({ endMin, cumulativePrice: price });
+    added++;
+  }
+
+  // Zincir 24 saate ulaşmadıysa son noktayı ekstrapole et: fiyat donmasın.
+  const last = tiers[tiers.length - 1];
+  if (cap === null && last.endMin < DAY_MINUTES) {
+    const steps = (DAY_MINUTES - base.endMin) / step.stepMin;
+    tiers.push({ endMin: DAY_MINUTES, cumulativePrice: base.cumulativePrice + steps * step.price });
+  }
 }
 
 export function parseTariffLines(lines: string[], fallbackCurrency: string): ParseResult | null {
@@ -152,73 +323,85 @@ export function parseTariffLines(lines: string[], fallbackCurrency: string): Par
   const currency = detectCurrency(normalized) ?? fallbackCurrency;
 
   const brackets: BracketLine[] = [];
-  let extraPerHour: number | null = null;
+  let increment: IncrementStep | null = null;
   let perHour: number | null = null;
   let flat: number | null = null;
   let matchedLines = 0;
 
   for (const line of normalized) {
-    const extra = parseExtraPerHour(line);
-    if (extra !== null) {
-      extraPerHour = extra;
-      matchedLines++;
-      continue;
+    let used = false;
+
+    const step = parseIncrement(line, currency);
+    if (step !== null && increment === null) {
+      increment = step;
+      used = true;
     }
 
-    const hourly = parsePerHour(line);
-    if (hourly !== null) {
-      perHour = hourly;
-      matchedLines++;
-      continue;
-    }
-
-    const bracket = parseBracket(line);
-    if (bracket !== null) {
-      brackets.push(bracket);
-      matchedLines++;
-      continue;
-    }
-
-    if (FLAT_WORD.test(line) && flat === null) {
-      const value = lastNumber(line);
-      if (value !== null) {
-        flat = value;
-        matchedLines++;
+    if (!used) {
+      const hourly = parsePerHour(line, currency);
+      if (hourly !== null && perHour === null) {
+        perHour = hourly;
+        used = true;
       }
     }
+
+    // Sabit/günlük ücret aynı satırda saatlikle birlikte yazılmış olabilir,
+    // bu yüzden `used` olsa da denenir.
+    if (flat === null) {
+      const daily = parseFlat(line, currency);
+      if (daily !== null) {
+        flat = daily;
+        used = true;
+      }
+    }
+
+    if (!used) {
+      const bracket = parseBracket(line, currency);
+      if (bracket !== null) {
+        brackets.push(bracket);
+        used = true;
+      }
+    }
+
+    if (used) matchedLines++;
   }
 
   if (brackets.length > 0) {
-    // Aynı bitişe birden fazla satır düşerse ilkini koru (sanitize de eler).
     const tiers: TariffTier[] = brackets.map((b) => ({ endMin: b.endMin, cumulativePrice: b.price }));
+    tiers.sort((a, b) => a.endMin - b.endMin);
 
-    // "Her ilave saat +X" varsa zinciri 3 saat daha kümülatif olarak uzat:
-    // kullanıcı dilim çubuğunu ve uyarıyı ilk saatlerde görür, gerisi gereksiz.
-    if (extraPerHour !== null) {
-      const sorted = [...tiers].sort((a, b) => a.endMin - b.endMin);
-      const last = sorted[sorted.length - 1];
-      for (let i = 1; i <= 3; i++) {
-        const cumulativePrice = last.cumulativePrice + i * extraPerHour;
-        // Günlük tavan varsa artış orada durur — fiyat sonsuza kadar artmaz.
-        if (flat !== null && cumulativePrice >= flat) break;
-        tiers.push({ endMin: last.endMin + i * 60, cumulativePrice });
-      }
+    // Panoda "her ilave saat" yoksa ama saatlik ücret yazıyorsa, dilimlerden
+    // sonrası o saatlik ücretle devam eder. Bu satır eskiden okunup atılıyordu:
+    // "İlk 1 saat ücretsiz + saatlik 30 TL" panosu "hep bedava" çıkıyordu.
+    const step = increment ?? (perHour !== null ? { stepMin: 60, price: perHour } : null);
+    if (step !== null) extendChain(tiers, step, flat);
+
+    // Günlük tavan: artış burada PLATOYA oturur, sonsuza kadar artmaz.
+    if (flat !== null) tiers.push({ endMin: DAY_MINUTES, cumulativePrice: flat });
+
+    const clean = sanitizeTiers(tiers);
+    if (clean.length > 0) return { tariff: { type: 'tiered', currency, tiers: clean }, matchedLines };
+  }
+
+  // Saatlik + günlük tavan: tavansız saatlik gibi sonsuza kadar artmasın.
+  const hourlyStep = perHour ?? increment?.price ?? null;
+  if (hourlyStep !== null && flat !== null) {
+    const tiers: TariffTier[] = [];
+    const stepMin = increment?.stepMin ?? 60;
+    for (let i = 1; i <= MAX_CHAIN_TIERS; i++) {
+      const endMin = i * stepMin;
+      const price = i * hourlyStep;
+      if (endMin >= DAY_MINUTES || price >= flat) break;
+      tiers.push({ endMin, cumulativePrice: price });
     }
-
-    // Günlük tavan ("GÜNLÜK 200 TL"): dilimlerin ardından gelen sabit ücret,
-    // zincirin sonuna 24 saatlik tavan dilimi olarak eklenir. Fiyat artışı
-    // burada PLATOYA oturur; düzenli/sabit artış varsayımı yoktur.
-    if (flat !== null) {
-      tiers.push({ endMin: DAY_MINUTES, cumulativePrice: flat });
-    }
-
+    tiers.push({ endMin: DAY_MINUTES, cumulativePrice: flat });
     const clean = sanitizeTiers(tiers);
     if (clean.length > 0) return { tariff: { type: 'tiered', currency, tiers: clean }, matchedLines };
   }
 
   if (perHour !== null) return { tariff: { type: 'hourly', currency, price: perHour }, matchedLines };
   // Tek bir "her ilave saat" satırı da fiilen saatlik tarifedir.
-  if (extraPerHour !== null) return { tariff: { type: 'hourly', currency, price: extraPerHour }, matchedLines };
+  if (increment !== null) return { tariff: { type: 'hourly', currency, price: increment.price }, matchedLines };
   if (flat !== null) return { tariff: { type: 'flat', currency, price: flat }, matchedLines };
 
   return null;

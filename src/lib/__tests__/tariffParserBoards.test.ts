@@ -1,0 +1,171 @@
+import { describe, expect, it } from '@jest/globals';
+import { parseTariffLines } from '../tariffParser';
+
+// Gerçek panolara karşı yapılan sistematik taramada ONAYLANMIŞ hataların
+// regresyon kilidi. Her başlık, kullanıcıya yanlış para söyleyen bir durumdu.
+
+const tiersOf = (lines: string[], currency = 'TRY') =>
+  parseTariffLines(lines, currency)?.tariff.tiers ?? null;
+
+describe('ücretsiz ilk dilim + devam eden ücret', () => {
+  it('saatlik satırı dilimlerden sonra zincire ekler (eskiden "hep bedava" çıkıyordu)', () => {
+    const tiers = tiersOf(['İLK 1 SAAT ÜCRETSİZ', 'SAATLİK 30 TL']);
+    expect(tiers?.slice(0, 3)).toEqual([
+      { endMin: 60, cumulativePrice: 0 },
+      { endMin: 120, cumulativePrice: 30 },
+      { endMin: 180, cumulativePrice: 60 },
+    ]);
+  });
+
+  it('rakamsız "İLK SAAT" ifadesini 1 saat sayar', () => {
+    const tiers = tiersOf(['İLK SAAT ÜCRETSİZ', 'SONRAKİ HER SAAT 25 TL']);
+    expect(tiers?.[0]).toEqual({ endMin: 60, cumulativePrice: 0 });
+    expect(tiers?.[1]).toEqual({ endMin: 120, cumulativePrice: 25 });
+  });
+
+  it('"1 SAAT ÜZERİ" ifadesinde sayı dilimin BAŞIdır, sonu değil', () => {
+    // Sonu sanılınca ücretsiz dilimle çakışıp eleniyor ve tarife "bedava" kalıyordu.
+    const tiers = tiersOf(['İLK 1 SAAT ÜCRETSİZ', '1 SAAT ÜZERİ 40 TL']);
+    expect(tiers).toEqual([
+      { endMin: 60, cumulativePrice: 0 },
+      { endMin: 1440, cumulativePrice: 40 },
+    ]);
+  });
+
+  it('fiyat sütununa "0 TL" yazan ücretsiz satırı okur', () => {
+    expect(tiersOf(['İLK 1 SAAT 0 TL', '1-2 SAAT 30 TL'])?.[0]).toEqual({
+      endMin: 60,
+      cumulativePrice: 0,
+    });
+  });
+});
+
+describe('fiyatı olmayan satırlar dilim DEĞİLDİR', () => {
+  const REAL = ['0-30 DK ÜCRETSİZ', '30 DK - 1 SAAT 25 TL', '1-3 SAAT 60 TL'];
+
+  it.each([
+    ['çıkış uyarısı', '15 DK İÇİNDE ÇIKINIZ'],
+    ['açılış saati', '24 SAAT AÇIK'],
+    ['açılış cümlesi', 'HER GÜN 24 SAAT AÇIKTIR'],
+    ['azami süre', 'MAKS. 4 SAAT PARK EDİLİR'],
+    ['ingilizce azami süre', 'MAX STAY 3 HOURS'],
+    ['başlık', '24 SAAT AÇIK OTOPARK'],
+  ])('%s satırı tarifeyi bozmaz', (_label, noise) => {
+    expect(tiersOf([...REAL, noise])).toEqual(tiersOf(REAL));
+  });
+
+  it('uzun dip not artım adımı uydurmaz', () => {
+    const footer =
+      'ÖDEMENİZİ YAPTIKTAN SONRA 15 DK İÇERİSİNDE OTOPARKTAN ÇIKINIZ. AKSİ HALDE EKSTRA ÜCRETLENDİRME YAPILACAKTIR.';
+    expect(tiersOf([...REAL, footer])).toEqual(tiersOf(REAL));
+  });
+});
+
+describe('fiyat sütunu seçimi', () => {
+  it('çok sütunlu panoda İLK fiyat sütununu alır (binek araç)', () => {
+    // Sonuncuyu almak kullanıcıya minibüs tarifesini okuyordu.
+    expect(tiersOf(['0-1 SAAT 50 TL 75 TL', '1-2 SAAT 90 TL 135 TL'])).toEqual([
+      { endMin: 60, cumulativePrice: 50 },
+      { endMin: 120, cumulativePrice: 90 },
+    ]);
+  });
+
+  it('fiyat önde yazıldığında süreyi fiyat sanmaz', () => {
+    expect(tiersOf(['£1.20 FOR 1 HOUR', '£2.40 FOR 2 HOURS'], 'GBP')).toEqual([
+      { endMin: 60, cumulativePrice: 1.2 },
+      { endMin: 120, cumulativePrice: 2.4 },
+    ]);
+  });
+});
+
+describe('bileşik ve kısaltmalı süre yazımları', () => {
+  it('"1 SAAT 30 DK" bileşik üst sınırını 90 dakika okur', () => {
+    const tiers = tiersOf(['0 - 1 SAAT 20 TL', '1 SAAT - 1 SAAT 30 DK 30 TL', '1 SAAT 30 DK - 2 SAAT 40 TL']);
+    expect(tiers).toEqual([
+      { endMin: 60, cumulativePrice: 20 },
+      { endMin: 90, cumulativePrice: 30 },
+      { endMin: 120, cumulativePrice: 40 },
+    ]);
+  });
+
+  it('noktalı kısaltmalarda ("30 Dk. - 1 Saat") karışık birimi korur', () => {
+    expect(tiersOf(['0 - 30 Dk. ÜCRETSİZ', '30 Dk. - 1 Saat 20 TL', '1 - 2 Saat 35 TL'])).toEqual([
+      { endMin: 30, cumulativePrice: 0 },
+      { endMin: 60, cumulativePrice: 20 },
+      { endMin: 120, cumulativePrice: 35 },
+    ]);
+  });
+});
+
+describe('ingilizce panolar', () => {
+  it('"OVER n HOURS" kuyruk dilimini yutmaz', () => {
+    const tiers = tiersOf(['UP TO 1 HOUR £3.00', 'UP TO 4 HOURS £8.00', 'OVER 4 HOURS £12.00'], 'GBP');
+    expect(tiers?.[tiers.length - 1]).toEqual({ endMin: 1440, cumulativePrice: 12 });
+  });
+
+  it('sıra eki ("1ST HOUR") tanır', () => {
+    expect(tiersOf(['1ST HOUR $3', '2ND HOUR $5'], 'USD')).toEqual([
+      { endMin: 60, cumulativePrice: 3 },
+      { endMin: 120, cumulativePrice: 5 },
+    ]);
+  });
+
+  it('gün bazlı uzun konaklamayı okur', () => {
+    const tiers = tiersOf(['UP TO 24 HOURS £30.00', '2 DAYS £50.00'], 'GBP');
+    expect(tiers?.some((t) => t.endMin === 2880 && t.cumulativePrice === 50)).toBe(true);
+  });
+});
+
+describe('saatlik ve günlük tavan', () => {
+  it('saatlik + günlük tavan sonsuza kadar artmaz', () => {
+    const parsed = parseTariffLines(['SAATLİK 40 TL', 'GÜNLÜK 200 TL'], 'TRY');
+    expect(parsed?.tariff.type).toBe('tiered');
+    const tiers = parsed?.tariff.tiers ?? [];
+    expect(tiers[tiers.length - 1]).toEqual({ endMin: 1440, cumulativePrice: 200 });
+    expect(tiers.every((t) => t.cumulativePrice <= 200)).toBe(true);
+  });
+
+  it('"SAAT BAŞI" ve "SAATİ" yazımlarını tanır', () => {
+    expect(parseTariffLines(['SAAT BAŞI 40 TL'], 'TRY')?.tariff).toEqual({
+      type: 'hourly',
+      currency: 'TRY',
+      price: 40,
+    });
+    expect(parseTariffLines(['SAATİ 40 TL'], 'TRY')?.tariff.price).toBe(40);
+  });
+
+  it('aynı satırdaki saatlik + günlük ikisini de okur', () => {
+    const tiers = tiersOf(['SAATLİK 40 ₺ GÜNLÜK 200 ₺']);
+    expect(tiers?.[0]).toEqual({ endMin: 60, cumulativePrice: 40 });
+    expect(tiers?.[tiers.length - 1]).toEqual({ endMin: 1440, cumulativePrice: 200 });
+  });
+});
+
+describe('artım zinciri', () => {
+  it('yarım saatlik artımı saat sanmaz', () => {
+    const tiers = tiersOf(['İLK 1 SAAT 30 TL', 'HER İLAVE 30 DAKİKA 15 TL']);
+    expect(tiers?.slice(0, 3)).toEqual([
+      { endMin: 60, cumulativePrice: 30 },
+      { endMin: 90, cumulativePrice: 45 },
+      { endMin: 120, cumulativePrice: 60 },
+    ]);
+  });
+
+  it('"HER YARIM SAAT" adımını 30 dakika sayar', () => {
+    const tiers = tiersOf(['İLK 1 SAAT 30 TL', 'HER YARIM SAAT 15 TL']);
+    expect(tiers?.[1]).toEqual({ endMin: 90, cumulativePrice: 45 });
+  });
+
+  it('tavana ulaşınca durur, tavanı aşmaz', () => {
+    const tiers = tiersOf(['İLK 2 SAAT 50 TL', 'HER İLAVE SAAT 20 TL', 'GÜNLÜK 200 TL']) ?? [];
+    expect(tiers[tiers.length - 1]).toEqual({ endMin: 1440, cumulativePrice: 200 });
+    expect(tiers.every((t) => t.cumulativePrice <= 200)).toBe(true);
+  });
+
+  it('tavan yokken fiyat donmaz — zincir 24 saate kadar gider', () => {
+    // Eskiden 3 ilave saatten sonra kesiliyordu; app "artık artmıyor" diyordu.
+    const tiers = tiersOf(['İLK 1 SAAT 40 TL', 'HER İLAVE SAAT 15 TL']) ?? [];
+    expect(tiers[tiers.length - 1].endMin).toBe(1440);
+    expect(tiers[tiers.length - 1].cumulativePrice).toBeGreaterThan(40);
+  });
+});

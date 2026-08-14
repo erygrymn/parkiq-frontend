@@ -94,3 +94,56 @@ describe('pano → tarife (uçtan uca)', () => {
     expect(prices).not.toContain(30);
   });
 });
+
+// Elde çekilen fotoğraf birkaç derece eğik olur. Eğimde satırın sağ ucu sol
+// ucundan bir satır aralığından fazla kayar; düzeltilmezse her fiyat BİR
+// SONRAKİ dilimle eşleşir ve sessizce yanlış tarife çıkar.
+
+const TILTED_BOARD: Array<[string, string]> = [
+  ['0 - 15 DK', 'ÜCRETSİZ'],
+  ['15 - 30 DK', '15 ₺'],
+  ['30 - 60 DK', '30 ₺'],
+  ['1 - 2 SAAT', '55 ₺'],
+  ['2 - 3 SAAT', '70 ₺'],
+  ['3 - 5 SAAT', '90 ₺'],
+  ['5 - 8 SAAT', '115 ₺'],
+  ['8 - 12 SAAT', '140 ₺'],
+];
+
+/** Panoyu `slope` kadar eğik çekilmiş gibi bloklara çevirir. */
+function tilted(slope: number): OcrBlock[] {
+  const LEFT_X = 0.1;
+  const RIGHT_X = 0.62;
+  return TILTED_BOARD.flatMap(([time, price], index) => {
+    const baseY = 0.8 - index * 0.055;
+    return [
+      { text: time, x: LEFT_X, y: baseY + slope * LEFT_X, height: 0.026 },
+      { text: price, x: RIGHT_X, y: baseY + slope * RIGHT_X, height: 0.026 },
+    ];
+  });
+}
+
+describe('eğik çekilmiş pano', () => {
+  it.each([0, 0.04, 0.08, 0.12, -0.08])('eğim %p için satırları doğru eşler', (slope) => {
+    const rows = assembleRows(tilted(slope));
+    expect(rows).toHaveLength(TILTED_BOARD.length);
+    expect(rows[0]).toBe('0 - 15 DK ÜCRETSİZ');
+    expect(rows[3]).toBe('1 - 2 SAAT 55 ₺');
+    expect(rows[7]).toBe('8 - 12 SAAT 140 ₺');
+  });
+
+  it('eğimde fiyatı bir sonraki dilime kaydırmaz', () => {
+    // Regresyon: 6° civarında "1-2 SAAT" dilimi 30 ₺ ile eşleşiyordu.
+    const parsed = parseTariffLines(assembleRows(tilted(0.1)), 'TRY');
+    expect(parsed?.tariff.tiers).toEqual([
+      { endMin: 15, cumulativePrice: 0 },
+      { endMin: 30, cumulativePrice: 15 },
+      { endMin: 60, cumulativePrice: 30 },
+      { endMin: 120, cumulativePrice: 55 },
+      { endMin: 180, cumulativePrice: 70 },
+      { endMin: 300, cumulativePrice: 90 },
+      { endMin: 480, cumulativePrice: 115 },
+      { endMin: 720, cumulativePrice: 140 },
+    ]);
+  });
+});
