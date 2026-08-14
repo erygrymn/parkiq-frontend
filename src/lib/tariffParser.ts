@@ -33,9 +33,35 @@ function normalize(line: string): string {
   return line
     .replace(/[İIÜÖÇŞĞıüöçşğ]/g, (ch) => DIACRITICS[ch] ?? ch)
     .toUpperCase()
-    .replace(/[،,]/g, '.') // OCR virgülü ondalık ayırıcı olarak dönebilir
+    .replace(/،/g, ',') // arapça virgül → normal virgül; ayraç çözümü sayıda yapılır
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/**
+ * "1.945,00" / "1,945.00" / "66,00" / "3.50" — binlik ve ondalık ayracı dilden
+ * dile yer değiştirir. Kural: iki ayraç da varsa SONdaki ondalıktır. Tek ayraç
+ * varsa ve ardından tam üç rakam geliyorsa binliktir ("1.500" = bin beş yüz),
+ * aksi halde ondalıktır ("0.5", "3.50").
+ *
+ * Virgülü körlemesine noktaya çevirmek "1.945,00" değerini 1.94 yapıyordu ve
+ * havalimanı panolarında günlük ücret kuruşa düşüyordu.
+ */
+function parseNumber(raw: string): number {
+  const lastDot = raw.lastIndexOf('.');
+  const lastComma = raw.lastIndexOf(',');
+
+  if (lastDot >= 0 && lastComma >= 0) {
+    const decimalAt = Math.max(lastDot, lastComma);
+    const digits = raw.slice(0, decimalAt).replace(/[.,]/g, '') + '.' + raw.slice(decimalAt + 1);
+    return Number(digits);
+  }
+
+  const sep = lastDot >= 0 ? lastDot : lastComma;
+  if (sep < 0) return Number(raw);
+
+  const grouped = raw.slice(sep + 1).length === 3 && !/[.,]/.test(raw.slice(sep + 1));
+  return grouped ? Number(raw.replace(/[.,]/g, '')) : Number(raw.replace(',', '.'));
 }
 
 function detectCurrency(lines: string[]): string | null {
@@ -70,6 +96,17 @@ const FREE_WORD = /(UCRETSIZ|BEDAVA|PARASIZ|FREE|NO CHARGE)/;
 const TAIL_WORD = '(?:UZERI|UZERINDE|USTU|SONRASI|SONRA|ASKISI)';
 
 const DAY_MINUTES = 24 * 60;
+
+/**
+ * Abonelik satırları park OTURUMU tarifesi değildir; panolarda tarifenin hemen
+ * altında yer alırlar ("15 GÜNLÜK 750 TL", "AYLIK ABONE 1.500 TL") ve dilim
+ * sanılırsa kullanıcıya aylık abonelik fiyatı üzerinden sayaç işletilir.
+ *
+ * Ayrım "GÜNLÜK" ile "GÜN" arasında: havalimanı panolarındaki "2 GÜN 540 TL"
+ * gerçek bir park süresidir ve korunur; "15 GÜNLÜK" bir abonelik paketidir.
+ */
+const SUBSCRIPTION_WORD =
+  /(ABONE|ABONELIK|AYLIK|HAFTALIK|SUBSCRIPTION|MONTHLY|WEEKLY|SEASON TICKET|\d+\s*GUNLUK)/;
 
 /** Gevşek "sayı + birim" kalıbının kabul ettiği en uzun satır (karakter). */
 const TABULAR_MAX_LENGTH = 32;
@@ -180,10 +217,11 @@ function matchDuration(line: string): DurationMatch | null {
 /** Satırdaki sayı token'ları, konumlarıyla. */
 function numberTokens(line: string): Array<{ value: number; start: number; end: number }> {
   const out: Array<{ value: number; start: number; end: number }> = [];
-  const re = /\d+(?:[.,]\d{1,2})?/g;
+  // Binlik ayraçlı sayı ("1.945,00") TEK token olmalı; parçalanırsa fiyat kuruşa düşer.
+  const re = /\d+(?:[.,]\d{3})*(?:[.,]\d{1,2})?/g;
   let match: RegExpExecArray | null;
   while ((match = re.exec(line)) !== null) {
-    const value = Number(match[0].replace(',', '.'));
+    const value = parseNumber(match[0]);
     if (Number.isFinite(value)) {
       out.push({ value, start: match.index, end: match.index + match[0].length });
     }
@@ -329,6 +367,7 @@ export function parseTariffLines(lines: string[], fallbackCurrency: string): Par
   let matchedLines = 0;
 
   for (const line of normalized) {
+    if (SUBSCRIPTION_WORD.test(line)) continue;
     let used = false;
 
     const step = parseIncrement(line, currency);

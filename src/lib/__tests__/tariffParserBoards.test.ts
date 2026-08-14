@@ -169,3 +169,48 @@ describe('artım zinciri', () => {
     expect(tiers[tiers.length - 1].cumulativePrice).toBeGreaterThan(40);
   });
 });
+
+describe('sayı biçimleri ve abonelik satırları', () => {
+  it('binlik ayracını kuruş sanmaz', () => {
+    // "1.945,00" eskiden 1.94 okunuyordu: havalimanı günlüğü kuruşa düşüyordu.
+    const tiers = tiersOf(['0-1 SAAT 90 TL', '12-24 SAAT 270 TL', '7 GÜN 1.945,00 TL']) ?? [];
+    expect(tiers[tiers.length - 1]).toEqual({ endMin: 10080, cumulativePrice: 1945 });
+  });
+
+  it.each([
+    ['66,00', 66],
+    ['34,5', 34.5],
+    ['3.50', 3.5],
+    ['1.500,00', 1500],
+    ['2.225', 2225],
+  ])('%s → %p', (written, value) => {
+    expect(tiersOf([`0-1 SAAT ${written} TL`])?.[0].cumulativePrice).toBe(value);
+  });
+
+  it('abonelik satırlarını dilim saymaz', () => {
+    const real = ['0-2 SAATE KADAR 15,00', '2-4 SAATE KADAR 20,00', '10-24 SAATE KADAR 50,00'];
+    const withSubscription = [...real, '15 GÜNLÜK 750,00', '30 GÜNLÜK 1.500,00', 'AYLIK ABONE 2.225,00'];
+    expect(tiersOf(withSubscription)).toEqual(tiersOf(real));
+  });
+
+  it('havalimanındaki gerçek gün dilimlerini korur ("2 GÜN" abonelik değildir)', () => {
+    const tiers = tiersOf(['12-24 SAAT 270 TL', '2 GÜN 540 TL']) ?? [];
+    expect(tiers.some((t) => t.endMin === 2880 && t.cumulativePrice === 540)).toBe(true);
+  });
+
+  it('istiflenmiş araç tablosunda ilk tabloyu (otomobil) alır', () => {
+    const tiers = tiersOf([
+      'OTOMOBİL GRUBU TAŞITLAR',
+      '20 DAKİKAYA KADAR ÜCRETSİZ',
+      '1 SAATE KADAR 35₺',
+      '6 SAATTEN SONRA (GÜN BOYU) 130₺',
+      'MOTOSİKLET GRUBU TAŞITLAR',
+      '15,00',
+    ]);
+    expect(tiers).toEqual([
+      { endMin: 20, cumulativePrice: 0 },
+      { endMin: 60, cumulativePrice: 35 },
+      { endMin: 1440, cumulativePrice: 130 },
+    ]);
+  });
+});
