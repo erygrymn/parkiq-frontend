@@ -14,6 +14,10 @@ export const en = {
   notNow: 'Not now',
 
   iParked: 'I Parked',
+  foundIt: 'Found it',
+  arMode: 'Camera view',
+  arTurn: 'Turn this way',
+  arHint: 'Point the camera around you',
   findMyCar: 'Find My Car',
   shareLocation: 'Share Location',
   endSession: 'End',
@@ -67,6 +71,8 @@ export const en = {
 
   // Park sheet'i + tarife formu (§7.3–7.4)
   detailsOptional: 'Details optional',
+  parkLocation: 'Location',
+  useMyLocation: 'Use my current location',
   floor: 'Floor',
   floorPlaceholder: 'Level −2, C',
   note: 'Note',

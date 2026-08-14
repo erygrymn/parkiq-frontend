@@ -15,6 +15,7 @@ import {
   relativeBearing,
 } from '../lib/geo';
 import { openInMaps } from '../lib/maps';
+import { ArFindMyCar } from './ArFindMyCar';
 import { getLocale, t } from '../localization';
 import type { ParkSession } from '../state/sessionStore';
 import { useTheme } from '../theme';
@@ -141,15 +142,19 @@ export function FindMyCar({
   visible,
   session,
   onClose,
+  onFound,
 }: {
   visible: boolean;
   session: ParkSession | null;
   onClose: () => void;
+  /** "Buldum": ekran kapanır ve oturumu bitirme sorusu açılır. */
+  onFound: () => void;
 }) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const locale = getLocale();
   const [photoOpen, setPhotoOpen] = useState(false);
+  const [arOpen, setArOpen] = useState(false);
 
   const { fix, denied } = useUserFix(visible);
   const heading = useHeading(visible);
@@ -186,7 +191,32 @@ export function FindMyCar({
             paddingBottom: spacing.s12,
           }}
         >
-          <Overline>{[session.placeName, session.floor].filter(Boolean).join(' · ')}</Overline>
+          <Overline style={{ flex: 1 }} numberOfLines={1}>
+            {[session.placeName, session.floor].filter(Boolean).join(' · ')}
+          </Overline>
+
+          {/* AR yalnız yön hesaplanabildiğinde anlamlı: kapalı otoparkta pusula
+              yalan söyler, orada foto/kat kartı doğru araçtır. */}
+          {!indoor && bearing !== null && (
+            <Pressable
+              onPress={() => setArOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel={t('arMode')}
+              hitSlop={8}
+              style={({ pressed }) => ({
+                width: 32,
+                height: 32,
+                borderRadius: radius.r8 + 2,
+                marginRight: spacing.s8,
+                backgroundColor: pressed ? colors.insetPressed : colors.inset,
+                alignItems: 'center',
+                justifyContent: 'center',
+              })}
+            >
+              <SymbolView name="camera.viewfinder" size={15} tintColor={colors.ink} weight="regular" />
+            </Pressable>
+          )}
+
           <Pressable
             onPress={onClose}
             accessibilityRole="button"
@@ -233,13 +263,28 @@ export function FindMyCar({
 
           <View style={{ marginTop: 'auto', paddingBottom: insets.bottom + spacing.s20, gap: spacing.s8 }}>
             {indoor && carCoords !== null && <Caption>{t('indoorHint')}</Caption>}
-            <PrimaryCta label={t('openInMaps')} onPress={() => openInMaps(session)} disabled={!carCoords} />
+            {/* Aramanın bittiği an: ekran kapanır, sayaç durdurulsun mu diye sorulur. */}
+            <PrimaryCta label={t('foundIt')} onPress={onFound} />
+            <GhostButton label={t('openInMaps')} onPress={() => openInMaps(session)} disabled={!carCoords} />
             {session.photoUri && !indoor && (
               <GhostButton label={t('photo')} onPress={() => setPhotoOpen(true)} />
             )}
           </View>
         </View>
       </View>
+
+      <Modal visible={arOpen} animationType="slide" onRequestClose={() => setArOpen(false)}>
+        <ArFindMyCar
+          visible={arOpen}
+          relativeBearingDeg={bearing !== null && heading !== null ? relativeBearing(bearing, heading) : null}
+          distanceM={distance}
+          onClose={() => setArOpen(false)}
+          onFound={() => {
+            setArOpen(false);
+            onFound();
+          }}
+        />
+      </Modal>
 
       <Modal visible={photoOpen} animationType="fade" onRequestClose={() => setPhotoOpen(false)}>
         <Pressable style={{ flex: 1, backgroundColor: '#000' }} onPress={() => setPhotoOpen(false)}>

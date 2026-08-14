@@ -14,6 +14,10 @@ export const tr: Record<CopyKey, string> = {
   notNow: 'Şimdi değil',
 
   iParked: 'Park Ettim',
+  foundIt: 'Buldum',
+  arMode: 'Kamera görünümü',
+  arTurn: 'Bu tarafa dön',
+  arHint: 'Kamerayı etrafında gezdir',
   findMyCar: 'Arabamı Bul',
   shareLocation: 'Konumu Paylaş',
   endSession: 'Bitir',
@@ -63,6 +67,8 @@ export const tr: Record<CopyKey, string> = {
   lastTimeTariff: 'Geçen seferki: {summary} — kullan?',
 
   detailsOptional: 'Detaylar opsiyonel',
+  parkLocation: 'Konum',
+  useMyLocation: 'Şu anki konumumu kullan',
   floor: 'Kat',
   floorPlaceholder: '-2. kat, C blok',
   note: 'Not',

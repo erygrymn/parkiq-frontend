@@ -63,6 +63,12 @@ interface SessionStore {
   park: () => void;
   setFloor: (floor: string) => void;
   setNote: (note: string) => void;
+  /**
+   * Park konumunu elle değiştirir. Sayaç başlatılırken kullanıcı başka yerde
+   * olabiliyor ("arabayı bıraktım, yürüdüm, sonra başlattım"); varsayılan hâlâ
+   * o anki konumdur ama başlatmadan önce düzeltilebilir.
+   */
+  setParkLocation: (place: { latitude: number; longitude: number; placeName: string | null }) => void;
   setTariff: (tariff: Tariff | null) => void;
   /** Backdate: "X dk önce park ettim" — recordedAtMs'ten türer, birikmez. */
   setBackdateMinutes: (minutes: number) => void;
@@ -392,6 +398,26 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       });
       syncAlerts(next, false, set);
     });
+  },
+
+  setParkLocation: ({ latitude, longitude, placeName }) => {
+    const { session, phase } = get();
+    // Yalnız sayaç başlamadan önce: oturum başladıktan sonra konumu oynatmak
+    // geçmişi ve tarife hafızasını bozar.
+    if (!session || phase !== 'parking') return;
+    const next = { ...session, latitude, longitude, placeName };
+    persist(next);
+
+    // Yeni yerin tarife hafızası varsa öneri de tazelenir.
+    let remembered: Tariff | null = null;
+    if (!next.tariff) {
+      try {
+        remembered = repo().findRememberedTariff(latitude, longitude);
+      } catch {
+        remembered = null;
+      }
+    }
+    set({ session: next, locationState: 'ok', suggestedTariff: remembered });
   },
 
   acceptSuggestedTariff: () => {

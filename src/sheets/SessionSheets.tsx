@@ -149,7 +149,7 @@ export function IdleSheet() {
 }
 
 /** Park formunda popup'ı açık olan alan. */
-type ParkField = 'floor' | 'note' | 'photo' | 'backdate' | 'reminder' | 'tariff';
+type ParkField = 'location' | 'floor' | 'note' | 'photo' | 'backdate' | 'reminder' | 'tariff';
 
 export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   const { colors } = useTheme();
@@ -174,6 +174,7 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
     capturePhoto,
     removePhoto,
     scanTariff,
+    setParkLocation,
   } = useSessionStore.getState();
   const cancelPark = useSessionStore((s) => s.cancelPark);
   const [customReminder, setCustomReminder] = useState(false);
@@ -256,6 +257,14 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
       {/* Her alan kendi popup'ında. Hepsi tek panele yığılınca ekrana sığmıyor,
           CTA erişilemez kalıyordu; satırlar aynı zamanda ne doldurulduğunu özetler. */}
       <View style={{ gap: spacing.s8 }}>
+        {/* Sayaç başlatılırken kullanıcı arabadan uzaklaşmış olabilir; konum
+            varsayılan olarak o anki yerdir ama başlatmadan önce düzeltilebilir. */}
+        <DetailRow
+          label={t('parkLocation')}
+          value={session.placeName}
+          placeholder={locationState === 'capturing' ? t('locating') : t('useMyLocation')}
+          onPress={() => setOpenField('location')}
+        />
         <DetailRow
           label={t('floor')}
           value={session.floor}
@@ -295,6 +304,30 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
       </View>
 
       <PrimaryCta label={t('done')} onPress={confirmDetails} style={{ marginTop: spacing.s4 }} />
+
+      <PopupSheet visible={openField === 'location'} title={t('parkLocation')} onClose={closeField}>
+        <SearchBar
+          onPick={(result) => {
+            setParkLocation({ ...result.coords, placeName: result.label });
+            closeField();
+          }}
+          onLocate={() => {
+            void captureCurrentPlace().then((outcome) => {
+              if (outcome.status === 'ok') setParkLocation(outcome.place);
+              closeField();
+            });
+          }}
+        />
+        <GhostButton
+          label={t('useMyLocation')}
+          onPress={() => {
+            void captureCurrentPlace().then((outcome) => {
+              if (outcome.status === 'ok') setParkLocation(outcome.place);
+              closeField();
+            });
+          }}
+        />
+      </PopupSheet>
 
       <PopupSheet visible={openField === 'floor'} title={t('floor')} onClose={closeField}>
         <BottomSheetTextInput
@@ -530,7 +563,17 @@ export function ActiveSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
 
       {now - session.startedAtMs > 86_400_000 && <Caption>{t('stillParkedShort')}</Caption>}
 
-      <FindMyCar visible={findOpen} session={session} onClose={() => setFindOpen(false)} />
+      <FindMyCar
+        visible={findOpen}
+        session={session}
+        onClose={() => setFindOpen(false)}
+        onFound={() => {
+          // Arabayı buldun: arama biter ve sayaç durdurulsun mu diye sorulur.
+          // requestEnd geri alınabilir bir onay adımıdır (Bitir / Devam).
+          setFindOpen(false);
+          requestEnd();
+        }}
+      />
 
       {phase === 'ending' ? (
         <View style={{ gap: spacing.s8 }}>
