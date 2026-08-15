@@ -1,7 +1,7 @@
 import * as Sharing from 'expo-sharing';
+import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
-import { captureRef } from 'react-native-view-shot';
 import { CARD_HEIGHT, CARD_WIDTH, SavingsCard, type SavingsCardData } from './SavingsCard';
 
 // Kartı ekran DIŞINDA tam çözünürlükte render edip görsel olarak yakalar.
@@ -9,6 +9,22 @@ import { CARD_HEIGHT, CARD_WIDTH, SavingsCard, type SavingsCardData } from './Sa
 // Kart app koordinat uzayı dışındadır (§11.1) — bu yüzden ölçek burada verilir.
 
 const PREVIEW_SCALE = 0.001; // görünmez ama layout hesaplansın diye sıfır değil
+
+/**
+ * `react-native-view-shot` native bir modül ve Expo Go'da YOK. Üst seviyeden
+ * import edilince tüm ekran grafiği açılışta onu çekiyor ve Expo Go daha ilk
+ * karede çöküyordu — JS-only iterasyon tamamen imkânsız hale geliyordu.
+ * Yakalama anında yüklenir; yoksa paylaşım sessizce atlanır.
+ */
+async function captureCard(ref: React.RefObject<View | null>, options: object): Promise<string | null> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require('react-native-view-shot') as typeof import('react-native-view-shot');
+    return await mod.captureRef(ref, options);
+  } catch {
+    return null;
+  }
+}
 
 export function ShareCardRenderer({
   data,
@@ -33,13 +49,13 @@ export function ShareCardRenderer({
     const timer = setTimeout(() => {
       void (async () => {
         try {
-          const uri = await captureRef(cardRef, {
+          const uri = await captureCard(cardRef, {
             format: 'png',
             quality: 1,
             width: CARD_WIDTH,
             height: CARD_HEIGHT,
           });
-          if (cancelled) return;
+          if (cancelled || uri === null) return;
           if (await Sharing.isAvailableAsync()) {
             await Sharing.shareAsync(uri, { mimeType: 'image/png', UTI: 'public.png' });
           }

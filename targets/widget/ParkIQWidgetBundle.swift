@@ -4,7 +4,7 @@ import WidgetKit
 
 // design.md §8 — Live Activity + Dynamic Island + widget.
 // Kart: #101012, r-24, kenar ışığı, yeşil piksel ≤%10 (tek istisna: §8.5 bitiş karesi).
-// Marka katmanı: sol üst "P." glyph + NOKTASIZ overline. "PARKIQ" yazısı yok.
+// Marka katmanı: sol üst marka işareti + NOKTASIZ overline. "PARKIQ" yazısı yok.
 //
 // İKİ BAĞLAYICI KURAL:
 // 1. Matematik yok — segment/knob/ton RN'deki tariffMath'ten gelir.
@@ -59,16 +59,13 @@ private enum Shared {
 
 private struct BrandGlyph: View {
   var body: some View {
-    ZStack {
-      RoundedRectangle(cornerRadius: 7, style: .continuous)
-        .fill(Palette.ink)
-        .overlay(RoundedRectangle(cornerRadius: 7, style: .continuous).stroke(Palette.green, lineWidth: 1))
-      HStack(spacing: 0) {
-        Text("P").font(.system(size: 12, weight: .black)).foregroundStyle(.white)
-        Text(".").font(.system(size: 12, weight: .black)).foregroundStyle(Palette.green)
-      }
-    }
-    .frame(width: 22, height: 22)
+    // Marka işareti tek bir varlıktan gelir; harflerden kurulan eski "P." her
+    // yüzeyde biraz farklı görünüyordu ve ikonla aynı şey değildi.
+    Image("BrandMark")
+      .resizable()
+      .aspectRatio(contentMode: .fit)
+      .frame(width: 22, height: 22)
+      .accessibilityHidden(true)
   }
 }
 

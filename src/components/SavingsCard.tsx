@@ -1,4 +1,4 @@
-import { Text, View } from 'react-native';
+import { Image, Text, View } from 'react-native';
 import { formatDurationStamp, formatMoney } from '../lib/format';
 import type { TariffState } from '../lib/tariffMath';
 import { getLocale, t } from '../localization';
@@ -136,7 +136,7 @@ export function SavingsCard({ data }: { data: SavingsCardData }) {
       <View style={{ gap: 56 }}>
         {/* Overline: konum max semt düzeyi, NOKTASIZ (§11.1.1) */}
         <Text style={{ fontSize: 40, fontWeight: '700', letterSpacing: 40 * 0.14, color: MUTED }}>
-          {['PARKIQ', data.placeName?.toUpperCase()].filter(Boolean).join(' · ')}
+          {[data.placeName?.toUpperCase()].filter(Boolean).join(' · ')}
         </Text>
 
         {/* Hero — karttaki TEK imza noktası. Nokta her zaman en son satırda. */}
@@ -172,9 +172,20 @@ export function SavingsCard({ data }: { data: SavingsCardData }) {
         </View>
 
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-          <Text style={{ fontSize: 48, fontWeight: '900', color: '#FFFFFF', letterSpacing: -1 }}>
-            PARKIQ<Text style={{ color: GREEN }}>.</Text>
-          </Text>
+          {/* İmza: marka işareti + adı. Kart uygulamanın dışına çıkan tek yüzey,
+              tanınırlık ikondan gelmeli. */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 24 }}>
+            <Image
+              // eslint-disable-next-line @typescript-eslint/no-require-imports
+              source={require('../../assets/brand/mark.png')}
+              style={{ width: 64, height: 64 }}
+              resizeMode="contain"
+              accessibilityIgnoresInvertColors
+            />
+            <Text style={{ fontSize: 48, fontWeight: '900', color: '#FFFFFF', letterSpacing: -1 }}>
+              PARKIQ<Text style={{ color: GREEN }}>.</Text>
+            </Text>
+          </View>
           <Text style={{ fontSize: 36, color: MUTED }}>parkiq.app</Text>
         </View>
       </View>
