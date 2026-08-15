@@ -3,6 +3,19 @@ import { tr } from './tr';
 import { enGB } from './en-GB';
 import { enAU } from './en-AU';
 import { enCA } from './en-CA';
+import { deDE } from './de-DE';
+import { frFR } from './fr-FR';
+import { frCA } from './fr-CA';
+import { esES } from './es-ES';
+import { esMX } from './es-MX';
+import { it } from './it';
+import { nlNL } from './nl-NL';
+import { ptBR } from './pt-BR';
+import { ptPT } from './pt-PT';
+import { ja } from './ja';
+import { ko } from './ko';
+import { zhHant } from './zh-Hant';
+import { sv } from './sv';
 
 // Diller iki biçimde tutulur:
 //  - TAM sözlük: dilin kendi dosyası, her anahtar dolu.
@@ -13,9 +26,46 @@ import { enCA } from './en-CA';
 // değişikliğinde üçünün sessizce eskimesi demekti. Aynısı fr-CA, es-MX ve pt-PT
 // için de geçerli.
 
-export type Locale = 'en' | 'en-GB' | 'en-AU' | 'en-CA' | 'tr';
+export type Locale =
+  | 'en'
+  | 'en-GB'
+  | 'en-AU'
+  | 'en-CA'
+  | 'tr'
+  | 'de-DE'
+  | 'fr-FR'
+  | 'fr-CA'
+  | 'es-ES'
+  | 'es-MX'
+  | 'it'
+  | 'nl-NL'
+  | 'pt-BR'
+  | 'pt-PT'
+  | 'ja'
+  | 'ko'
+  | 'zh-Hant'
+  | 'sv';
 
-export const LOCALES: readonly Locale[] = ['en', 'en-GB', 'en-AU', 'en-CA', 'tr'];
+export const LOCALES: readonly Locale[] = [
+  'en',
+  'en-GB',
+  'en-AU',
+  'en-CA',
+  'tr',
+  'de-DE',
+  'fr-FR',
+  'fr-CA',
+  'es-ES',
+  'es-MX',
+  'it',
+  'nl-NL',
+  'pt-BR',
+  'pt-PT',
+  'ja',
+  'ko',
+  'zh-Hant',
+  'sv',
+];
 
 /** Dil seçicide görünen adlar — her zaman KENDİ dilinde yazılır. */
 export const LOCALE_NAMES: Record<Locale, string> = {
@@ -24,6 +74,19 @@ export const LOCALE_NAMES: Record<Locale, string> = {
   'en-AU': 'English (Australia)',
   'en-CA': 'English (Canada)',
   tr: 'Türkçe',
+  'de-DE': 'Deutsch',
+  'fr-FR': 'Français',
+  'fr-CA': 'Français (Canada)',
+  'es-ES': 'Español',
+  'es-MX': 'Español (México)',
+  it: 'Italiano',
+  'nl-NL': 'Nederlands',
+  'pt-BR': 'Português (Brasil)',
+  'pt-PT': 'Português (Portugal)',
+  ja: '日本語',
+  ko: '한국어',
+  'zh-Hant': '繁體中文',
+  sv: 'Svenska',
 };
 
 type Dictionary = Record<CopyKey, string>;
@@ -32,6 +95,16 @@ type Overlay = Partial<Dictionary>;
 const BASE: Record<string, Dictionary> = {
   en,
   tr,
+  'de-DE': deDE,
+  'fr-FR': frFR,
+  'es-ES': esES,
+  it,
+  'nl-NL': nlNL,
+  'pt-BR': ptBR,
+  ja,
+  ko,
+  'zh-Hant': zhHant,
+  sv,
 };
 
 /** Üst katmanlar: [taban dil, yalnız farklı anahtarlar]. */
@@ -39,6 +112,9 @@ const OVERLAYS: Record<string, [string, Overlay]> = {
   'en-GB': ['en', enGB],
   'en-AU': ['en', enAU],
   'en-CA': ['en', enCA],
+  'fr-CA': ['fr-FR', frCA],
+  'es-MX': ['es-ES', esMX],
+  'pt-PT': ['pt-BR', ptPT],
 };
 
 function build(locale: Locale): Dictionary {
@@ -100,6 +176,11 @@ export function getLocale(): Locale {
 export function localeTag(locale: Locale = currentLocale): string {
   if (locale === 'en') return 'en-US';
   if (locale === 'tr') return 'tr-TR';
+  if (locale === 'it') return 'it-IT';
+  if (locale === 'ja') return 'ja-JP';
+  if (locale === 'ko') return 'ko-KR';
+  if (locale === 'sv') return 'sv-SE';
+  if (locale === 'zh-Hant') return 'zh-Hant-TW';
   return locale;
 }
 

@@ -19,7 +19,20 @@
           "en-GB",
           "en-AU",
           "en-CA",
-          "tr"
+          "tr",
+          "de",
+          "fr",
+          "fr-CA",
+          "es",
+          "es-MX",
+          "it",
+          "nl",
+          "pt-BR",
+          "pt-PT",
+          "ja",
+          "ko",
+          "zh-Hant",
+          "sv"
         ],
         "CFBundleAllowMixedLocalizations": true
       }
