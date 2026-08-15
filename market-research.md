@@ -202,12 +202,12 @@ Talep = kaç kullanıcı istedi · Durum = pazarda şu an ne var.
 |---|---|---|---|---|
 | **Maliyet / fiyat / tasarruf** | ✓✓✓ 11 anma / 7 uygulama | **eksik** — hiçbir araba-bulma uygulamasında yok | 🔴 BUILD | ✅ Tarife çubuğu + "SAVED ₺X" |
 | **Sayaç / süre hatırlatıcı** | ✓✓✓ 9 anma / 4 uygulama | **eksik** veya belediye app'inde kilitli | 🔴 BUILD | ✅ Omurga |
-| **Elle pin düzeltme** | ✓✓ 3 anma | **eksik** — hiçbirinde yok | 🔴 BUILD | ❌ **Yok — eklenmeli** |
+| **Elle pin düzeltme** | ✓✓ 3 anma | **eksik** — hiçbirinde yok | 🔴 BUILD | ✅ **Var** — `startPickingLocation` / `confirmPickedLocation` ([sessionStore.ts:598](src/state/sessionStore.ts:598)) |
 | Oto-algılama | ✓✓✓ 7 anma / 6 uygulama | var ama kötü (batarya) | 🟠 FIX | ✅ Premium |
 | Foto + not + kat | ✓✓ 5 anma / 5 uygulama | var ama kötü (foto kaydedilmiyor) | 🟠 FIX | ✅ Free |
 | Kapalı otopark doğruluğu | ✓✓ 3 anma | **kırık** | 🟠 FIX | ✅ Kapalı alan modu |
 | Başka harita app'i | ✓✓ 3 anma | eksik | 🟡 | ❌ Yalnız Apple Maps |
-| AR / pusula | ✓ 2 anma | var ama kötü | 🟠 FIX | ⏳ AR yazılmadı |
+| AR / pusula | ✓ 2 anma | var ama kötü | 🟠 FIX | ✅ **Var** — `modules/parkiq-ar` (ARKit/RealityKit), [FindMyCar.tsx:247](src/screens/FindMyCar.tsx:247) |
 | Widget / kilit ekranı | ✓ | eksik | 🟡 | ✅ Free |
 | Apple Watch | ✓ | var ama kırık | 🟠 | ❌ Yok |
 | CarPlay | ✓ | eksik | 🟡 | ❌ MVP dışı |
@@ -298,19 +298,21 @@ Talep = kaç kullanıcı istedi · Durum = pazarda şu an ne var.
 |---|---|---|---|
 | 1 | **Para dilini konuşan tek araba-bulma uygulaması** | En çok istenen tema, hiçbirinde yok | ✅ Var — öne çıkarılmalı |
 | 2 | **"Parking timer" terimini sahiplenmek** | Terim tüm İngilizce mağazalarda boş | ✅ Var — metadata kararı |
-| 3 | **Gerçekten çalışan doğruluk** | 6/6 rakipte temel arıza | ⚠️ Çoklu GPS örneği işaretsiz |
-| 4 | **Elle pin düzeltme** | 3 talep, pazarda **hiç yok** | ❌ **Eklenmeli** |
+| 3 | **Gerçekten çalışan doğruluk** | 6/6 rakipte temel arıza | ✅ **Var** — 5 sn bütçede 4 GPS örneği, en doğrusu seçilir ([location.ts:40](src/lib/location.ts:40)) |
+| 4 | **Elle pin düzeltme** | 3 talep, pazarda **hiç yok** | ✅ **Var** ([sessionStore.ts:598](src/state/sessionStore.ts:598)) |
 | 5 | **Kapalı otoparkta çalışan çözüm** | AR'ın çöktüğü tek yer | ✅ Kapalı alan modu |
-| 6 | **Reklamsız + hesapsız + sunucusuz** | Rakiplerde şikayet dolu | ✅ Mimari karar |
+| 6 | **Reklamsız + hesapsız** | Rakiplerde şikayet dolu | ✅ Mimari karar |
 | 7 | **Terk edilmiş lideri devralmak** | Lider 3 yıldır uyuyor | ✅ Aktif geliştirme |
+
+> **Bu tablonun anlamı 2026-08-15'te değişti.** 3 ve 4 numaralı satırlar "eksik" değil, **yapılmış**. Yani bunlar artık yol haritası değil, **pazarlama malzemesi**: pazarda hiç kimsenin yapmadığı iki şeyi ParkIQ yapıyor ve bunu hiçbir yerde söylemiyor.
 
 ---
 
 ## 9. Bu araştırmanın ürüne söylediği üç şey
 
-1. **Doğruluk bir özellik değil, bütün üründür.** Rakiplerin %100'ü burada ölüyor. Kayıt anındaki GPS kilidi ([screens.md](screens.md) §7b, işaretsiz) AR'dan önce gelmeli.
-2. **AR bir lansman özelliği değil, bir Faz-2 kancasıdır.** İnsanların arabayı en çok kaybettiği yer kapalı otopark ve AR tam orada çalışmıyor.
-3. **Elle pin düzeltme, pazarda hiç kimsenin yapmadığı ve talep edilen tek özellik.** Küçük iş, orantısız fayda — ve "yanlış yeri kaydetti" şikayetinin de panzehiri.
+1. **Doğruluk bir özellik değil, bütün üründür.** Rakiplerin %100'ü burada ölüyor. ParkIQ'nun cevabı yazıldı: kayıt anında 5 saniyelik bütçede 4 GPS örneği alınıp en doğrusu seçiliyor ([location.ts:40](src/lib/location.ts:40)) ve "2 saniye kuralı" bunu beklemiyor — kayıt anında bitiyor, konum arkadan oturuyor.
+2. **AR yazıldı ama lansmanda öne çıkarılmıyor** — sebep "hazır değil" değil, **kanıt**: AR'lı iki rakibin yorumları AR'ın kapalı otoparkta çöktüğünü gösteriyor (§4.2) ve insanların arabayı en çok kaybettiği yer orası. AR açık alanda bir kanca; güvenilirlik hikâyesi kapalı alan kartıdır. ([FindMyCar.tsx:247](src/screens/FindMyCar.tsx:247) — AR yalnız premium + açık alan + cihaz destekliyorsa açılır.)
+3. **Elle pin düzeltme pazarda hiç kimsede yok ve ParkIQ'da var.** Bu, "yanlış yeri kaydetti" şikayetinin panzehiri — yani kategorinin en büyük arızasını kullanıcının kendisinin kapatabilmesi. Ekran görüntüsü veya mağaza metninde henüz **hiç anlatılmıyor**; anlatılmalı.
 
 ---
 

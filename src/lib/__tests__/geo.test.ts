@@ -107,3 +107,19 @@ describe('isIndoorLike — kapalı otopark sezgisi', () => {
     expect(isIndoorLike(60)).toBe(true);
   });
 });
+
+describe('formatDistance — birim', () => {
+  it('metrik: metre ve kilometre', () => {
+    expect(formatDistance(285, 'en', 'metric')).toBe('285 m');
+    expect(formatDistance(1400, 'en', 'metric')).toBe('1.4 km');
+  });
+
+  it('imperial: yürüme mesafesi fit, uzağı mil', () => {
+    expect(formatDistance(100, 'en', 'imperial')).toBe('328 ft');
+    expect(formatDistance(1609.344, 'en', 'imperial')).toBe('1.0 mi');
+  });
+
+  it('TR ondalık ayırıcıyı virgül yapar', () => {
+    expect(formatDistance(1400, 'tr', 'metric')).toBe('1,4 km');
+  });
+});

@@ -28,7 +28,7 @@ import { deleteSpotPhoto } from '../lib/photo';
 import { useTheme } from '../theme';
 import { radius, spacing } from '../theme/tokens';
 
-// screens.md §10 / design.md §7.9. Premium satırları (araçlar, oto-algılama,
+// screens.md §10 / design.md §7.9. Premium satırları (oto-algılama,
 // abonelik) RevenueCat tuğlasıyla gelecek — burada henüz yok.
 
 const TERMS_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
@@ -146,10 +146,17 @@ export function SettingsSheet({
   const isPremium = useIsPremium();
   const devUnlock = usePremiumStore((s) => s.devUnlock);
   const setDevUnlock = usePremiumStore((s) => s.setDevUnlock);
-  const [newVehicle, setNewVehicle] = useState('');
-  const { themeMode, locale, currency, warnThresholdMin, autoDetectEnabled } = useSettingsStore();
-  const { setThemeMode, setLocalePref, setCurrency, setWarnThreshold, setAutoDetect } =
-    useSettingsStore.getState();
+  const { themeMode, locale, currency, warnThresholdMin, autoDetectEnabled, clockFormat, units } =
+    useSettingsStore();
+  const {
+    setThemeMode,
+    setLocalePref,
+    setCurrency,
+    setWarnThreshold,
+    setAutoDetect,
+    setClockFormatPref,
+    setUnits,
+  } = useSettingsStore.getState();
   const permissions = usePermissions(visible);
 
   const confirmDeleteAll = () => {
@@ -217,6 +224,28 @@ export function SettingsSheet({
           options={CURRENCIES.map((c) => ({ key: c, label: c }))}
           value={currency}
           onChange={setCurrency}
+        />
+
+        <SelectRow<'device' | '12' | '24'>
+          label={t('clockFormat')}
+          options={[
+            { key: 'device', label: t('followDevice') },
+            { key: '24', label: t('clock24') },
+            { key: '12', label: t('clock12') },
+          ]}
+          value={clockFormat}
+          onChange={setClockFormatPref}
+        />
+
+        <SelectRow<'device' | 'metric' | 'imperial'>
+          label={t('units')}
+          options={[
+            { key: 'device', label: t('followDevice') },
+            { key: 'metric', label: t('unitsMetric') },
+            { key: 'imperial', label: t('unitsImperial') },
+          ]}
+          value={units}
+          onChange={setUnits}
         />
 
         <SelectRow<number>

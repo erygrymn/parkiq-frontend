@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { trackOnboardingDone } from '../lib/analytics';
 import { setLocale, type Locale } from '../localization';
+import { setClockFormat, type ClockFormat } from '../lib/format';
+import { setDistanceUnit, type DistanceUnit } from '../lib/geo';
 import { DEFAULT_WARN_THRESHOLD_MIN } from '../lib/tariffMath';
 
 // Kullanıcı ayarları — cihazda kalıcı (settings tablosu). screens.md §10.
@@ -8,8 +10,18 @@ import { DEFAULT_WARN_THRESHOLD_MIN } from '../lib/tariffMath';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
-export const CURRENCIES = ['TRY', 'EUR', 'USD', 'GBP'] as const;
-export type Currency = (typeof CURRENCIES)[number];
+/**
+ * Seçicide görünen para birimleri — desteklenen dillerin pazarlarını karşılar.
+ * Liste bir DOĞRULAMA listesi değil: cihazın kendi ISO kodu listede olmasa da
+ * olduğu gibi kabul edilir (formatMoney zaten Intl'e devrediyor). Eskiden
+ * listede olmayan her kod sessizce EUR'ya düşüyordu ve Kanadalı kullanıcı
+ * girdiği tarifeyi her yüzeyde euro olarak görüyordu.
+ */
+export const CURRENCIES = [
+  'USD', 'EUR', 'GBP', 'TRY', 'CAD', 'AUD', 'NZD', 'CHF',
+  'SEK', 'NOK', 'DKK', 'PLN', 'CZK', 'MXN', 'BRL', 'JPY', 'KRW', 'TWD',
+] as const;
+export type Currency = string;
 
 export const WARN_THRESHOLDS = [5, 10, 15, 30] as const;
 
@@ -18,6 +30,12 @@ interface SettingsStore {
   locale: Locale;
   currency: Currency;
   warnThresholdMin: number;
+  /** Saat biçimi — 'device' cihazın bölge ayarını izler. */
+  clockFormat: 'device' | ClockFormat;
+  setClockFormatPref: (value: 'device' | ClockFormat) => void;
+  /** Mesafe birimi — 'device' cihazın ölçü sistemini izler. */
+  units: 'device' | DistanceUnit;
+  setUnits: (value: 'device' | DistanceUnit) => void;
   /** §7.1 onboarding bir kez gösterilir. */
   onboardingSeen: boolean;
   completeOnboarding: () => void;
@@ -57,23 +75,56 @@ function read(key: string): string | null {
 }
 
 /**
- * Cihazın dil/bölge ayarından varsayılanlar. Global-first EN + TR: cihaz Türkçeyse
- * TR, değilse EN. Para birimi bölgeden gelir; desteklemediğimiz bir para birimiyse
- * bölgeye göre makul karşılığa düşer.
+ * Kullanılabilir para birimi kodu mu. XXX ISO 4217'de "para birimi yok" demektir
+ * ve bir tutarı onunla göstermek anlamsızdır.
  */
-function detectDeviceDefaults(): { locale: Locale; currency: Currency } {
+function isUsableCurrency(code: string | null | undefined): code is string {
+  return !!code && /^[A-Z]{3}$/.test(code) && code !== 'XXX';
+}
+
+/**
+ * Cihazın dil/bölge ayarından varsayılanlar.
+ *
+ * Para birimi cihazın kendi ISO kodudur — listede olmasa bile. Liste yalnız
+ * seçiciyi doldurur; bilinmeyen kodu EUR'ya çevirmek, kullanıcının girdiği
+ * rakamı yanlış para biriminde göstermek demekti.
+ */
+function detectDeviceDefaults(): {
+  locale: Locale;
+  currency: Currency;
+  clock: ClockFormat;
+  unit: DistanceUnit;
+} {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const Localization = require('expo-localization') as typeof import('expo-localization');
     const preferred = Localization.getLocales()[0];
     const language = preferred?.languageCode === 'tr' ? 'tr' : 'en';
     const code = preferred?.currencyCode?.toUpperCase();
-    const currency =
-      code && (CURRENCIES as readonly string[]).includes(code) ? (code as Currency) : 'EUR';
-    return { locale: language, currency: language === 'tr' ? 'TRY' : currency };
+    // getCalendars her ortamda olmayabilir; yokluğu para birimi tespitini
+    // çöpe atmamalı.
+    const calendar =
+      typeof Localization.getCalendars === 'function' ? Localization.getCalendars()[0] : undefined;
+    return {
+      locale: language,
+      // Geçerli bir ISO 4217 kodu üç harftir; başka bir şey geldiyse dile düş.
+      currency: isUsableCurrency(code) ? code : language === 'tr' ? 'TRY' : 'USD',
+      clock: calendar?.uses24hourClock === false ? '12' : '24',
+      unit: preferred?.measurementSystem === 'us' ? 'imperial' : 'metric',
+    };
   } catch {
-    return { locale: 'en', currency: 'TRY' };
+    return { locale: 'en', currency: 'USD', clock: '24', unit: 'metric' };
   }
+}
+
+/** Seçim 'device' ise cihazın söylediği uygulanır. */
+function applyFormats(
+  clockPref: 'device' | ClockFormat,
+  unitPref: 'device' | DistanceUnit,
+  device: { clock: ClockFormat; unit: DistanceUnit },
+): void {
+  setClockFormat(clockPref === 'device' ? device.clock : clockPref);
+  setDistanceUnit(unitPref === 'device' ? device.unit : unitPref);
 }
 
 export const useSettingsStore = create<SettingsStore>((set) => ({
@@ -85,6 +136,8 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   // Premium kullanıcıda varsayılan AÇIK: satın alınan özelliğin çalışması için
   // ayrıca bir anahtar aramak zorunda kalmak "para verdim çalışmıyor" üretiyor.
   autoDetectEnabled: true,
+  clockFormat: 'device',
+  units: 'device',
   hydrated: false,
 
   setAutoDetect: (autoDetectEnabled) => {
@@ -112,7 +165,10 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
    */
   resetToDefaults: () => {
     const device = detectDeviceDefaults();
+    applyFormats('device', 'device', device);
     set({
+      clockFormat: 'device',
+      units: 'device',
       onboardingSeen: false,
       themeMode: 'system',
       locale: device.locale,
@@ -138,14 +194,36 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     setLocale(device.locale);
     if (themeMode === 'light' || themeMode === 'dark' || themeMode === 'system') next.themeMode = themeMode;
     if (locale === 'en' || locale === 'tr') next.locale = locale;
-    if (currency && (CURRENCIES as readonly string[]).includes(currency)) next.currency = currency as Currency;
+    if (isUsableCurrency(currency)) next.currency = currency;
     if (Number.isFinite(threshold) && threshold > 0) next.warnThresholdMin = threshold;
     if (read('onboardingSeen') === '1') next.onboardingSeen = true;
     // Varsayılan açık olduğu için yalnız KAPATMA kararı kalıcılaşır.
     if (read('autoDetectEnabled') === '0') next.autoDetectEnabled = false;
 
+    const clockPref = read('clockFormat');
+    if (clockPref === '12' || clockPref === '24' || clockPref === 'device') {
+      next.clockFormat = clockPref;
+    }
+    const unitPref = read('units');
+    if (unitPref === 'metric' || unitPref === 'imperial' || unitPref === 'device') {
+      next.units = unitPref;
+    }
+    applyFormats(next.clockFormat ?? 'device', next.units ?? 'device', device);
+
     if (next.locale) setLocale(next.locale);
     set(next);
+  },
+
+  setClockFormatPref: (clockFormat) => {
+    write('clockFormat', clockFormat);
+    setClockFormat(clockFormat === 'device' ? detectDeviceDefaults().clock : clockFormat);
+    set({ clockFormat });
+  },
+
+  setUnits: (units) => {
+    write('units', units);
+    setDistanceUnit(units === 'device' ? detectDeviceDefaults().unit : units);
+    set({ units });
   },
 
   setThemeMode: (themeMode) => {

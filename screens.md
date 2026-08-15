@@ -83,14 +83,16 @@ Uygulamanın içereceği **tüm** yüzeylerin listesi. Her ekranın görsel/etki
 
 Uygulama dokümanı: **[ar-find-my-car.md](ar-find-my-car.md)** — mimari, koordinat matematiği, Swift/RN iskeletleri, v2 rota kuralları, iş sırası. Bu yüzeyde çalışmadan önce onu oku.
 
-- [ ] AR ekranı: kamera + arabanın konumuna yerden yükselen ışık huzmesi (Expo Modules API + RealityKit; yalnız `expo run:ios` build'inde)
-- [ ] Zemin chevron okları: arabaya yön (v1 düz hat — "NFS hissi")
-- [ ] Mesafe HUD'ı: tabular rakam, LA kart dili (§8 yüzey ailesi)
-- [ ] Yakın mesafe modu (<20 m): huzme → yere inen pin/pulse ("yaklaştın")
-- [ ] Doğruluk UX: zayıf GPS/kapalı alanda foto-kat kartına zarif düşüş; pusula kalibrasyon yönlendirmesi
-- [ ] Park anında çoklu GPS örneği ortalaması (kayıt hassasiyeti artışı)
-- [ ] v2: Mapbox Directions yürüyüş rotası AR zemin yolu olarak
+- [x] AR ekranı: kamera + arabanın konumuna yerden yükselen ışık huzmesi (`modules/parkiq-ar` — Expo Modules API + RealityKit; yalnız `expo run:ios` build'inde)
+- [x] Zemin chevron okları: arabaya yön (`ParkiqArView.swift` — 14 chevron, 3 m aralık)
+- [x] Mesafe HUD'ı: tabular rakam, LA kart dili (`ArFindMyCar.tsx`)
+- [x] Yakın mesafe modu: huzme → yere inen halka (`ring` entity + `status === 'near'`)
+- [x] Doğruluk UX: kapalı alanda AR hiç açılmaz, foto-kat kartına düşer (`FindMyCar.tsx:247` — `!indoor && isArAvailable` koşulu)
+- [x] Park anında çoklu GPS örneği (`location.ts:40` — 5 sn bütçede 4 örnek, en doğrusu seçilir; ortalama değil "en iyi düzeltme")
+- [ ] v2: Mapbox Directions yürüyüş rotası AR zemin yolu olarak — `maps.ts` yalnız Apple Maps'e devrediyor
 - [ ] design.md'ye AR yüzey dili eklentisi (huzme/chevron/HUD token'ları — §7.6 uzantısı)
+
+⚠️ **AR yazıldı ama lansman mağaza metninde geçmiyor** — sebep "hazır değil" değil, ürün kararı: rakip yorumları AR'ın kapalı otoparkta çöktüğünü gösteriyor ve insanların arabayı en çok kaybettiği yer orası. Gerekçe [market-research.md](market-research.md) §4.2, karar [aso.md](aso.md) §2.1.
 
 ## 8. Bitirme + Kutlama — ending / ended (§7.7)
 
@@ -118,7 +120,11 @@ Uygulama dokümanı: **[ar-find-my-car.md](ar-find-my-car.md)** — mimari, koor
 - [x] Dil: EN / TR
 - [x] Para birimi
 - [x] Uyarı eşiği (varsayılan 15 dk)
-- [x] Araçlar: tek araç (free) / çoklu araç yönetimi (premium) — plaka hiçbir yüzeye çıkmaz
+<!-- Çoklu araç 2026-07-23'te üründen kaldırıldı (CLAUDE.md); son ölü kod kalıntısı
+     (`newVehicle` useState) 2026-08-15'te SettingsSheet'ten silindi. Yeniden
+     gerekirse önce ona bir iş tanımla — plaka hiçbir yüzeye çıkmadığı için
+     aktif aracın hiçbir işlevi yoktu. -->
+
 - [x] Oto-algılama kurulumu girişi (premium, §7.4b'ye köprü)
 - [x] Abonelik: durum satırı + paywall köprüsü + yönet/iptal derin bağlantısı
 - [x] Bildirim/konum izin durumları + Settings deep link satırları (§5.11 kalıbı)

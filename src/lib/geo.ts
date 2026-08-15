@@ -43,12 +43,33 @@ export function relativeBearing(targetBearing: number, deviceHeading: number): n
 }
 
 /** "87 m" / "1,2 km" — mesafe metni; yakında metre, uzakta km. */
-export function formatDistance(meters: number, locale: string = 'en'): string {
+export type DistanceUnit = 'metric' | 'imperial';
+
+// Birim ayarı modül düzeyinde tutulur (localization'daki setLocale kalıbı):
+// formatDistance saf kalır, testler onu store olmadan çağırabilir.
+let currentUnit: DistanceUnit = 'metric';
+
+export function setDistanceUnit(unit: DistanceUnit): void {
+  currentUnit = unit;
+}
+
+export function formatDistance(
+  meters: number,
+  locale: string = 'en',
+  unit: DistanceUnit = currentUnit,
+): string {
   if (!Number.isFinite(meters) || meters < 0) return '—';
+  const decimal = (value: string) => (locale === 'tr' ? value.replace('.', ',') : value);
+
+  if (unit === 'imperial') {
+    const feet = meters * 3.28084;
+    // Yürüme mesafesi ayak, uzağı mil: "0,1 mi" kimseye yürüyecek mesafe demiyor.
+    if (feet < 1000) return `${Math.round(feet)} ft`;
+    return `${decimal((meters / 1609.344).toFixed(1))} mi`;
+  }
+
   if (meters < 1000) return `${Math.round(meters)} m`;
-  const km = meters / 1000;
-  const text = km.toFixed(1);
-  return `${locale === 'tr' ? text.replace('.', ',') : text} km`;
+  return `${decimal((meters / 1000).toFixed(1))} km`;
 }
 
 /**

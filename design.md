@@ -329,7 +329,7 @@ Custom style, iki varyant: `parkiq-light`, `parkiq-dark` + her birinin `calm` al
 
 **Mimari:** Tab bar YOK. Root = MapCanvas (Mapbox, asla unmount olmaz) + her zaman açık durum-güdümlü bottom sheet (`@gorhom/bottom-sheet`, detent 120pt / %45 / %90). State enum: `idle | parking | active | ending | ended`. Geçişler: 300ms yükseklik + 200ms crossfade morph. History/Settings/Paywall = iOS pageSheet (`r-24`). Sistem UIAlert akış içi onaylarda yasak. Cold start: aktif oturum varsa doğrudan `active`; oturum >24h ise sheet'te "Still parked at Kanyon? · End / Keep" satırı.
 
-**Tek oturum kuralı (ürün kararı, bağlayıcı):** aynı anda yalnız TEK aktif oturum vardır. Çoklu araç bir **profil** özelliğidir, paralel oturum açmaz — ikinci araç park etmeye çalışılırsa sheet'te bilgi satırı: "End current session first." Bu kısıt state enum'unu ve tek-sheet mimarisini korur.
+**Tek oturum kuralı (ürün kararı, bağlayıcı):** aynı anda yalnız TEK aktif oturum vardır. Bu kısıt state enum'unu ve tek-sheet mimarisini korur. *(Bu kural eskiden çoklu araca atıf yapıyordu; çoklu araç 2026-07-23'te üründen kaldırıldı — [CLAUDE.md](../CLAUDE.md). Kural araçtan bağımsız olarak geçerli.)*
 
 ### 7.1 Onboarding — 3 tipografik manifesto posteri
 

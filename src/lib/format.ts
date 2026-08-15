@@ -15,10 +15,25 @@ export function formatMoney(amount: number, currency: string, locale: string = '
   }
 }
 
-/** Yerel saat, 24s "14:04". */
-export function formatClock(ms: number): string {
+export type ClockFormat = '12' | '24';
+
+// 24 saat sabitti; lansman pazarlarının çoğunda yanlış. Ayar modül düzeyinde
+// tutulur ki bu dosya saf kalsın (geo.ts'teki setDistanceUnit ile aynı kalıp).
+let currentClock: ClockFormat = '24';
+
+export function setClockFormat(format: ClockFormat): void {
+  currentClock = format;
+}
+
+/** Yerel saat: "14:04" ya da "2:04 PM". */
+export function formatClock(ms: number, format: ClockFormat = currentClock): string {
   const d = new Date(ms);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  if (format === '24') return `${String(d.getHours()).padStart(2, '0')}:${minutes}`;
+  const hours = d.getHours();
+  const suffix = hours < 12 ? 'AM' : 'PM';
+  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+  return `${hour12}:${minutes} ${suffix}`;
 }
 
 /** Sayaç: ana blok "1:23" + saniye bloğu ":47" (§7.5 — saniye görsel olarak küçülür). */
