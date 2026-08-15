@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { trackOnboardingDone } from '../lib/analytics';
-import { setLocale, type Locale } from '../localization';
+import { resolveLocale, setLocale, type Locale } from '../localization';
 import { setClockFormat, type ClockFormat } from '../lib/format';
 import { setDistanceUnit, type DistanceUnit } from '../lib/geo';
 import { DEFAULT_WARN_THRESHOLD_MIN } from '../lib/tariffMath';
@@ -99,7 +99,7 @@ function detectDeviceDefaults(): {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const Localization = require('expo-localization') as typeof import('expo-localization');
     const preferred = Localization.getLocales()[0];
-    const language = preferred?.languageCode === 'tr' ? 'tr' : 'en';
+    const language = resolveLocale(preferred?.languageTag ?? preferred?.languageCode);
     const code = preferred?.currencyCode?.toUpperCase();
     // getCalendars her ortamda olmayabilir; yokluğu para birimi tespitini
     // çöpe atmamalı.
@@ -193,7 +193,11 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     };
     setLocale(device.locale);
     if (themeMode === 'light' || themeMode === 'dark' || themeMode === 'system') next.themeMode = themeMode;
-    if (locale === 'en' || locale === 'tr') next.locale = locale;
+    // Kayıtlı dil artık bölgeli olabilir ('en-GB'); resolveLocale bilinmeyeni eler.
+    if (locale) {
+      const resolved = resolveLocale(locale);
+      if (resolved.toLowerCase() === locale.toLowerCase()) next.locale = resolved;
+    }
     if (isUsableCurrency(currency)) next.currency = currency;
     if (Number.isFinite(threshold) && threshold > 0) next.warnThresholdMin = threshold;
     if (read('onboardingSeen') === '1') next.onboardingSeen = true;

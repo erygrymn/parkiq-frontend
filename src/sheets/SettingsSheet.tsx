@@ -13,7 +13,7 @@ import { PageSheet, Section } from '../components/PageSheet';
 import { SelectRow } from '../components/SelectRow';
 import { openAppSettings, StatusLine } from '../components/StatusLine';
 import { Caption } from '../components/Typography';
-import { t } from '../localization';
+import { LOCALES, LOCALE_NAMES, t } from '../localization';
 import type { Locale } from '../localization';
 import { useSessionStore } from '../state/sessionStore';
 import {
@@ -211,10 +211,7 @@ export function SettingsSheet({
             ve seçili değeri bir bakışta okutmuyordu. */}
         <SelectRow<Locale>
           label={t('language')}
-          options={[
-            { key: 'en', label: 'English' },
-            { key: 'tr', label: 'Türkçe' },
-          ]}
+          options={LOCALES.map((key) => ({ key, label: LOCALE_NAMES[key] }))}
           value={locale}
           onChange={setLocalePref}
         />

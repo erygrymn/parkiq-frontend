@@ -29,5 +29,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     // WidgetKit extension target'ı (targets/widget) — prebuild sırasında eklenir
     '@bacons/apple-targets',
+    // İzin diyaloglarının yerelleştirilmiş metinleri (<dil>.lproj/InfoPlist.strings)
+    './plugins/withLocalizedInfoPlist',
   ],
 });
