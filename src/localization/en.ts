@@ -151,7 +151,7 @@ export const en = {
   // Paywall (§7.10) — "unlock/amazing" tipi pazarlama dolgusu yasak (§10)
   proHeadline: 'PRO DETECTS PARKING',
   proBody: 'You never think about it.',
-  proFeatureAuto: 'Auto-record when CarPlay or car Bluetooth disconnects',
+  proFeatureAuto: 'Asks to start the timer when CarPlay disconnects',
   proFeatureScan: 'Scan tariff boards with the camera',
   autoRenewNotice: 'Subscriptions renew automatically until cancelled. Your Apple ID is charged at confirmation and again at each renewal. Manage or cancel in Settings.',
   proFeatureFind: 'Compass and AR guidance back to the car',
@@ -193,6 +193,7 @@ export const en = {
   autoDetect: 'Auto-detection',
   autoDetectHint: 'Saves your spot when your car’s Bluetooth or CarPlay disconnects.',
   autoDetectPro: 'Auto-detection in Pro',
+  autoParkedAsk: 'Did you just park? Tap to start the timer here.',
   autoParkedNotice: 'Your parking spot was saved. Start the timer?',
   permissions: 'Permissions',
   locationGranted: 'Location on',

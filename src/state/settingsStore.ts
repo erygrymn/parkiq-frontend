@@ -82,7 +82,9 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   currency: 'TRY',
   warnThresholdMin: DEFAULT_WARN_THRESHOLD_MIN,
   onboardingSeen: false,
-  autoDetectEnabled: false,
+  // Premium kullanıcıda varsayılan AÇIK: satın alınan özelliğin çalışması için
+  // ayrıca bir anahtar aramak zorunda kalmak "para verdim çalışmıyor" üretiyor.
+  autoDetectEnabled: true,
   hydrated: false,
 
   setAutoDetect: (autoDetectEnabled) => {
@@ -139,7 +141,8 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     if (currency && (CURRENCIES as readonly string[]).includes(currency)) next.currency = currency as Currency;
     if (Number.isFinite(threshold) && threshold > 0) next.warnThresholdMin = threshold;
     if (read('onboardingSeen') === '1') next.onboardingSeen = true;
-    if (read('autoDetectEnabled') === '1') next.autoDetectEnabled = true;
+    // Varsayılan açık olduğu için yalnız KAPATMA kararı kalıcılaşır.
+    if (read('autoDetectEnabled') === '0') next.autoDetectEnabled = false;
 
     if (next.locale) setLocale(next.locale);
     set(next);

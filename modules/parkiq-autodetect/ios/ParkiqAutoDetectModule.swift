@@ -48,9 +48,15 @@ public class ParkiqAutoDetectModule: Module {
     }
   }
 
-  /// Araç sayılan çıkış türleri; kulaklık/hoparlör araç DEĞİLDİR (yanlış algı önlemi).
+  /// YALNIZ CarPlay araç sayılır.
+  ///
+  /// `.bluetoothA2DP` de buradaydı ama o türü AirPods, kulaklıklar ve taşınabilir
+  /// hoparlörler de kullanıyor: kulaklığı çıkarmak "park ettin mi?" sorusu
+  /// üretiyordu. Yanlış algı burada iki kat pahalı — kullanıcı hem gereksiz
+  /// bildirim alıyor hem de uygulamanın Bluetooth'unu dinlediğini düşünüyor,
+  /// ki bu pazarda en sert 1★ sebeplerinden biri.
   private static func carPortName(in route: AVAudioSessionRouteDescription) -> String? {
-    for output in route.outputs where output.portType == .bluetoothA2DP || output.portType == .carAudio {
+    for output in route.outputs where output.portType == .carAudio {
       return output.portName
     }
     return nil

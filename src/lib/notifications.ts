@@ -41,17 +41,36 @@ export async function ensureNotificationPermission(prompt: boolean): Promise<Not
 }
 
 /** §8.4 oto-algılama onayı: "Park kaydedildi. Sayaç başlasın mı?" */
-export async function notifyAutoParked(): Promise<void> {
+/**
+ * CarPlay koptu: oturumu SESSİZCE açmak yerine sor.
+ *
+ * Kopuş noktasının koordinatı bildirimin içinde taşınır; kullanıcı dokununca
+ * park o konumla ve o anla başlar. Kendiliğinden oturum açmak, kırmızı ışıkta
+ * telefonu ayıran ya da benzinlikte duran herkese hayalet kayıt bırakıyordu.
+ */
+export async function askAutoParked(place: {
+  latitude: number;
+  longitude: number;
+  atMs: number;
+}): Promise<void> {
   try {
     if ((await ensureNotificationPermission(false)) !== 'granted') return;
     await Notifications.scheduleNotificationAsync({
-      content: { title: undefined, body: t('autoParkedNotice'), sound: false },
+      content: {
+        title: undefined,
+        body: t('autoParkedAsk'),
+        sound: false,
+        data: { kind: AUTO_PARK_KIND, ...place },
+      },
       trigger: null, // hemen
     });
   } catch {
     /* bildirim yoksa akış etkilenmez */
   }
 }
+
+/** Bildirim dokunuşunu tanımak için — App.tsx bunu dinler. */
+export const AUTO_PARK_KIND = 'auto-park';
 
 export async function cancelSessionAlerts(): Promise<void> {
   try {

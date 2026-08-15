@@ -1,4 +1,6 @@
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import * as Notifications from 'expo-notifications';
+import { AUTO_PARK_KIND } from './src/lib/notifications';
 import { StatusBar } from 'expo-status-bar';
 import { SymbolView, type SFSymbol } from 'expo-symbols';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -211,6 +213,26 @@ function Root() {
     };
     void Linking.getInitialURL().then(handle);
     const sub = Linking.addEventListener('url', (event) => handle(event.url));
+    return () => sub.remove();
+  }, []);
+
+  // Oto-algılama bildirimine dokunuş: park akışı kopuş noktasından başlar.
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = (response.notification.request.content.data ?? {}) as {
+        kind?: string;
+        latitude?: number;
+        longitude?: number;
+        atMs?: number;
+      };
+      if (data.kind !== AUTO_PARK_KIND) return;
+      if (typeof data.latitude !== 'number' || typeof data.longitude !== 'number') return;
+      useSessionStore.getState().parkAt({
+        latitude: data.latitude,
+        longitude: data.longitude,
+        atMs: typeof data.atMs === 'number' ? data.atMs : Date.now(),
+      });
+    });
     return () => sub.remove();
   }, []);
 

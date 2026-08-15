@@ -9,7 +9,7 @@ import { computeExitSummary } from '../lib/tariffMath';
 import { isIndoorLike } from '../lib/geo';
 import { endSessionActivity, refreshSessionActivity, startSessionActivity, syncWidget } from '../lib/liveActivity';
 import { captureCurrentPlace, describeCoords } from '../lib/location';
-import { cancelSessionAlerts, notifyAutoParked, scheduleSessionAlerts } from '../lib/notifications';
+import { askAutoParked, cancelSessionAlerts, scheduleSessionAlerts } from '../lib/notifications';
 import { scanTariffBoard } from '../lib/ocr';
 import type { ScheduleKind } from '../lib/tariffSchedule';
 import { captureSpotPhoto, deleteSpotPhoto } from '../lib/photo';
@@ -126,8 +126,10 @@ interface SessionStore {
   removePhoto: () => void;
   /** §7.4 tarife panosu taraması; sonuç forma dışarıdan yazılır. */
   scanTariff: () => void;
-  /** §7.4b oto-algılama tetiklediğinde çağrılır (premium). */
+  /** §7.4b oto-algılama tetiklediğinde çağrılır (premium): yalnız sorar. */
   autoPark: () => void;
+  /** Bildirimden gelen onay: kopuş anının konumu ve zamanıyla oturumu başlatır. */
+  parkAt: (place: { latitude: number; longitude: number; atMs: number }) => void;
   dismissAutoPark: () => void;
   /** Park formundan çıkış: kayıt silinir, keşfe dönülür. */
   cancelPark: () => void;
@@ -395,12 +397,50 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     set({ session: next });
   },
 
-  /** §7.4b: araç bağlantısı koptu → konum kaydedilir, kullanıcıya sorulur. */
+  /**
+   * §7.4b: CarPlay bağlantısı koptu. Oturum AÇILMAZ — kopuş noktası bildirimle
+   * sorulur. Böylece yanlış algı geriye hayalet kayıt bırakmaz ve kullanıcı
+   * "ben park etmedim" demek için hiçbir şey temizlemek zorunda kalmaz.
+   */
   autoPark: () => {
     if (get().phase !== 'idle') return; // tek oturum kuralı
+    const atMs = Date.now();
+    void captureCurrentPlace().then((outcome) => {
+      if (outcome.status !== 'ok') return;
+      void askAutoParked({
+        latitude: outcome.place.latitude,
+        longitude: outcome.place.longitude,
+        atMs,
+      });
+    });
+  },
+
+  parkAt: ({ latitude, longitude, atMs }) => {
+    if (get().phase !== 'idle') return;
     get().park();
-    set({ autoDetected: true });
-    void notifyAutoParked();
+    const session = get().session;
+    if (!session) return;
+    // Kayıt anı kopuş anıdır: kullanıcı bildirime dakikalar sonra dokunmuş
+    // olabilir ve sayaç arabayı bıraktığı andan itibaren saymalı.
+    const next: ParkSession = {
+      ...session,
+      startedAtMs: atMs,
+      recordedAtMs: atMs,
+      latitude,
+      longitude,
+      accuracyM: 0,
+    };
+    persist(next);
+    set({
+      session: next,
+      autoDetected: true,
+      locationState: 'ok',
+      // Konum bildirimle geldi: park()'ın gecikmeli yakalaması bunu ezmesin.
+      locationPinnedByUser: true,
+    });
+    void describeCoords({ latitude, longitude }).then((place) => {
+      if (place.placeName) get().setParkLocation(place);
+    });
   },
 
   /** §7.4b yanlış algı: kullanıcı "ben park etmedim" derse kayıt tamamen silinir. */
