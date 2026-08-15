@@ -19,6 +19,16 @@ public class ParkiqLiveActivityModule: Module {
       return false
     }
 
+    /// Şu an canlı bir aktivite var mı. `start` mevcutları kapatıp yeniden
+    /// kurduğu için, ön plana her dönüşte koşulsuz `start` çağırmak kartı
+    /// söndürüp yeniden yakardı; çağıran taraf buna bakıp karar verir.
+    Function("isRunning") { () -> Bool in
+      if #available(iOS 16.2, *) {
+        return !Activity<ParkIQAttributes>.activities.isEmpty
+      }
+      return false
+    }
+
     AsyncFunction("start") { (payload: [String: Any]) -> String? in
       guard #available(iOS 16.2, *) else { return nil }
       // Idempotent: cold start bir kez daha çağırabilir; önce mevcutları kapat ki

@@ -4,7 +4,7 @@ import { AUTO_PARK_KIND } from './src/lib/notifications';
 import { StatusBar } from 'expo-status-bar';
 import { SymbolView, type SFSymbol } from 'expo-symbols';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { AppState, Linking, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { t } from './src/localization';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -213,6 +213,16 @@ function Root() {
     };
     void Linking.getInitialURL().then(handle);
     const sub = Linking.addEventListener('url', (event) => handle(event.url));
+    return () => sub.remove();
+  }, []);
+
+  // Ön plana dönüş: iOS Live Activity'yi ~8 saatte kendisi bitiriyor ve geri
+  // getirmenin tek yolu ön planda yeniden kurmak. Gece boyu ya da havaalanı
+  // parkında kilit ekranı kartı bir daha hiç gelmiyordu.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') useSessionStore.getState().resumeLiveActivity();
+    });
     return () => sub.remove();
   }, []);
 

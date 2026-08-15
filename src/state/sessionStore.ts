@@ -7,7 +7,13 @@ import {
 } from '../lib/analytics';
 import { computeExitSummary } from '../lib/tariffMath';
 import { isIndoorLike } from '../lib/geo';
-import { endSessionActivity, refreshSessionActivity, startSessionActivity, syncWidget } from '../lib/liveActivity';
+import {
+  endSessionActivity,
+  isLiveActivityRunning,
+  refreshSessionActivity,
+  startSessionActivity,
+  syncWidget,
+} from '../lib/liveActivity';
 import { captureCurrentPlace, describeCoords } from '../lib/location';
 import { askAutoParked, cancelSessionAlerts, scheduleSessionAlerts } from '../lib/notifications';
 import { scanTariffBoard } from '../lib/ocr';
@@ -142,6 +148,8 @@ interface SessionStore {
   keep: () => void;
   confirmEnd: () => void;
   undoEnd: () => void;
+  /** Ön plana dönüşte kilit ekranı kartını yaşayan duruma getirir. */
+  resumeLiveActivity: () => void;
   finish: () => void;
   /** Geçmişten tek kaydı siler (fotoğrafıyla birlikte). */
   deleteEndedSession: (id: string) => void;
@@ -676,6 +684,21 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     persist(next);
     set({ phase: 'active', session: next });
     syncAlerts(next, false, set); // Undo → uyarılar geri kurulur
+    // confirmEnd aktiviteyi kapatmıştı; geri alınca kilit ekranı da geri gelir.
+    syncLiveActivity('start');
+  },
+
+  /**
+   * Ön plana dönüş: Live Activity'yi yaşayan duruma getirir.
+   *
+   * iOS aktiviteyi ~8 saatte kendisi bitiriyor (gece boyu / havaalanı parkı) ve
+   * geri getirmenin tek yolu ön planda yeniden `request` etmek. Var olanı
+   * yeniden kurmak kartı söndürüp yakacağı için önce varlığı sorulur.
+   */
+  resumeLiveActivity: () => {
+    const { phase, session } = get();
+    if (phase !== 'active' || !session) return;
+    syncLiveActivity(isLiveActivityRunning() ? 'refresh' : 'start');
   },
 
   finish: () => {

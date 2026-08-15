@@ -422,3 +422,39 @@ describe('kenar durumları', () => {
     expect(s.knobPct).toBeCloseTo(25 + 12.5);
   });
 });
+
+describe('günlük tavan', () => {
+  const daily: Tariff = {
+    type: 'tiered',
+    currency: 'TRY',
+    dailyMax: 200,
+    tiers: [
+      { endMin: 60, cumulativePrice: 50 },
+      { endMin: 180, cumulativePrice: 120 },
+    ],
+  };
+  const at = (min: number) => computeTariffState(daily, 0, min * 60_000);
+
+  it('gün içi tavanı aşmaz', () => {
+    expect(at(30).nowPrice).toBe(50);
+    expect(at(120).nowPrice).toBe(120);
+    // 3 saatten sonra gün 24 saatte tavanla kapanır
+    expect(at(600).nowPrice).toBe(200);
+  });
+
+  it('her tam gün tavanı yeniden ekler', () => {
+    // 3 gün 1 saat: iki tam gün + üçüncü günün ilk dilimi
+    expect(at(24 * 60 * 2 + 30).nowPrice).toBe(200 * 2 + 50);
+  });
+
+  it('tavan yokken taşma işaretlenir', () => {
+    const noCap: Tariff = { ...daily, dailyMax: undefined };
+    const state = computeTariffState(noCap, 0, 72 * 60 * 60_000);
+    expect(state.beyondSchedule).toBe(true);
+    expect(computeTariffState(noCap, 0, 30 * 60_000).beyondSchedule).toBe(false);
+  });
+
+  it('tavan varken taşma işaretlenmez', () => {
+    expect(at(24 * 60 * 3).beyondSchedule).toBe(false);
+  });
+});

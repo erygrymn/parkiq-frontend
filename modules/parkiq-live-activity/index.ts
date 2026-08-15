@@ -38,6 +38,7 @@ export interface WidgetPayload {
 
 interface NativeLiveActivity {
   isSupported(): boolean;
+  isRunning(): boolean;
   start(payload: LiveActivityPayload): Promise<string | null>;
   update(payload: LiveActivityPayload): Promise<void>;
   end(payload: LiveActivityPayload | Record<string, never>): Promise<void>;
@@ -65,6 +66,15 @@ if (native === null) {
 }
 
 export const isLiveActivityAvailable = native !== null && (native?.isSupported() ?? false);
+
+/** Şu an canlı bir aktivite var mı — ön plana dönüşte kurmalı mı, tazelemeli mi. */
+export function isLiveActivityRunning(): boolean {
+  try {
+    return native?.isRunning() ?? false;
+  } catch {
+    return false;
+  }
+}
 
 if (native !== null && !isLiveActivityAvailable) {
   warn('ActivityKit reports Live Activities disabled (Settings > ParkIQ > Live Activities)');

@@ -74,7 +74,7 @@ KD = ilk 3 sıradaki uygulamaların ortalama oy sayısının logaritmik ölçeğ
 Apple'ın **indekslediği** alanlar: uygulama adı (30) · alt başlık (30) · anahtar kelime alanı (100) · IAP görünen adları (30 her biri) · In-App Event başlığı (30) + kısa açıklaması (50) · geliştirici adı · kategoriler.
 Apple'ın **indekslemediği** alanlar: uzun açıklama (4.000) · promosyon metni (170) · önizleme videosu. Bunlar yalnız dönüşüm için.
 
-**Konumlandırma ağırlığı (bağlayıcı):** sayaç/maliyet ağır · araba bulma ikincil · **reklamsızlık öne çıkar** · diğer özellikler kısaca · **AR hiçbir yerde geçmez** (yazılmadı — [screens.md](screens.md) §7b tüm kutular işaretsiz).
+**Konumlandırma ağırlığı (bağlayıcı):** sayaç/maliyet ağır · araba bulma ikincil · **reklamsızlık öne çıkar** · diğer özellikler kısaca · **AR hiçbir yerde geçmez.** Sebep "yazılmadı" DEĞİL — AR yazıldı (`modules/parkiq-ar`, [FindMyCar.tsx:247](src/screens/FindMyCar.tsx:247)). Sebep kanıt: AR'lı iki rakibin yorumları AR'ın kapalı otoparkta çöktüğünü gösteriyor ve insanların arabayı en çok kaybettiği yer orası ([market-research.md](market-research.md) §4.2). AR açık alanda bir kanca, güvenilirlik hikâyesi değil.
 
 ### 2.1 en-US / en-CA
 
@@ -89,8 +89,6 @@ Neden bu üçlü: `parking`+`timer`+`cost` en ağır alandan (ad), `find`+`my`+`
 `no ads` alt başlıkta çünkü **arama talebi ölçüldü**: "parking timer - no ads" US/GB/AU/NZ mağazalarında Apple'ın kendi arama önerilerinde çıkıyor. Yani reklamsızlık hem dönüşüm argümanı hem arama terimi. Ayrıca rakip Find My Car'ın şikayetlerinin **%15'i reklam** — bu satır doğrudan onların kullanıcısını alıyor.
 
 `no login` ikinci farklılaştırıcı: rakiplerde kredi kartı/hesap zorunluluğu şikayetleri yaygın ([market-research.md](market-research.md) §4.7).
-
-⛔ **`tracker` / `locator` / `gps tracker` / `vehicle tracker` kelimeleri hiçbir dilde kullanılmayacak.** Bu kelimeler canlı araç takibi (çalınan araba, çocuğun kullandığı araç) bekleyen kullanıcıyı çekiyor; ParkIQ o işi yapmadığı için o kullanıcı 1★ bırakıyor. Kanıt ve alıntılar [market-research.md](market-research.md) §4.3'te. Aynı sebeple açıklamanın ilk ekranı ParkIQ'nun canlı takip **olmadığını** ima etmeli (park kaydı, iz sürme değil).
 
 ⛔ **`tracker` / `locator` / `gps tracker` / `vehicle tracker` kelimeleri hiçbir dilde kullanılmayacak.** Bu kelimeler canlı araç takibi (çalınan araba, çocuğun kullandığı araç) bekleyen kullanıcıyı çekiyor; ParkIQ o işi yapmadığı için o kullanıcı 1★ bırakıyor. Rakiplerin 1★ yorumlarının önemli bir kısmı doğrudan bu beklenti uyuşmazlığı — kanıt ve alıntılar [market-research.md](market-research.md) §4.3'te. Aynı sebeple açıklamanın ilk ekranı ParkIQ'nun canlı takip **olmadığını** ima etmeli (park kaydı, iz sürme değil).
 
@@ -198,7 +196,7 @@ Bunlar App Store Connect'te ayrı ayrı doldurulur ve **arama sıralamasına gir
 
 **Dürüstlük kuralı:** Üç IAP de **aynı** `pro` entitlement'ını açıyor. Bu yüzden adları özellik adıyla ayrıştırılmaz (kullanıcı "Pro Monthly — Auto-Detect" görüp yalnız oto-algılama aldığını sanabilir; Apple bunu yanıltıcı sayar). Üçü de aynı özellik ifadesini taşır, yalnız süre değişir.
 
-⛔ IAP adına **`AR` yazılmaz** — AR yazılmadı.
+⛔ IAP adına **`AR` yazılmaz** — AR yazıldı ama lansmanda satılmıyor (§2.1). Kod AR'ı `!indoor && isArAvailable` koşuluyla açıyor ([FindMyCar.tsx:247](src/screens/FindMyCar.tsx:247)); yani her cihazda ve her yerde çalışmıyor, IAP adında vaat edilemez.
 
 Bu üç IAP adı = **84 ekstra indekslenen karakter**, tamamen ücretsiz. `scan` ve `compass` gibi ana alana sığmayan terimler buraya taşınır. Rakiplerin hiçbiri bu alanı kullanmıyor.
 
@@ -419,7 +417,7 @@ Sıra, §2'deki ağırlığı takip eder: **1–2–3 sayaç ve para, 4 reklams�
 
 4. kare kasıtlı olarak ürün ekranı değil: bu pazarda reklam ve hesap zorunluluğu en sık şikayet ([market-research.md](market-research.md) §4.6–4.7), ve rakiplerin hiçbirinin ekran görüntülerinde böyle bir iddia yok.
 
-**AR karesi yok** — AR yazılmadı. Yazıldığında 5. karenin yerine değil, 8. kare olarak eklenir.
+**AR karesi yok** — AR yazılı ama kasıtlı olarak gösterilmiyor (§2.1). Açık alanda çekilmiş bir AR karesi eklenecekse 5. karenin yerine değil **8. kare** olarak eklenir; kapalı otopark karesi (5) her zaman önce gelir, çünkü güvenilirlik iddiası orada.
 
 **Kural:** 1. kare rakam içermeli. Bu pazardaki tüm rakiplerin 1. karesi haritada bir araba pini — birbirinin aynısı. Rakam farklılaştırıcı.
 
@@ -539,7 +537,7 @@ ParkUsher kanıtı: **3 şehir, $30/yıl, 20k indirme = $10k/ay.** ParkIQ'nun bu
 - [ ] RevenueCat + ASC fiyatları güncellenir (§6.3, §6.4) — build gerektirmez
 - [ ] Paywall: lifetime varsayılan seçili, "iki park aşımı kadar" çerçevesi
 - [ ] ja/ko/zh-Hant/sv/nl metinleri ana dil kontrolünden geçirilir
-- [ ] **AR ekranını lansman metnine koyma** — screens.md §7b tamamen işaretsiz. Yazdığını yollayamıyorsan yazma.
+- [x] **AR lansman metninin dışında tutuldu** — ürün kararı, eksiklik değil (§2.1). AR kodda hazır; öne çıkarma kararı ilk yorumlar geldikten sonra yeniden değerlendirilir.
 
 ### 7.1 ASC'ye aktarılan durum (2026-08-15)
 

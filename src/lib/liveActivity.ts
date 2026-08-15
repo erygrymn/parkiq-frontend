@@ -104,6 +104,8 @@ export function startSessionActivity(session: ParkSession, warnThresholdMin: num
   syncWidget(session);
 }
 
+export { isLiveActivityRunning } from '../../modules/parkiq-live-activity';
+
 export function refreshSessionActivity(session: ParkSession, warnThresholdMin: number): void {
   void updateLiveActivity(buildPayload(session, warnThresholdMin));
 }

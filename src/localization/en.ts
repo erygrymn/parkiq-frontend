@@ -230,6 +230,8 @@ export const en = {
   sessionDetail: 'Session',
   openInMaps: 'Open in Maps',
   fixLocation: 'Fix parking location',
+  dailyMax: 'Daily maximum (optional)',
+  beyondSchedule: 'Past what the board covers — the amount is no longer certain',
   clockFormat: 'Time format',
   clock12: '1:04 PM',
   clock24: '13:04',

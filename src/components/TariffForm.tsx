@@ -26,6 +26,13 @@ export function TariffForm({
   const currency = useSettingsStore((s) => s.currency);
   const [mode, setMode] = useState<FormMode>(value?.type ?? 'none');
   const [amount, setAmount] = useState(value?.price != null ? String(value.price) : '');
+  // Günlük tavan: çok günlük parkta fiyatın donmasını engelleyen tek bilgi.
+  const [dailyMax, setDailyMax] = useState(value?.dailyMax != null ? String(value.dailyMax) : '');
+
+  const parseAmount = (text: string): number | null => {
+    const parsed = Number(text.replace(',', '.'));
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  };
 
   const apply = (nextMode: FormMode, nextAmount: string) => {
     // tiered kendi editöründen yayınlar; burada yalnız tek-tutarlı modlar işlenir.
@@ -59,10 +66,39 @@ export function TariffForm({
       />
 
       {mode === 'tiered' && (
-        <TieredTariffEditor
-          initialTiers={value?.type === 'tiered' ? value.tiers : undefined}
-          onChange={(tiers) => onChange(tiers.length > 0 ? { type: 'tiered', currency, tiers } : null)}
-        />
+        <>
+          <TieredTariffEditor
+            initialTiers={value?.type === 'tiered' ? value.tiers : undefined}
+            onChange={(tiers) =>
+              onChange(
+                tiers.length > 0
+                  ? { type: 'tiered', currency, tiers, dailyMax: parseAmount(dailyMax) ?? undefined }
+                  : null,
+              )
+            }
+          />
+          <BottomSheetTextInput
+            value={dailyMax}
+            onChangeText={(text) => {
+              setDailyMax(text);
+              if (value?.type === 'tiered' && value.tiers) {
+                onChange({ ...value, dailyMax: parseAmount(text) ?? undefined });
+              }
+            }}
+            keyboardType="decimal-pad"
+            placeholder={t('dailyMax')}
+            placeholderTextColor={colors.textSecondary}
+            style={{
+              height: 44,
+              borderRadius: radius.r12,
+              backgroundColor: colors.inset,
+              paddingHorizontal: spacing.s12,
+              fontSize: 15,
+              color: colors.ink,
+              fontVariant: ['tabular-nums'],
+            }}
+          />
+        </>
       )}
 
       {(mode === 'hourly' || mode === 'flat') && (

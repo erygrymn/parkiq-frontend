@@ -218,6 +218,8 @@ export const tr: Record<CopyKey, string> = {
   avgDuration: 'Ortalama',
   sessionDetail: 'Oturum',
   fixLocation: 'Park konumunu düzelt',
+  dailyMax: 'Günlük tavan (isteğe bağlı)',
+  beyondSchedule: 'Panonun anlattığı sürenin ötesindesin — tutar artık kesin değil',
   clockFormat: 'Saat biçimi',
   clock12: '1:04 PM',
   clock24: '13:04',

@@ -5,6 +5,8 @@
 > Kardeş dokümanlar: [CLAUDE.md](../CLAUDE.md) · [design.md](design.md) · [screens.md](screens.md) · [aso.md](aso.md)
 >
 > Bu dosya **ne inşa edileceğinin kanıt tabanı**. Bir özellik tartışılırken "kullanıcı bunu istiyor mu" sorusu buradan cevaplanır. Metadata/fiyat kararları [aso.md](aso.md)'de.
+>
+> **Rakip verisi 2026-08-15'te dondu — "ParkIQ'da durum" sütunları koda karşı 2026-08-15'te doğrulandı.** Pazar tarafı (gelir, yorum, KD) tekrar ölçülene kadar geçerlidir; ParkIQ tarafı ise **kod değişince eskir**. Bir özelliğin durumu tartışılıyorsa önce koda bak, sonra bu tabloyu güncelle — tersi değil.
 
 ---
 

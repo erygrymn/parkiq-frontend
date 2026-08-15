@@ -461,7 +461,7 @@ export function parseTariffLines(
     if (flat !== null) tiers.push({ endMin: DAY_MINUTES, cumulativePrice: flat });
 
     const clean = sanitizeTiers(tiers);
-    if (clean.length > 0) return { tariff: { type: 'tiered', currency, tiers: clean }, matchedLines, missedLines };
+    if (clean.length > 0) return { tariff: { type: 'tiered', currency, tiers: clean, dailyMax: flat ?? undefined }, matchedLines, missedLines };
   }
 
   // Saatlik + günlük tavan: tavansız saatlik gibi sonsuza kadar artmasın.
@@ -477,7 +477,7 @@ export function parseTariffLines(
     }
     tiers.push({ endMin: DAY_MINUTES, cumulativePrice: flat });
     const clean = sanitizeTiers(tiers);
-    if (clean.length > 0) return { tariff: { type: 'tiered', currency, tiers: clean }, matchedLines, missedLines };
+    if (clean.length > 0) return { tariff: { type: 'tiered', currency, tiers: clean, dailyMax: flat ?? undefined }, matchedLines, missedLines };
   }
 
   if (perHour !== null) return { tariff: { type: 'hourly', currency, price: perHour }, matchedLines, missedLines };

@@ -24,7 +24,19 @@ export interface Tariff {
   tiers?: TariffTier[];
   /** type === 'flat': sabit toplam. type === 'hourly': saat başı tutar. */
   price?: number;
+  /**
+   * Bir tam günün (24 saat) üst sınırı — pano "Günlük ₺200" diyorsa 200.
+   *
+   * Bu olmadan çok günlük park yanlış hesaplanıyordu: dilimli tarifede fiyat son
+   * dilimde donuyor (3 günlük havalimanı parkı ₺200 görünüyor, gerçeği ₺600),
+   * saatlikte ise tavansız büyüyor. İkisi de tehlikeli, ama donması daha tehlikeli:
+   * kullanıcı ödeyeceğinden AZINI görüyor.
+   */
+  dailyMax?: number;
 }
+
+/** Bir günün dakikası — günlük tavanın tekrar periyodu. */
+export const DAY_MIN = 24 * 60;
 
 export interface TariffSegment {
   startMin: number;
@@ -56,6 +68,11 @@ export interface TariffState {
   /** Sonraki fiyat artışı sınırının epoch ms karşılığı; artış yoksa null. */
   nextBoundaryAtMs: number | null;
   minutesToBoundary: number | null;
+  /**
+   * Oturum, tarifenin anlattığı sürenin ötesine taştı ve günlük tavan bilinmiyor.
+   * Fiyat bu durumda donuyor; sessizce doğruymuş gibi göstermek yerine söylenir.
+   */
+  beyondSchedule?: boolean;
   /** barTone === 'amber-approaching' kısayolu (bildirim zamanlama vb.). */
   warn: boolean;
   barTone: BarTone;
@@ -102,7 +119,7 @@ export function sanitizeTiers(raw: TariffTier[]): TariffTier[] {
 }
 
 /** Hourly tarifeyi ihtiyaç kadar kümülatif dilime açar (1h → ₺X, 2h → ₺2X …). */
-function expandTiers(tariff: Tariff, elapsedMin: number, lookaheadHours = 3): TariffTier[] {
+function baseDayTiers(tariff: Tariff, elapsedMin: number, lookaheadHours: number): TariffTier[] {
   if (tariff.type === 'tiered') return sanitizeTiers(tariff.tiers ?? []);
   if (tariff.type === 'hourly' && tariff.price != null && tariff.price > 0) {
     const hoursNeeded = Math.floor(elapsedMin / 60) + lookaheadHours;
@@ -113,6 +130,34 @@ function expandTiers(tariff: Tariff, elapsedMin: number, lookaheadHours = 3): Ta
     return tiers;
   }
   return [];
+}
+
+/**
+ * Kümülatif dilim listesi — günlük tavan varsa günler tekrarlanarak.
+ *
+ * Tekrarı BURADA yapmak bilinçli: fiyat, sonraki sınır, uyarı zamanlaması,
+ * çubuk ve çıkış özeti hepsi aynı listeden türüyor (tariffMath tek kaynak
+ * kuralı), yani günlük tavan tek bir yerde doğru olunca her yüzeyde doğru.
+ */
+function expandTiers(tariff: Tariff, elapsedMin: number, lookaheadHours = 3): TariffTier[] {
+  const base = baseDayTiers(tariff, elapsedMin, lookaheadHours);
+  const cap = tariff.dailyMax;
+  if (base.length === 0 || cap == null || !(cap > 0)) return base;
+
+  // Gün içi dilimler tavanı aşamaz, ve gün 24 saatte tavanla kapanır.
+  const day: TariffTier[] = base
+    .filter((t) => t.endMin < DAY_MIN)
+    .map((t) => ({ endMin: t.endMin, cumulativePrice: Math.min(t.cumulativePrice, cap) }));
+  day.push({ endMin: DAY_MIN, cumulativePrice: cap });
+
+  const daysNeeded = Math.floor(elapsedMin / DAY_MIN) + 1;
+  const out: TariffTier[] = [];
+  for (let d = 0; d < daysNeeded; d++) {
+    for (const tier of day) {
+      out.push({ endMin: d * DAY_MIN + tier.endMin, cumulativePrice: d * cap + tier.cumulativePrice });
+    }
+  }
+  return out;
 }
 
 /** Sözleşme: tiers normalize edilmiş ve boş değil (computeTariffState garanti eder). */
@@ -251,6 +296,10 @@ export function computeTariffState(
       ? 'amber-exceeded'
       : 'green';
 
+  // Dilimli tarifede son dilimin ötesine taşıldı ve günlük tavan bilinmiyor:
+  // fiyat donuyor, bunu söylemek gerekiyor.
+  const beyondSchedule = beyondAll && tariff.type === 'tiered' && tariff.dailyMax == null;
+
   const { segments, knobPct } = buildSegments(tiers, effectiveIndex, elapsedMin, tariff.type === 'tiered');
 
   return {
@@ -264,6 +313,7 @@ export function computeTariffState(
     minutesToBoundary,
     warn: approaching,
     barTone,
+    beyondSchedule,
     currentTierIndex: effectiveIndex + 1,
     segments,
     knobPct,

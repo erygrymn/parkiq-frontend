@@ -431,8 +431,8 @@ Paged yatay swipe, sağ üstte "Skip" (text buton), altta 3 nokta indicator (akt
 
 ### 7.9 Ayarlar (pageSheet)
 
-- Liste grupları (44pt satırlar): Vehicle, Default tariff reminder (15 dk stepper), Notifications, Appearance (System/Light/Dark), Language (EN/TR), Premium durumu → paywall, Restore Purchases, Privacy & Terms.
-- **Vehicle (çoklu araç, premium):** araç = profil (ad + opsiyonel plaka; **plaka hiçbir karta/paylaşıma/ekran görüntüsü yüzeyine çıkmaz**). Free'de tek satır + kilit. 2+ profil varsa park sheet'ine "Vehicle" satırı eklenir (§7.3), son kullanılan default; geçmiş satırına araç adı yazılır (§7.8). Aynı anda tek aktif oturum kuralı §7 mimari paragrafındadır.
+- Liste grupları (44pt satırlar): Default tariff reminder (15 dk stepper), Notifications, Appearance (System/Light/Dark), Language (EN/TR), Premium durumu → paywall, Restore Purchases, Privacy & Terms.
+- ~~**Vehicle (çoklu araç, premium)**~~ — **kaldırıldı (2026-07-23).** Plaka hiçbir yüzeye çıkmadığı için aktif aracın hiçbir işlevi yoktu; ayarlardan, paywall'dan ve koddan silindi ([CLAUDE.md](../CLAUDE.md)). Yeniden gerekirse önce ona bir iş tanımla, sonra bu satırı yeniden yaz.
 - Auto-detect (premium): açılırken tek sayfalık açıklama kartı → Always + Motion izinleri. Kart: display-S başlık noktasız + body 15pt + siyah "Enable" + "Not now" text. Davranış: §7.4b.
 - Başlık: navbar 17pt/600 "Settings" — display/nokta yok.
 

@@ -625,6 +625,10 @@ export function ActiveSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
       {/* Tarifenin okunduğu takvim geçti: fiyat artık bu panoyu anlatmıyor. */}
       {scheduleExpired && <StatusLine label={t('scheduleChanged')} />}
 
+      {/* Tarifenin anlattığı süre bitti ve günlük tavan bilinmiyor: gösterilen
+          rakam artık donuk. Sessiz kalmak, ödeyeceğinden azını göstermek olurdu. */}
+      {state.beyondSchedule && <StatusLine label={t('beyondSchedule')} />}
+
       {!online && <StatusLine label={t('offlineTimer')} />}
 
       {/* Tarife var ama bildirim izni yok → uyarı ulaşamaz; §5.11 kalıbı */}

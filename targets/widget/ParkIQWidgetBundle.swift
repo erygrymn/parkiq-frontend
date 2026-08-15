@@ -170,16 +170,29 @@ private struct LiveActivityView: View {
           Spacer(minLength: 0)
         }
 
-        // §8.1 hero: TEK sayaç, geçen süre, ileri sayar. Sağda ikinci bir
-        // zaman göstergesi yok — dar alanda kırpılıyor ve iki sayaç okunmuyordu.
+        // §8.1 hero: sonraki fiyat artışına KALAN SÜRE.
+        //
+        // App askıdayken hiçbir kodumuz çalışmaz — para rakamı son ön plan
+        // değerinde donar. Sistemin kendi kendine doğru tutabildiği tek gösterge
+        // budur, o yüzden en büyük yeri o alır. Sınır yoksa (son dilim, sabit
+        // tarife) geçen süreye düşülür; iki sayaç aynı anda gösterilmez.
         VStack(alignment: .leading, spacing: 2) {
           if let label = state.heroLabel {
             Overline(text: label)
           }
-          ElapsedTimer(
-            startedAt: state.startedAt,
-            color: state.barTone == "green" ? .white : Palette.amber
-          )
+          if let boundary = state.nextBoundaryAt, boundary > .now {
+            Text(timerInterval: Date.now...boundary, countsDown: true)
+              .font(.system(size: 44, weight: .black))
+              .monospacedDigit()
+              .foregroundStyle(state.barTone == "green" ? .white : Palette.amber)
+              .lineLimit(1)
+              .minimumScaleFactor(0.5)
+          } else {
+            ElapsedTimer(
+              startedAt: state.startedAt,
+              color: state.barTone == "green" ? .white : Palette.amber
+            )
+          }
         }
 
         if !state.segments.isEmpty {
