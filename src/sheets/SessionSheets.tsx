@@ -1,7 +1,8 @@
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Linking, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GhostButton, PrimaryCta } from '../components/Buttons';
 import { ChipGroup } from '../components/ChipGroup';
 import { MoneyBox } from '../components/MoneyBox';
@@ -802,6 +803,7 @@ export function EndedSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   const { undoEnd, finish } = useSessionStore.getState();
   const [shareData, setShareData] = useState<SavingsCardData | null>(null);
   const [rateOpen, setRateOpen] = useState(false);
+  const insets = useSafeAreaInsets();
 
   const locale = getLocale();
   const exit = session?.endedAtMs
@@ -839,8 +841,21 @@ export function EndedSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
       : null,
   });
 
+  const details = [session.floor, session.note].filter(Boolean);
+
+  // §7.7 kapanış tam ekrandır: oturumun bittiği an panelin içinde bir satır
+  // değil, kendi sayfası. Rakam, park detayları ve paylaşım aynı yerde durur.
   return (
-    <View style={{ paddingHorizontal: spacing.s20, paddingBottom: spacing.s20, gap: spacing.s24 }}>
+    <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={finish}>
+      <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        <ScrollView
+          contentContainerStyle={{
+            paddingHorizontal: spacing.s20,
+            paddingTop: insets.top + spacing.s32,
+            paddingBottom: insets.bottom + spacing.s20,
+            gap: spacing.s24,
+          }}
+        >
       <View style={{ gap: spacing.s4 }}>
         <Overline>
           {[session.placeName, `${formatClock(session.startedAtMs)} → ${formatClock(session.endedAtMs)}`]
@@ -849,6 +864,25 @@ export function EndedSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
         </Overline>
         <DisplayStamp text={stamp.text} dotColor={stamp.green ? colors.accentText : colors.ink} />
       </View>
+
+      {/* Park detayları: kullanıcının o oturumda biriktirdiği her şey burada. */}
+      {(session.photoUri || details.length > 0) && (
+        <View style={{ gap: spacing.s12 }}>
+          {session.photoUri && (
+            <Image
+              source={{ uri: session.photoUri }}
+              style={{ width: '100%', height: 200, borderRadius: radius.r16, backgroundColor: colors.inset }}
+              resizeMode="cover"
+              accessibilityIgnoresInvertColors
+            />
+          )}
+          {details.map((line) => (
+            <Caption key={line} color={colors.ink}>
+              {line}
+            </Caption>
+          ))}
+        </View>
+      )}
 
       <View>
         <SummaryRow
@@ -869,31 +903,27 @@ export function EndedSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
 
       <View style={{ gap: spacing.s8 }}>
         {/* Paylaşım kartı yalnız tasarruf varken anlamlı (§11.1) */}
-        {stamp.green ? (
-          <>
-            <PrimaryCta
-              label={t('shareCard')}
-              onPress={() => {
-                trackShareCard('session');
-                setShareData(buildCardData());
-              }}
-            />
-            <GhostButton label={t('done')} onPress={finish} />
-          </>
-        ) : (
-          <PrimaryCta label={t('done')} onPress={finish} />
-        )}
+        <PrimaryCta
+          label={t('shareCard')}
+          onPress={() => {
+            trackShareCard('session');
+            setShareData(buildCardData());
+          }}
+        />
+        <GhostButton label={t('done')} onPress={finish} />
         <GhostButton label={t('undo')} onPress={undoEnd} />
       </View>
 
       <ShareCardRenderer data={shareData} onDone={() => setShareData(null)} />
+        </ScrollView>
 
-      {/* İki adımlı yorum isteği: sistem penceresine yalnız memnun olanlar gider. */}
-      <RatePrompt
-        visible={rateOpen}
-        onClose={() => setRateOpen(false)}
-        onFeedback={() => void Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=ParkIQ`)}
-      />
-    </View>
+        {/* İki adımlı yorum isteği: sistem penceresine yalnız memnun olanlar gider. */}
+        <RatePrompt
+          visible={rateOpen}
+          onClose={() => setRateOpen(false)}
+          onFeedback={() => void Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=ParkIQ`)}
+        />
+      </View>
+    </Modal>
   );
 }

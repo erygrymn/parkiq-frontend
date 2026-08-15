@@ -90,7 +90,8 @@ function SheetContent({ phase, onOpenPaywall }: { phase: SessionPhase; onOpenPay
     case 'ending':
       return <ActiveSheet onOpenPaywall={onOpenPaywall} />;
     case 'ended':
-      return <EndedSheet onOpenPaywall={onOpenPaywall} />;
+      // Kapanış tam ekran bir sayfa (kök seviyede render edilir); panel boş kalır.
+      return null;
   }
 }
 
@@ -277,6 +278,8 @@ function Root() {
       <MapCanvas />
 
       {pickingLocation && <PickLocationLayer target={pickingLocation} />}
+
+      {phase === 'ended' && <EndedSheet onOpenPaywall={() => setPaywallOpen(true)} />}
 
       {/* §5.4 kare cam ikon butonlar — harita üstünde yüzen kontroller */}
       {!pickingLocation && (
