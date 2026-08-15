@@ -17,10 +17,17 @@ private enum Palette {
   static let green = UIColor(red: 0x2F / 255, green: 0xE0 / 255, blue: 0x7A / 255, alpha: 1)
 }
 
+// RealityKit'in `generateCylinder`/`generateCone` ilkelleri iOS 18 istiyor;
+// ParkIQ iOS 16.4'ten itibaren çalışıyor. Aynı biçimler iOS 13'ten beri var olan
+// ilkellerle kuruluyor ve sonuç görsel olarak ayırt edilemez:
+//   silindir = köşe yarıçapı yarım genişliğe eşit KUTU (kesiti daire olur)
+//   daire    = köşe yarıçapı yarım genişliğe eşit DÜZLEM
 private enum Scene {
   /// Huzme uzaktan da görünsün diye gökyüzüne uzanır (metre).
   static let beamHeight: Float = 60
   static let beamRadius: Float = 0.22
+  /// Zemindeki taban halkasının yarıçapı (metre).
+  static let ringRadius: Float = 1.1
   /// Zemin oklarının aralığı ve en fazla kaç tanesinin çizileceği.
   static let chevronSpacing: Float = 3
   static let chevronCount = 14
@@ -115,15 +122,25 @@ public final class ParkiqArView: ExpoView, ARSessionDelegate {
 
   private func buildEntities() {
     let beamEntity = ModelEntity(
-      mesh: .generateCylinder(height: Scene.beamHeight, radius: Scene.beamRadius),
+      mesh: .generateBox(
+        width: Scene.beamRadius * 2,
+        height: Scene.beamHeight,
+        depth: Scene.beamRadius * 2,
+        cornerRadius: Scene.beamRadius
+      ),
       materials: [unlit(Palette.green, alpha: 0.85)]
     )
     anchor.addChild(beamEntity)
     beam = beamEntity
 
-    // Tabandaki halka: arabanın durduğu noktayı zeminde işaretler.
+    // Tabandaki halka: arabanın durduğu noktayı zeminde işaretler. Zemine yatık
+    // bir daire; kalınlığı olmadığı için yukarıdan bakışta fark etmez.
     let ringEntity = ModelEntity(
-      mesh: .generateCylinder(height: 0.04, radius: 1.1),
+      mesh: .generatePlane(
+        width: Scene.ringRadius * 2,
+        depth: Scene.ringRadius * 2,
+        cornerRadius: Scene.ringRadius
+      ),
       materials: [unlit(Palette.green, alpha: 0.5)]
     )
     anchor.addChild(ringEntity)

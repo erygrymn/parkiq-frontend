@@ -49,9 +49,9 @@ public class ParkiqOcrModule: Module {
       request.usesLanguageCorrection = false
 
       // Türkçe destekleniyorsa ekle; desteklenmiyorsa varsayılan dil seti kullanılır.
-      if let supported = try? VNRecognizeTextRequest.supportedRecognitionLanguages(
-        for: .accurate, revision: VNRecognizeTextRequestRevision3
-      ) {
+      // Örnek üstündeki sorgu, isteğin KENDİ seviyesi ve revizyonu için yanıt verir —
+      // tip üstündeki karşılığı iOS 15'te bırakıldı ve revizyonu elle yazmayı gerektiriyordu.
+      if let supported = try? request.supportedRecognitionLanguages() {
         let preferred = ["tr-TR", "en-US"].filter { supported.contains($0) }
         if !preferred.isEmpty {
           request.recognitionLanguages = preferred
