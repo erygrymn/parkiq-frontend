@@ -17,7 +17,7 @@ const baseSession: ParkSession = {
   longitude: 29.0,
   placeName: 'Test',
   photoUri: null,
-  reminderAtMs: null,
+  reminder: null,
   accuracyM: null,
   confirmed: true,
 };
@@ -69,29 +69,36 @@ describe('sessionStore — tarife önerisi', () => {
     expect(useSessionStore.getState().session?.startedAtMs).toBe(recorded);
   });
 
-  it('backdate hatırlatıcıyı da kaydırır (süre farkı korunur)', () => {
+  it('backdate hatırlatıcıyı bozmaz — kural mutlak zamandan bağımsız', () => {
     const recorded = baseSession.recordedAtMs;
     useSessionStore.setState({
       phase: 'parking',
-      session: { ...baseSession, reminderAtMs: recorded + 60 * 60_000 },
+      session: {
+        ...baseSession,
+        reminder: { anchor: 'afterPark', minutes: 60, kind: 'notification' },
+      },
     });
 
     useSessionStore.getState().setBackdateMinutes(15);
 
     const s = useSessionStore.getState().session!;
     expect(s.startedAtMs).toBe(recorded - 15 * 60_000);
-    // Hatırlatıcı hâlâ başlangıçtan 60 dk sonra
-    expect(s.reminderAtMs! - s.startedAtMs).toBe(60 * 60_000);
+    // Kural taşındığı için hatırlatıcı yeni başlangıçtan 60 dk sonra kalır.
+    expect(s.reminder).toEqual({ anchor: 'afterPark', minutes: 60, kind: 'notification' });
   });
 
-  it('hatırlatıcı 0 seçilince kapanır', () => {
+  it('hatırlatıcı kurulur ve kapatılır', () => {
     useSessionStore.setState({ phase: 'parking', session: { ...baseSession } });
 
-    useSessionStore.getState().setReminderMinutes(120);
-    expect(useSessionStore.getState().session?.reminderAtMs).toBe(baseSession.startedAtMs + 120 * 60_000);
+    useSessionStore.getState().setReminder({
+      anchor: 'beforeEveryTier',
+      minutes: 15,
+      kind: 'alarm',
+    });
+    expect(useSessionStore.getState().session?.reminder?.anchor).toBe('beforeEveryTier');
 
-    useSessionStore.getState().setReminderMinutes(0);
-    expect(useSessionStore.getState().session?.reminderAtMs).toBeNull();
+    useSessionStore.getState().setReminder(null);
+    expect(useSessionStore.getState().session?.reminder).toBeNull();
   });
 
   it('oturum yokken öneri kabulü hiçbir şey bozmaz', () => {

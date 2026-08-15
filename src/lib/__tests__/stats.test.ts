@@ -18,7 +18,7 @@ function session(over: Partial<ParkSession>): ParkSession {
     longitude: null,
     placeName: null,
     photoUri: null,
-    reminderAtMs: null,
+    reminder: null,
     accuracyM: null,
     confirmed: true,
     ...over,

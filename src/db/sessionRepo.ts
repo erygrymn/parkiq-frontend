@@ -6,7 +6,7 @@ import type { ParkSession } from '../state/sessionStore';
 // Aktif oturum = endedAtMs IS NULL; tek aktif oturum kuralını store korur.
 // Şema sürümü PRAGMA user_version ile taşınır — cihazdaki eski kayıtlar korunur.
 
-const SCHEMA_VERSION = 8;
+const SCHEMA_VERSION = 9;
 
 let db: SQLiteDatabase | null = null;
 
@@ -102,6 +102,21 @@ function migrate(database: SQLiteDatabase): void {
     }
   }
 
+  if (current < 9) {
+    // Hatırlatıcı artık mutlak zaman değil, bir kural (neye göre / ne kadar / nasıl).
+    const columns = database.getAllSync<{ name: string }>('PRAGMA table_info(sessions)');
+    if (!columns.some((c) => c.name === 'reminderJson')) {
+      database.execSync('ALTER TABLE sessions ADD COLUMN reminderJson TEXT');
+      // Eski mutlak hatırlatıcılar park anından sayılan kurala çevrilir.
+      database.execSync(
+        `UPDATE sessions
+            SET reminderJson = '{"anchor":"afterPark","kind":"notification","minutes":' ||
+                CAST(MAX(1, (reminderAtMs - startedAtMs) / 60000) AS TEXT) || '}'
+          WHERE reminderAtMs IS NOT NULL`,
+      );
+    }
+  }
+
   database.execSync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 }
 
@@ -173,11 +188,21 @@ interface SessionRow {
   longitude: number | null;
   placeName: string | null;
   photoUri: string | null;
-  reminderAtMs: number | null;
+  reminderJson: string | null;
   recordedAtMs: number | null;
   tariffSchedule: string | null;
   accuracyM: number | null;
   confirmed: number | null;
+}
+
+function parseReminder(raw: string | null): ParkSession['reminder'] {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as ParkSession['reminder'];
+    return parsed && Number.isFinite(parsed.minutes) ? parsed : null;
+  } catch {
+    return null;
+  }
 }
 
 function rowToSession(row: SessionRow): ParkSession {
@@ -201,7 +226,7 @@ function rowToSession(row: SessionRow): ParkSession {
     longitude: row.longitude,
     placeName: row.placeName,
     photoUri: row.photoUri,
-    reminderAtMs: row.reminderAtMs,
+    reminder: parseReminder(row.reminderJson),
     tariffSchedule: (row.tariffSchedule as ParkSession['tariffSchedule']) ?? null,
     accuracyM: row.accuracyM,
     // Eski kayıtlarda kolon yok: onaylanmış say (geçmişi bozmamak için).
@@ -213,7 +238,7 @@ export function saveSession(session: ParkSession): void {
   getDb().runSync(
     `INSERT OR REPLACE INTO sessions
        (id, startedAtMs, recordedAtMs, endedAtMs, floor, note, tariffJson,
-        latitude, longitude, placeName, photoUri, reminderAtMs, tariffSchedule, accuracyM, confirmed)
+        latitude, longitude, placeName, photoUri, reminderJson, tariffSchedule, accuracyM, confirmed)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       session.id,
@@ -227,7 +252,7 @@ export function saveSession(session: ParkSession): void {
       session.longitude,
       session.placeName,
       session.photoUri,
-      session.reminderAtMs,
+      session.reminder ? JSON.stringify(session.reminder) : null,
       session.tariffSchedule ?? null,
       session.accuracyM ?? null,
       session.confirmed ? 1 : 0,

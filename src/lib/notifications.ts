@@ -80,7 +80,18 @@ export async function cancelSessionAlerts(): Promise<void> {
   }
 }
 
-async function scheduleAt(atMs: number, title: string | undefined, body: string): Promise<void> {
+/**
+ * `loud` uyarıyı sesli ve ZAMAN DUYARLI yapar: Odak modlarını deler ve sessiz
+ * banner yerine duyulur. Gerçek bir alarm (sessiz moda rağmen çalan, tam ekran)
+ * AlarmKit ister ve o iOS 26'dan itibaren var — bu yüzden şimdilik en yüksek
+ * dikkat seviyesi budur.
+ */
+async function scheduleAt(
+  atMs: number,
+  title: string | undefined,
+  body: string,
+  loud = false,
+): Promise<void> {
   const seconds = Math.round((atMs - Date.now()) / 1000);
   if (seconds <= 0) return;
   await Notifications.scheduleNotificationAsync({
@@ -111,7 +122,13 @@ export async function scheduleSessionAlerts(
   const title = session.placeName ?? undefined;
 
   try {
-    const boundaries = listUpcomingBoundaries(session.tariff, session.startedAtMs, Date.now(), MAX_TIER_ALERTS);
+    // Dilim uyarıları hiçbir şey ayarlamadan çalışır — ürünün free çekirdeği bu.
+    // Ama kullanıcı hatırlatıcıyı tarifeye bağladıysa (ilk/her artıştan önce)
+    // kural ONUNKİDİR: ikisini birden kurmak aynı sınır için çift bildirim demek.
+    const reminderOwnsTiers = session.reminder !== null && session.reminder.anchor !== 'afterPark';
+    const boundaries = reminderOwnsTiers
+      ? []
+      : listUpcomingBoundaries(session.tariff, session.startedAtMs, Date.now(), MAX_TIER_ALERTS);
     for (const boundary of boundaries) {
       const currency = session.tariff?.currency ?? 'TRY';
       // Copy §5.9 formülünden: para diliyle konuşur, ünlem yok.
@@ -124,16 +141,38 @@ export async function scheduleSessionAlerts(
       await scheduleAt(boundary.atMs - warnThresholdMin * 60_000, title, body);
     }
 
-    // Basit süre hatırlatıcısı — tarifeden bağımsız çalışır (tarife bilinmese de
-    // sayaç + hatırlatıcı ürünün free çekirdeğidir).
-    if (session.reminderAtMs !== null) {
-      await scheduleAt(
-        session.reminderAtMs,
-        title,
-        t('simpleReminder', {
-          duration: formatDurationStamp(session.reminderAtMs - session.startedAtMs).toLowerCase(),
-        }),
-      );
+    // Kullanıcının kurduğu hatırlatıcı. Süre neye göre sayılıyorsa zamanlar
+    // ondan türer — kural tek yerde, ekrandaki üç satırla birebir aynı.
+    const reminder = session.reminder;
+    if (reminder) {
+      const loud = reminder.kind !== 'notification';
+      if (reminder.anchor === 'afterPark') {
+        await scheduleAt(
+          session.startedAtMs + reminder.minutes * 60_000,
+          title,
+          t('simpleReminder', {
+            duration: formatDurationStamp(reminder.minutes * 60_000).toLowerCase(),
+          }),
+          loud,
+        );
+      } else {
+        const wanted = reminder.anchor === 'beforeFirstTier' ? 1 : MAX_TIER_ALERTS;
+        const upcoming = listUpcomingBoundaries(session.tariff, session.startedAtMs, Date.now(), wanted);
+        const currency = session.tariff?.currency ?? 'TRY';
+        for (const boundary of upcoming) {
+          await scheduleAt(
+            boundary.atMs - reminder.minutes * 60_000,
+            title,
+            t('tierAlert', {
+              tier: boundary.tierIndex + 1,
+              minutes: reminder.minutes,
+              now: formatMoney(boundary.currentPrice, currency, locale),
+              next: formatMoney(boundary.nextPrice, currency, locale),
+            }),
+            loud,
+          );
+        }
+      }
     }
 
     // Unutulan oturum: 24 saat sonra nazik hatırlatma (§8.4).

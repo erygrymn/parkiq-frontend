@@ -36,7 +36,12 @@ import { FindMyCar } from '../screens/FindMyCar';
 import { computeExitSummary, computeTariffState } from '../lib/tariffMath';
 import { appliesAt } from '../lib/tariffSchedule';
 import { getLocale, t, upper } from '../localization';
-import { useSessionStore, type ParkSession } from '../state/sessionStore';
+import {
+  useSessionStore,
+  type ParkSession,
+  type ReminderAnchor,
+  type ReminderKind,
+} from '../state/sessionStore';
 import { useSettingsStore } from '../state/settingsStore';
 import { useTheme } from '../theme';
 import { radius, spacing, typeScale } from '../theme/tokens';
@@ -202,7 +207,7 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
     acceptSuggestedTariff,
     confirmDetails,
     setBackdateMinutes,
-    setReminderMinutes,
+    setReminder,
     capturePhoto,
     removePhoto,
     scanTariff,
@@ -211,6 +216,9 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   } = useSessionStore.getState();
   const cancelPark = useSessionStore((s) => s.cancelPark);
   const [customReminder, setCustomReminder] = useState(false);
+  // Tarifeye bağlı hatırlatıcının varsayılan dakikası ayarlardaki uyarı eşiğidir:
+  // "şu kadar önce uyar" sorusu zaten orada bir kez cevaplanmış.
+  const warnThresholdMin = useSettingsStore((s) => s.warnThresholdMin);
   const [openField, setOpenField] = useState<ParkField | null>(null);
   const closeField = () => setOpenField(null);
 
@@ -236,8 +244,22 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
 
   // Chip seçimleri oturumdan türer — ayrı state tutulmaz (tek kaynak).
   const backdateMinutes = Math.round((session.recordedAtMs - session.startedAtMs) / 60_000);
-  const reminderMinutes =
-    session.reminderAtMs === null ? 0 : Math.round((session.reminderAtMs - session.startedAtMs) / 60_000);
+  const reminder = session.reminder;
+  // Satırda hem SÜRE hem NEYE GÖRE görünür: "45 dk · park sonrası" gibi.
+  const reminderSummary = reminder
+    ? [
+        reminder.minutes < 60
+          ? t('minutesShort', { minutes: reminder.minutes })
+          : t('hoursShort', { hours: Math.round((reminder.minutes / 60) * 10) / 10 }),
+        t(
+          reminder.anchor === 'afterPark'
+            ? 'anchorAfterPark'
+            : reminder.anchor === 'beforeFirstTier'
+              ? 'anchorFirstTier'
+              : 'anchorEveryTier',
+        ).toLocaleLowerCase(),
+      ].join(' · ')
+    : null;
 
   // Yer adı burada META'dır, display değil: nokta hakkı duygu damgasınındır (§3.3 tie-breaker).
   const overline = [
@@ -343,7 +365,7 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
         />
         <DetailRow
           label={t('remindMe')}
-          value={reminderMinutes === 0 ? null : t('minutesShort', { minutes: reminderMinutes })}
+          value={reminderSummary}
           placeholder={t('reminderOff')}
           onPress={() => setOpenField('reminder')}
         />
@@ -429,39 +451,102 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
         />
       </PopupSheet>
 
+      {/* Hatırlatıcı üç soruyu AYRI AYRI sorar. Tek bir "kaç dakika" alanı,
+          sürenin park anından mı yoksa fiyat artışından geriye mi sayıldığını
+          söylemiyordu — aynı sayı iki bambaşka anlama geliyordu. */}
       <PopupSheet visible={openField === 'reminder'} title={t('remindMe')} onClose={closeField}>
-        <ChipGroup<number>
-          options={[
-            { key: 0, label: t('reminderOff') },
-            { key: 30, label: t('minutesShort', { minutes: 30 }) },
-            ...[1, 2, 3].map((h) => ({ key: h * 60, label: t('hoursShort', { hours: h }) })),
-            { key: -1, label: t('custom') },
-          ]}
-          value={customReminder ? -1 : reminderMinutes}
-          onChange={(minutes) => {
-            if (minutes === -1) {
-              setCustomReminder(true);
-              return;
-            }
-            setCustomReminder(false);
-            setReminderMinutes(minutes);
-          }}
-        />
-        {customReminder && (
-          <BottomSheetTextInput
-            defaultValue={reminderMinutes > 0 ? String(reminderMinutes) : ''}
-            onChangeText={(text) => {
-              const parsed = Number(text.replace(',', '.'));
-              if (Number.isFinite(parsed) && parsed > 0) setReminderMinutes(Math.round(parsed));
+        <View style={{ gap: spacing.s8 }}>
+          <Overline>{t('reminderAnchor')}</Overline>
+          <ChipGroup<'off' | ReminderAnchor>
+            options={[
+              { key: 'off', label: t('reminderOff') },
+              { key: 'afterPark', label: t('anchorAfterPark') },
+              { key: 'beforeFirstTier', label: t('anchorFirstTier') },
+              { key: 'beforeEveryTier', label: t('anchorEveryTier') },
+            ]}
+            value={reminder?.anchor ?? 'off'}
+            onChange={(next) => {
+              if (next === 'off') {
+                setReminder(null);
+                return;
+              }
+              // Tarifeye bağlı seçenekler tarife olmadan anlamsız: varsayılan
+              // dakika, ayarlardaki uyarı eşiğidir (aynı soru, aynı cevap).
+              setReminder({
+                anchor: next,
+                minutes: reminder?.minutes ?? (next === 'afterPark' ? 60 : warnThresholdMin),
+                kind: reminder?.kind ?? 'notification',
+              });
             }}
-            keyboardType="number-pad"
-            autoFocus
-            returnKeyType="done"
-            onSubmitEditing={closeField}
-            placeholder={t('customMinutes')}
-            placeholderTextColor={colors.textSecondary}
-            style={{ ...inputStyle(colors.inset, colors.ink), fontVariant: ['tabular-nums'] }}
           />
+          {reminder && reminder.anchor !== 'afterPark' && session.tariff === null && (
+            <StatusLine label={t('reminderNeedsTariff')} onPress={() => setOpenField('tariff')} />
+          )}
+        </View>
+
+        {reminder && (
+          <>
+            <View style={{ gap: spacing.s8 }}>
+              <Overline>
+                {reminder.anchor === 'afterPark' ? t('reminderAfterHow') : t('reminderBeforeHow')}
+              </Overline>
+              <ChipGroup<number>
+                options={[
+                  ...(reminder.anchor === 'afterPark'
+                    ? [30, 60, 120, 180].map((m) => ({
+                        key: m,
+                        label:
+                          m < 60
+                            ? t('minutesShort', { minutes: m })
+                            : t('hoursShort', { hours: m / 60 }),
+                      }))
+                    : [5, 10, 15, 30].map((m) => ({ key: m, label: t('minutesShort', { minutes: m }) }))),
+                  { key: -1, label: t('custom') },
+                ]}
+                value={customReminder ? -1 : reminder.minutes}
+                onChange={(minutes) => {
+                  if (minutes === -1) {
+                    setCustomReminder(true);
+                    return;
+                  }
+                  setCustomReminder(false);
+                  setReminder({ ...reminder, minutes });
+                }}
+              />
+              {customReminder && (
+                <BottomSheetTextInput
+                  defaultValue={String(reminder.minutes)}
+                  onChangeText={(text) => {
+                    const parsed = Number(text.replace(',', '.'));
+                    if (Number.isFinite(parsed) && parsed > 0) {
+                      setReminder({ ...reminder, minutes: Math.round(parsed) });
+                    }
+                  }}
+                  keyboardType="number-pad"
+                  autoFocus
+                  returnKeyType="done"
+                  onSubmitEditing={closeField}
+                  placeholder={t('customMinutes')}
+                  placeholderTextColor={colors.textSecondary}
+                  style={{ ...inputStyle(colors.inset, colors.ink), fontVariant: ['tabular-nums'] }}
+                />
+              )}
+            </View>
+
+            <View style={{ gap: spacing.s8 }}>
+              <Overline>{t('reminderKind')}</Overline>
+              <ChipGroup<ReminderKind>
+                options={[
+                  { key: 'notification', label: t('kindNotification') },
+                  { key: 'alarm', label: t('kindAlarm') },
+                  { key: 'both', label: t('kindBoth') },
+                ]}
+                value={reminder.kind}
+                onChange={(kind) => setReminder({ ...reminder, kind })}
+              />
+              <Caption>{t('kindHint')}</Caption>
+            </View>
+          </>
         )}
       </PopupSheet>
 

@@ -31,6 +31,19 @@ import { useSettingsStore } from './settingsStore';
 /** Haritadan pin bırakmayı kim başlattı — dönüşte o yüzeye geri dönülür. */
 export type PickTarget = 'park' | 'filter';
 
+/** Sürenin neye göre sayıldığı — hatırlatıcının anlaşılmamasının asıl sebebi. */
+export type ReminderAnchor = 'afterPark' | 'beforeFirstTier' | 'beforeEveryTier';
+
+/** Uyarının nasıl geleceği. */
+export type ReminderKind = 'notification' | 'alarm' | 'both';
+
+export interface Reminder {
+  anchor: ReminderAnchor;
+  /** `afterPark` için park anından SONRA, diğerlerinde artıştan ÖNCE. */
+  minutes: number;
+  kind: ReminderKind;
+}
+
 export type SessionPhase = 'idle' | 'parking' | 'active' | 'ending' | 'ended';
 export type LocationState = 'idle' | 'capturing' | 'ok' | 'weak' | 'denied' | 'unavailable';
 export type NotificationState = 'idle' | 'granted' | 'denied';
@@ -51,8 +64,12 @@ export interface ParkSession {
   longitude: number | null;
   placeName: string | null;
   photoUri: string | null;
-  /** Tarifeden bağımsız basit süre hatırlatıcısı (mutlak zaman). */
-  reminderAtMs: number | null;
+  /**
+   * Hatırlatıcı. Üç parça, çünkü tek bir "kaç dakika" alanı iki ayrı soruyu
+   * temsil ediyordu ve hangisi olduğu ekrandan anlaşılmıyordu: süre park
+   * anından mı sayılıyor, yoksa fiyat artışından geriye mi?
+   */
+  reminder: Reminder | null;
   /**
    * Tarife hangi takvimden okundu (hafta içi/sonu, gündüz/gece). Oturum o
    * takvimin dışına taşarsa fiyat artık geçerli değildir — sessizce yeniden
@@ -137,8 +154,8 @@ interface SessionStore {
   setTariff: (tariff: Tariff | null) => void;
   /** Backdate: "X dk önce park ettim" — recordedAtMs'ten türer, birikmez. */
   setBackdateMinutes: (minutes: number) => void;
-  /** Basit hatırlatıcı: başlangıçtan X dk sonra; 0 = kapalı. */
-  setReminderMinutes: (minutes: number) => void;
+  /** Hatırlatıcıyı kurar; null = kapalı. */
+  setReminder: (reminder: Reminder | null) => void;
   capturePhoto: () => void;
   removePhoto: () => void;
   /** §7.4 tarife panosu taraması; sonuç forma dışarıdan yazılır. */
@@ -210,7 +227,7 @@ function syncAlerts(
 ): void {
   // Uyarı kaynağı: tarife dilimleri VEYA basit süre hatırlatıcısı. İkisi de yoksa
   // kurulacak bir şey yok → izin de istenmez (bağlamsal izin kuralı).
-  if (!session || session.endedAtMs !== null || (!session.tariff && session.reminderAtMs === null)) {
+  if (!session || session.endedAtMs !== null || (!session.tariff && session.reminder === null)) {
     void cancelSessionAlerts();
     return;
   }
@@ -305,7 +322,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       longitude: null,
       placeName: null,
       photoUri: null,
-      reminderAtMs: null,
+      reminder: null,
       tariffSchedule: null,
       accuracyM: null,
       confirmed: false,
@@ -384,23 +401,19 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   setBackdateMinutes: (minutes) => {
     const { session } = get();
     if (!session) return;
-    // Her zaman kayıt anından türer → tekrar seçimde birikmez.
+    // Her zaman kayıt anından türer → tekrar seçimde birikmez. Hatırlatıcı artık
+    // mutlak zaman değil kural olduğu için başlangıç kaymasıyla kendiliğinden taşınır.
     const startedAtMs = session.recordedAtMs - Math.max(0, minutes) * 60_000;
-    const reminderAtMs =
-      session.reminderAtMs === null
-        ? null
-        : startedAtMs + (session.reminderAtMs - session.startedAtMs);
-    const next = { ...session, startedAtMs, reminderAtMs };
+    const next = { ...session, startedAtMs };
     persist(next);
     set({ session: next });
     syncAlerts(next, false, set); // sınırlar kaydı → uyarılar yeniden kurulur
   },
 
-  setReminderMinutes: (minutes) => {
+  setReminder: (reminder) => {
     const { session } = get();
     if (!session) return;
-    const reminderAtMs = minutes <= 0 ? null : session.startedAtMs + minutes * 60_000;
-    const next = { ...session, reminderAtMs };
+    const next = { ...session, reminder };
     persist(next);
     set({ session: next });
     syncAlerts(next, false, set);
