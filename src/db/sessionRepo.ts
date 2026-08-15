@@ -6,7 +6,7 @@ import type { ParkSession } from '../state/sessionStore';
 // Aktif oturum = endedAtMs IS NULL; tek aktif oturum kuralını store korur.
 // Şema sürümü PRAGMA user_version ile taşınır — cihazdaki eski kayıtlar korunur.
 
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 8;
 
 let db: SQLiteDatabase | null = null;
 
@@ -91,6 +91,17 @@ function migrate(database: SQLiteDatabase): void {
     }
   }
 
+  if (current < 8) {
+    // Kullanıcı "Bitti"ye bastı mı. Onaylanmamış bir kayıt soğuk açılışta AKTİF
+    // oturum sayılıyordu: park formundayken app kapanınca, sonraki açılışta
+    // sayaç eski başlangıç saatinden işlemeye devam ediyor ve "Park Ettim"
+    // hiçbir şey yapmıyordu (faz idle olmadığı için).
+    const columns = database.getAllSync<{ name: string }>('PRAGMA table_info(sessions)');
+    if (!columns.some((c) => c.name === 'confirmed')) {
+      database.execSync('ALTER TABLE sessions ADD COLUMN confirmed INTEGER NOT NULL DEFAULT 1');
+    }
+  }
+
   database.execSync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 }
 
@@ -166,6 +177,7 @@ interface SessionRow {
   recordedAtMs: number | null;
   tariffSchedule: string | null;
   accuracyM: number | null;
+  confirmed: number | null;
 }
 
 function rowToSession(row: SessionRow): ParkSession {
@@ -192,6 +204,8 @@ function rowToSession(row: SessionRow): ParkSession {
     reminderAtMs: row.reminderAtMs,
     tariffSchedule: (row.tariffSchedule as ParkSession['tariffSchedule']) ?? null,
     accuracyM: row.accuracyM,
+    // Eski kayıtlarda kolon yok: onaylanmış say (geçmişi bozmamak için).
+    confirmed: row.confirmed !== 0,
   };
 }
 
@@ -199,8 +213,8 @@ export function saveSession(session: ParkSession): void {
   getDb().runSync(
     `INSERT OR REPLACE INTO sessions
        (id, startedAtMs, recordedAtMs, endedAtMs, floor, note, tariffJson,
-        latitude, longitude, placeName, photoUri, reminderAtMs, tariffSchedule, accuracyM)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        latitude, longitude, placeName, photoUri, reminderAtMs, tariffSchedule, accuracyM, confirmed)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       session.id,
       session.startedAtMs,
@@ -216,6 +230,7 @@ export function saveSession(session: ParkSession): void {
       session.reminderAtMs,
       session.tariffSchedule ?? null,
       session.accuracyM ?? null,
+      session.confirmed ? 1 : 0,
     ],
   );
 }

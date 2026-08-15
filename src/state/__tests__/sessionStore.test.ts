@@ -19,6 +19,7 @@ const baseSession: ParkSession = {
   photoUri: null,
   reminderAtMs: null,
   accuracyM: null,
+  confirmed: true,
 };
 
 describe('sessionStore — tarife önerisi', () => {
@@ -142,5 +143,21 @@ describe('konum düzeltmesi', () => {
     useSessionStore.setState({ phase: 'ended', session: { ...baseSession } });
     useSessionStore.getState().setParkLocation(pinned);
     expect(useSessionStore.getState().session?.latitude).toBe(baseSession.latitude);
+  });
+});
+
+describe('onaylanmamış oturum', () => {
+  it('onaylanınca kalıcı olarak işaretlenir', () => {
+    useSessionStore.setState({ phase: 'parking', session: { ...baseSession, confirmed: false } });
+    useSessionStore.getState().confirmDetails();
+    expect(useSessionStore.getState().session?.confirmed).toBe(true);
+    expect(useSessionStore.getState().phase).toBe('active');
+  });
+
+  it('park() yeni kaydı onaysız açar', () => {
+    useSessionStore.setState({ phase: 'idle', session: null, hydrated: true });
+    useSessionStore.getState().park();
+    expect(useSessionStore.getState().session?.confirmed).toBe(false);
+    expect(useSessionStore.getState().phase).toBe('parking');
   });
 });

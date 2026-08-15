@@ -20,6 +20,7 @@ function session(over: Partial<ParkSession>): ParkSession {
     photoUri: null,
     reminderAtMs: null,
     accuracyM: null,
+    confirmed: true,
     ...over,
   };
 }

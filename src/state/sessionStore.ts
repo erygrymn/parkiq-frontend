@@ -66,7 +66,18 @@ export interface ParkSession {
    * canlı doğruluk (açık gökyüzü) kaydın doğruluğunu temsil etmez.
    */
   accuracyM: number | null;
+  /**
+   * Kullanıcı park formunu "Bitti" ile onayladı mı.
+   *
+   * Onaylanmamış kayıt soğuk açılışta aktif oturum sayılmamalı: park formunda
+   * app kapandığında sayaç eski başlangıçtan işlemeye devam ediyor, kullanıcı
+   * "Park Ettim"e basıyor ve hiçbir şey olmuyordu.
+   */
+  confirmed: boolean;
 }
+
+/** Onaylanmamış kayıt bu süreden eskiyse terk edilmiş sayılır ve silinir. */
+const ABANDONED_AFTER_MS = 12 * 60 * 60 * 1000;
 
 interface SessionStore {
   phase: SessionPhase;
@@ -236,11 +247,26 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     } catch {
       active = null;
     }
+
+    // Onaylanmamış kayıt: kullanıcı formu bitirmeden çıkmış. Çok eskiyse terk
+    // edilmiştir — sessizce silinir, yoksa bir daha hiç açılmayan bir sayaç
+    // olarak geri geliyor. Yeniyse form kaldığı yerden açılır.
+    if (active && !active.confirmed && Date.now() - active.recordedAtMs > ABANDONED_AFTER_MS) {
+      try {
+        if (active.photoUri) deleteSpotPhoto(active.photoUri);
+        repo().deleteSession(active.id);
+      } catch {
+        /* silinemezse aşağıdaki dal onu forma alır */
+      }
+      active = null;
+    }
     set(
       active
         ? {
             hydrated: true,
-            phase: 'active',
+            // Onaylanmamışsa sayaç ekranı DEĞİL, form açılır: kullanıcı ya
+            // tamamlar ya paneli aşağı çekip kaydı siler.
+            phase: active.confirmed ? 'active' : 'parking',
             session: active,
             // Kaydın kendi doğruluğu geri yüklenir: soğuk açılış 'weak' işaretini
             // eskiden siliyordu ve oturum sonuna kadar bir daha görünmüyordu.
@@ -282,6 +308,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       reminderAtMs: null,
       tariffSchedule: null,
       accuracyM: null,
+      confirmed: false,
     };
     persist(session);
     set({
@@ -645,8 +672,11 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   dismissSuggestedTariff: () => set({ suggestedTariff: null }),
 
   confirmDetails: () => {
-    if (get().phase !== 'parking') return;
-    set({ phase: 'active' });
+    const { phase, session } = get();
+    if (phase !== 'parking' || !session) return;
+    const next = { ...session, confirmed: true };
+    persist(next);
+    set({ phase: 'active', session: next });
     // Kullanıcı hatırlatıcısını burada onaylamış olur → izin tam bu anda istenir.
     syncAlerts(get().session, true, set);
     syncLiveActivity('start');

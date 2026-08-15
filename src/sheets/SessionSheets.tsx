@@ -812,12 +812,14 @@ export function EndedSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   // kullanıcı ürünün değerini tam o an görüyor. İkisi AYNI ANDA gösterilmez;
   // paywall çıkarsa yorum isteği bir sonraki tasarruf anına kalır.
   useEffect(() => {
-    if (!session?.endedAtMs || exit.saved === null || exit.saved <= 0) return;
-    if (shouldShowCelebrationPaywall(isPremium)) {
+    if (!session?.endedAtMs) return;
+    // Paywall yalnız PARA görülen anda açılır — tasarruf yoksa satacak kanıt da yok.
+    if (exit.saved !== null && exit.saved > 0 && shouldShowCelebrationPaywall(isPremium)) {
       trackPaywallShown('celebration');
       onOpenPaywall();
       return;
     }
+    // Yorum isteği her park bitişinde değerlendirilir: arabasını yeni buldu.
     if (shouldAskForReview()) setRateOpen(true);
   }, [session?.id, session?.endedAtMs, exit.saved, isPremium, onOpenPaywall]);
 

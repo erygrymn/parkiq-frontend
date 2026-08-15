@@ -348,8 +348,11 @@ export function FindMyCar({
             distanceM={distance}
             onClose={() => setArOpen(false)}
             onFound={() => {
+              // İki iç içe modal AYNI KAREDE kapatılamaz: iOS alttakini kapatırken
+              // üsttekinin animasyonu sürüyor ve ekranda kapatılamayan siyah bir
+              // katman kalıyordu. Önce AR kapanır, kapanma bitince üst akış devam eder.
               setArOpen(false);
-              onFound();
+              setTimeout(onFound, 350);
             }}
           />
         )}

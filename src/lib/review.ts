@@ -47,14 +47,30 @@ export function shouldShowCelebrationPaywall(isPremium: boolean): boolean {
 const REVIEW_ASKED_KEY = 'reviewAsked';
 const REVIEW_DECLINED_KEY = 'reviewDeclined';
 
+const REVIEW_SEEN_KEY = 'reviewPromptSeen';
+
+/**
+ * Hangi park bitişlerinde sorulur. İlki şart: kullanıcı arabasını yeni bulmuş,
+ * ürün işini tam o an görmüş oluyor. Sonrakiler seyrekleşir — henüz yanıt
+ * vermemiş kullanıcıya ara ara bir şans daha verilir, ama ısrar edilmez.
+ */
+const REVIEW_STEPS = [1, 4, 10];
+
 /**
  * Sistem yorum penceresi PAHALI bir kaynaktır: iOS yılda üç kez gösterir ve
  * memnun olmayan biri denk gelirse puan kalıcı olarak düşer. Bu yüzden önce
  * kendi sorumuzu sorarız (bkz. RatePrompt) ve YALNIZ olumlu yanıtta sisteme
  * geçeriz. Olumsuz yanıt bir daha sorulmaz — ısrar kötü puanı davet eder.
+ *
+ * Eskiden yalnız TASARRUF gösterilen bitişlerde sorulurdu; tarife girilmemiş
+ * oturumda tasarruf hesaplanamadığı için ilk park bitişlerinin çoğu hiç
+ * sormuyordu — yani en iyi an her seferinde kaçıyordu.
  */
 export function shouldAskForReview(): boolean {
-  return readCount(REVIEW_ASKED_KEY) === 0 && readCount(REVIEW_DECLINED_KEY) === 0;
+  if (readCount(REVIEW_ASKED_KEY) !== 0 || readCount(REVIEW_DECLINED_KEY) !== 0) return false;
+  const seen = readCount(REVIEW_SEEN_KEY) + 1;
+  writeCount(REVIEW_SEEN_KEY, seen);
+  return REVIEW_STEPS.includes(seen);
 }
 
 export function markReviewDeclined(): void {
