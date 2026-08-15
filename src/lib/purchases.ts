@@ -1,6 +1,7 @@
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { REVENUECAT_IOS_KEY } from '../config';
 import { trackPurchase, trackRestore } from './analytics';
+import { t } from '../localization';
 import { PREMIUM_ENTITLEMENT } from './premium';
 
 // RevenueCat köprüsü. Native modül → Expo Go'da yüklenmez (MapCanvas kalıbı).
@@ -64,7 +65,13 @@ interface RcPackage {
     price?: number;
     currencyCode?: string;
     priceString?: string;
-    introPrice?: { periodNumberOfUnits?: number; periodUnit?: string } | null;
+    introPrice?: {
+      periodNumberOfUnits?: number;
+      periodUnit?: string;
+      /** 0 = ücretsiz deneme; >0 = İNDİRİMLİ giriş fiyatı (deneme değil). */
+      price?: number;
+      priceString?: string;
+    } | null;
   };
 }
 
@@ -86,12 +93,34 @@ function periodOf(pkg: RcPackage): PlanPeriod | null {
   return null;
 }
 
+/**
+ * Giriş teklifi etiketi.
+ *
+ * `introPrice` hem ücretsiz denemede hem İNDİRİMLİ giriş fiyatında dolu gelir.
+ * Her ikisini "free" yazmak, App Store Connect'te "ilk ay 0,99" tanımlandığı an
+ * yalan söylüyordu: kullanıcı "bedava" okuyup Apple'ın anında ücret kesmesiyle
+ * karşılaşıyor — bu kategorideki iade taleplerinin birebir sebebi.
+ */
 function introLabelOf(pkg: RcPackage): string | null {
   const intro = pkg.product?.introPrice;
   if (!intro?.periodNumberOfUnits || !intro.periodUnit) return null;
-  const unit = intro.periodUnit.toLowerCase();
-  return `${intro.periodNumberOfUnits} ${unit}${intro.periodNumberOfUnits > 1 ? 's' : ''} free`;
+  const count = intro.periodNumberOfUnits;
+  const key = PERIOD_KEY[intro.periodUnit.toLowerCase() as keyof typeof PERIOD_KEY] ?? 'periodDay';
+  const period = t(key, { count });
+  // Fiyat bilinmiyorsa "ücretsiz" DEME: eksik bilgi, iyimser tahmin değil.
+  if (intro.price === 0) return t('introFree', { period });
+  if (intro.price != null && intro.priceString) {
+    return t('introDiscounted', { period, price: intro.priceString });
+  }
+  return null;
 }
+
+const PERIOD_KEY = {
+  day: 'periodDay',
+  week: 'periodWeek',
+  month: 'periodMonth',
+  year: 'periodYear',
+} as const;
 
 /**
  * Geliştirme derlemesinde, RevenueCat anahtarı henüz yokken paywall tasarımını

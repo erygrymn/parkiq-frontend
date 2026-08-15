@@ -53,6 +53,8 @@ interface PremiumStore {
   justPurchased: boolean;
 
   init: () => void;
+  /** Ön plana dönüşte yetkiyi mağazadan tazeler. */
+  refreshEntitlement: () => void;
   openPlans: () => void;
   selectPlan: (id: string) => void;
   buy: () => void;
@@ -76,6 +78,18 @@ export const usePremiumStore = create<PremiumStore>((set, get) => ({
   init: () => {
     const devUnlock = readDevUnlock();
     set({ devUnlock, isPremium: resolvePremium(get().hasEntitlement, devUnlock) });
+    if (!isPurchasesAvailable) return;
+    void fetchEntitlement().then((active) =>
+      set({ hasEntitlement: active, isPremium: resolvePremium(active, get().devUnlock) }),
+    );
+  },
+
+  /**
+   * Yetkiyi mağazadan yeniden okur. Ön plana her dönüşte çağrılır: abonelik
+   * iptali, yenileme ya da başka bir cihazda yapılan satın alma aksi halde
+   * uygulama yeniden başlatılana kadar hiç yansımıyordu.
+   */
+  refreshEntitlement: () => {
     if (!isPurchasesAvailable) return;
     void fetchEntitlement().then((active) =>
       set({ hasEntitlement: active, isPremium: resolvePremium(active, get().devUnlock) }),

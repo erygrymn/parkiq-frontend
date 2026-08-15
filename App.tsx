@@ -221,7 +221,11 @@ function Root() {
   // parkında kilit ekranı kartı bir daha hiç gelmiyordu.
   useEffect(() => {
     const sub = AppState.addEventListener('change', (next) => {
-      if (next === 'active') useSessionStore.getState().resumeLiveActivity();
+      if (next !== 'active') return;
+      useSessionStore.getState().resumeLiveActivity();
+      // Yetki app ömrü boyunca tek kez okunuyordu: iptal, yenileme ya da başka
+      // cihazdaki satın alma bu oturumda hiç yansımıyordu.
+      usePremiumStore.getState().refreshEntitlement();
     });
     return () => sub.remove();
   }, []);

@@ -1,6 +1,6 @@
 import { SymbolView, type SFSymbol } from 'expo-symbols';
-import { useEffect } from 'react';
-import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { useEffect, useMemo } from 'react';
+import { Alert, ActivityIndicator, Linking, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PrimaryCta } from '../components/Buttons';
 import { Body, Caption, Overline } from '../components/Typography';
@@ -135,11 +135,11 @@ function PlanCard({
         </Text>
       </View>
 
-      {(plan.introLabel || perMonth) && (
+      {(plan.introLabel || perMonth || plan.period === 'lifetime') && (
         <Caption>
           {plan.introLabel
             ? t('freeThen', { intro: plan.introLabel, price: plan.priceLabel })
-            : perMonth}
+            : (perMonth ?? t('lifetimeNote'))}
         </Caption>
       )}
     </Pressable>
@@ -162,24 +162,51 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
   const insets = useSafeAreaInsets();
   const { plans, plansAreDemo, plansState, selectedPlanId, purchaseState, notice, justPurchased } =
     usePremiumStore();
-  const { openPlans, selectPlan, buy, restore, consumeJustPurchased } = usePremiumStore.getState();
+  const { openPlans, selectPlan, buy, restore, consumeJustPurchased, clearNotice } =
+    usePremiumStore.getState();
 
   useEffect(() => {
     if (visible) openPlans();
   }, [visible, openPlans]);
 
-  // Başarı: sheet kapanır (damga anı geldiği ekranda oynar — §7.10.4)
+  // Başarı SESSİZ olmamalı: ekran kapanıp hiçbir şey söylememek, para ödemiş
+  // kullanıcıyı "geçti mi geçmedi mi" halinde bırakıyordu.
   useEffect(() => {
-    if (justPurchased) {
-      consumeJustPurchased();
-      onClose();
-    }
+    if (!justPurchased) return;
+    consumeJustPurchased();
+    Alert.alert(t('purchaseDoneTitle'), t('purchaseDoneBody'), [{ text: t('done'), onPress: onClose }]);
   }, [justPurchased, consumeJustPurchased, onClose]);
 
-  // Restore başarısında da sheet kapanır (§7.10.5)
+  // Restore'un üç sonucu da söylenir; "hiçbir şey bulunamadı" özellikle önemli:
+  // yeni cihaza geçen ödemiş kullanıcının doğrudan destek yazdığı an burası.
   useEffect(() => {
-    if (notice === 'restored') onClose();
-  }, [notice, onClose]);
+    if (notice === 'restored') {
+      clearNotice();
+      Alert.alert(t('restoredTitle'), t('restoredBody'), [{ text: t('done'), onPress: onClose }]);
+      return;
+    }
+    if (notice === 'none') {
+      clearNotice();
+      Alert.alert(t('noPurchases'), t('noPurchasesBody'), [{ text: t('done') }]);
+    }
+  }, [notice, clearNotice, onClose]);
+
+  // Geçmişten gelen toplam tasarruf; paywall her açıldığında taze okunur.
+  const savedSoFar = useMemo(() => {
+    if (!visible) return null;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const repo = require('../db/sessionRepo') as typeof import('../db/sessionRepo');
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const stats = require('../lib/stats') as typeof import('../lib/stats');
+      const sessions = repo.listEndedSessions();
+      const total = stats.computeStats(sessions);
+      if (total.totalSaved === null || total.totalSaved <= 0 || !total.savedCurrency) return null;
+      return formatMoney(total.totalSaved, total.savedCurrency, getLocale());
+    } catch {
+      return null;
+    }
+  }, [visible]);
 
   const selected = plans.find((p) => p.id === selectedPlanId) ?? null;
   const selectedIsSubscription = selected !== null && selected.period !== 'lifetime';
@@ -242,6 +269,13 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
             <Body color={colors.textSecondary}>{t('proBody')}</Body>
           </View>
 
+          {/* Para dili, kullanıcının KENDİ rakamıyla konuşur. Uydurma bir ortalama
+              değil, bu telefonun geçmişinden gelen toplam — §6.2'de ödüllendirilen
+              tek argüman bu. Hiç tasarruf yoksa satır hiç çıkmaz. */}
+          {savedSoFar !== null && (
+            <Caption color={colors.accentText}>{t('savedSoFar', { amount: savedSoFar })}</Caption>
+          )}
+
           <View style={{ gap: spacing.s12 }}>
             {FEATURES.map((feature) => (
               <FeatureRow key={feature.key} symbol={feature.symbol} label={t(feature.key)} />
@@ -274,8 +308,6 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
             </View>
           )}
 
-          {notice === 'none' && <Caption>{t('noPurchases')}</Caption>}
-          {notice === 'failed' && <Caption color={colors.warnText}>{t('purchaseFailed')}</Caption>}
         </ScrollView>
 
         {/* Sabit alt blok: CTA ve yasal satır içerik ne kadar uzarsa uzasın kaçmaz. */}
@@ -290,6 +322,8 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
             backgroundColor: colors.card,
           }}
         >
+          {notice === 'failed' && <Caption color={colors.warnText}>{t('purchaseFailed')}</Caption>}
+
           {/* §3.1.2(a)(c): otomatik yenileme + ücretlendirme beyanı zorunlu */}
           {selectedIsSubscription && <Caption>{t('autoRenewNotice')}</Caption>}
 
@@ -317,7 +351,9 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
 
           <View style={{ flexDirection: 'row', justifyContent: 'center', gap: spacing.s16 }}>
             <Pressable accessibilityRole="button" onPress={restore} disabled={busy} hitSlop={8}>
-              <Caption color={colors.ink}>{t('restore')}</Caption>
+              <Caption color={colors.ink}>
+                {purchaseState === 'restoring' ? t('restoring') : t('restore')}
+              </Caption>
             </Pressable>
             <Pressable
               accessibilityRole="button"
