@@ -1,4 +1,3 @@
-import { Twice, TwiceAnalytics, TwiceRemoteConfig } from '@twiceapps/react-native';
 import { TWICE_KEY } from '../config';
 
 // Twice: analytics + remote config + sürüm kontrolü + gelir takibi.
@@ -15,11 +14,35 @@ import { TWICE_KEY } from '../config';
 // AppState üzerinden kendisi izliyor (30 dk arkaplandan sonra yeni oturum).
 // Bizim "playtime" karşılığımız park oturumunun süresidir — park_ended taşır.
 
+/**
+ * SDK TEMBEL yüklenir.
+ *
+ * `@twiceapps/react-native` native bir modül ve Expo Go'nun sabit kabuğunda
+ * yok. Üst seviyeden import edilince analytics'i çeken her dosya — yani
+ * neredeyse tüm ağaç — açılışta onu yüklüyor ve Expo Go ilk karede çöküyordu.
+ * Burada yüklenemezse ölçüm sessizce kapanır; ürün aynen çalışır.
+ */
+type TwiceSdk = typeof import('@twiceapps/react-native');
+
+let sdk: TwiceSdk | null | undefined;
+
+function twice(): TwiceSdk | null {
+  if (sdk === undefined) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      sdk = require('@twiceapps/react-native') as TwiceSdk;
+    } catch {
+      sdk = null;
+    }
+  }
+  return sdk;
+}
+
 export const isAnalyticsEnabled = TWICE_KEY.length > 0;
 
 export function initAnalytics(): void {
   if (!isAnalyticsEnabled) return;
-  Twice.init({ apiKey: TWICE_KEY, debug: __DEV__ });
+  twice()?.Twice.init({ apiKey: TWICE_KEY, debug: __DEV__ });
 }
 
 /** Flat parametreler — SDK yalnız string/number/boolean kabul eder. */
@@ -27,7 +50,7 @@ type Params = Record<string, string | number | boolean>;
 
 function log(name: string, params?: Params): void {
   if (!isAnalyticsEnabled) return;
-  TwiceAnalytics.logEvent(name, params);
+  twice()?.TwiceAnalytics.logEvent(name, params);
 }
 
 // --- Huni: kurulum → ilk park → değer görülmesi ---
@@ -100,10 +123,10 @@ export function trackPurchase(input: {
 }): void {
   if (!isAnalyticsEnabled) return;
   if (input.isTrial) {
-    TwiceAnalytics.trialStarted(input.productId);
+    twice()?.TwiceAnalytics.trialStarted(input.productId);
     return;
   }
-  TwiceAnalytics.purchase(input.productId, input.price, input.currency);
+  twice()?.TwiceAnalytics.purchase(input.productId, input.price, input.currency);
 }
 
 export function trackRestore(): void {
@@ -114,7 +137,7 @@ export function trackRestore(): void {
 
 export function trackError(name: string, params?: Params): void {
   if (!isAnalyticsEnabled) return;
-  TwiceAnalytics.errorEvent(name, params);
+  twice()?.TwiceAnalytics.errorEvent(name, params);
 }
 
 // --- Remote config ---
@@ -130,7 +153,7 @@ const STORE_URL_KEYS = { ios: 'store_url_ios', android: 'store_url_android' } as
 export function getStoreUrl(platform: 'ios' | 'android', fallback: string): string {
   if (!isAnalyticsEnabled) return fallback;
   try {
-    const value = TwiceRemoteConfig.getString(STORE_URL_KEYS[platform]);
+    const value = twice()?.TwiceRemoteConfig.getString(STORE_URL_KEYS[platform]);
     return value && value.startsWith('http') ? value : fallback;
   } catch {
     return fallback;
@@ -140,5 +163,5 @@ export function getStoreUrl(platform: 'ios' | 'android', fallback: string): stri
 /** Uzak yapılandırma değişince yeniden çizmek için. */
 export function onRemoteConfigUpdated(listener: () => void): () => void {
   if (!isAnalyticsEnabled) return () => undefined;
-  return TwiceRemoteConfig.onUpdated(listener);
+  return twice()?.TwiceRemoteConfig.onUpdated(listener) ?? (() => undefined);
 }

@@ -1,4 +1,4 @@
-import { TwiceVersionCheck, type UpdateStatus } from '@twiceapps/react-native';
+import type { UpdateStatus } from '@twiceapps/react-native';
 import { useEffect, useState } from 'react';
 import { Linking, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,13 +16,24 @@ import { spacing, typeScale } from '../theme/tokens';
 // İsteğe bağlı güncellemede hiçbir şey yapılmaz: her açılışta banner göstermek
 // kullanıcıyı yorar, kritik olan zaten forced ile gelir.
 
+/** Sürüm kontrolü de tembel: Expo Go'da modül yok, kapı hiç kurulmaz. */
+function versionCheck(): typeof import('@twiceapps/react-native').TwiceVersionCheck | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return (require('@twiceapps/react-native') as typeof import('@twiceapps/react-native'))
+      .TwiceVersionCheck;
+  } catch {
+    return null;
+  }
+}
+
 export function useForcedUpdate(): boolean {
   const [forced, setForced] = useState(false);
 
   useEffect(() => {
     if (!isAnalyticsEnabled) return;
     let cancelled = false;
-    void TwiceVersionCheck.check()
+    void versionCheck()?.check()
       .then((status: UpdateStatus) => {
         if (!cancelled) setForced(status.updateAvailable && status.isForced);
       })
@@ -43,8 +54,11 @@ export function ForceUpdateScreen() {
   const insets = useSafeAreaInsets();
 
   const openStore = () => {
-    void TwiceVersionCheck.check()
-      .then((status) => Linking.openURL(TwiceVersionCheck.storeUrl(status)))
+    void versionCheck()?.check()
+      .then((status: UpdateStatus) => {
+        const url = versionCheck()?.storeUrl(status);
+        if (url) void Linking.openURL(url);
+      })
       .catch(() => undefined);
   };
 
