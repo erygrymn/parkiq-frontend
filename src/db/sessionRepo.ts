@@ -6,7 +6,7 @@ import type { ParkSession } from '../state/sessionStore';
 // Aktif oturum = endedAtMs IS NULL; tek aktif oturum kuralını store korur.
 // Şema sürümü PRAGMA user_version ile taşınır — cihazdaki eski kayıtlar korunur.
 
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 
 let db: SQLiteDatabase | null = null;
 
@@ -81,6 +81,16 @@ function migrate(database: SQLiteDatabase): void {
     }
   }
 
+  if (current < 7) {
+    // Kayıt anındaki GPS doğruluğu (metre). Kalıcı olması şart: Find My Car
+    // kapalı otopark kararını buna bakarak verir ve soğuk açılıştan sonra
+    // canlı düzeltmenin doğruluğu kaydınkini temsil etmez.
+    const columns = database.getAllSync<{ name: string }>('PRAGMA table_info(sessions)');
+    if (!columns.some((c) => c.name === 'accuracyM')) {
+      database.execSync('ALTER TABLE sessions ADD COLUMN accuracyM REAL');
+    }
+  }
+
   database.execSync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 }
 
@@ -97,6 +107,35 @@ export function writeSetting(key: string, value: string): void {
 /** Ayarlar > Veri: tüm oturumları siler (ayarlar korunur). */
 export function deleteAllSessions(): void {
   getDb().runSync('DELETE FROM sessions');
+}
+
+/**
+ * Ayarlar > Veri "her şeyi sil": oturumlar, yer tarifesi hafızası ve ayarlar.
+ * Fotoğraflar dosya sisteminde yaşadığı için çağıran taraf onları ayrıca siler.
+ * Amaç, kopyanın verdiği sözü birebir tutmak: geriye hiçbir iz kalmaz.
+ */
+export function deleteEverything(): void {
+  const database = getDb();
+  database.execSync('DELETE FROM sessions');
+  database.execSync('DELETE FROM place_tariffs');
+  database.execSync('DELETE FROM settings');
+}
+
+/** Silinmeden önce fotoğrafın temizlenebilmesi için kaydın yolunu verir. */
+export function getSessionPhotoUri(id: string): string | null {
+  const row = getDb().getFirstSync<{ photoUri: string | null }>(
+    'SELECT photoUri FROM sessions WHERE id = ?',
+    [id],
+  );
+  return row?.photoUri ?? null;
+}
+
+/** Geçmişte duran tüm fotoğraf yolları — toplu silmeden önce temizlik için. */
+export function listAllPhotoUris(): string[] {
+  const rows = getDb().getAllSync<{ photoUri: string }>(
+    "SELECT photoUri FROM sessions WHERE photoUri IS NOT NULL AND photoUri != ''",
+  );
+  return rows.map((r) => r.photoUri);
 }
 
 /** §7.4b yanlış oto-algılama: tek kaydı tamamen siler. */
@@ -126,6 +165,7 @@ interface SessionRow {
   reminderAtMs: number | null;
   recordedAtMs: number | null;
   tariffSchedule: string | null;
+  accuracyM: number | null;
 }
 
 function rowToSession(row: SessionRow): ParkSession {
@@ -151,6 +191,7 @@ function rowToSession(row: SessionRow): ParkSession {
     photoUri: row.photoUri,
     reminderAtMs: row.reminderAtMs,
     tariffSchedule: (row.tariffSchedule as ParkSession['tariffSchedule']) ?? null,
+    accuracyM: row.accuracyM,
   };
 }
 
@@ -158,8 +199,8 @@ export function saveSession(session: ParkSession): void {
   getDb().runSync(
     `INSERT OR REPLACE INTO sessions
        (id, startedAtMs, recordedAtMs, endedAtMs, floor, note, tariffJson,
-        latitude, longitude, placeName, photoUri, reminderAtMs, tariffSchedule)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        latitude, longitude, placeName, photoUri, reminderAtMs, tariffSchedule, accuracyM)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       session.id,
       session.startedAtMs,
@@ -174,6 +215,7 @@ export function saveSession(session: ParkSession): void {
       session.photoUri,
       session.reminderAtMs,
       session.tariffSchedule ?? null,
+      session.accuracyM ?? null,
     ],
   );
 }

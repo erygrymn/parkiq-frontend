@@ -18,6 +18,7 @@ function session(startMs: number, endMs: number | null, tariff = hourly50): Park
     placeName: null,
     photoUri: null,
     reminderAtMs: null,
+    accuracyM: null,
   };
 }
 

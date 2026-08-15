@@ -141,14 +141,19 @@ function Compass({ rotation, near }: { rotation: number; near: boolean }) {
 export function FindMyCar({
   visible,
   session,
+  isPremium,
   onClose,
   onFound,
+  onOpenPaywall,
 }: {
   visible: boolean;
   session: ParkSession | null;
+  /** Pusula ve AR premium; konum/foto/not herkese açıktır. */
+  isPremium: boolean;
   onClose: () => void;
   /** "Buldum": ekran kapanır ve oturumu bitirme sorusu açılır. */
   onFound: () => void;
+  onOpenPaywall: () => void;
 }) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -174,8 +179,14 @@ export function FindMyCar({
   const bearing = carCoords && userCoords ? bearingDegrees(userCoords, carCoords) : null;
   const rotation = bearing !== null && heading !== null ? relativeBearing(bearing, heading) : 0;
 
-  // Kapalı otopark: GPS doğruluğu kötü ya da araba konumu hiç yok.
-  const indoor = carCoords === null || isIndoorLike(fix?.coords.accuracy ?? null);
+  // Kapalı otopark kararı KAYDIN doğruluğuna bakar. Dönüş anındaki canlı
+  // doğruluk (kullanıcı çoktan dışarı çıkmış, açık gökyüzü) kaydın kalitesini
+  // temsil etmiyor; otoparkta ±150 m ile alınmış bir nokta "iyi" sayılıyordu.
+  const indoor =
+    carCoords === null || isIndoorLike(session.accuracyM) || isIndoorLike(fix?.coords.accuracy ?? null);
+  // Pusula premium. Ücretsiz kullanıcı yerini, fotoğrafını ve notunu görür —
+  // yani arabayı bulmanın kapalı otoparktaki asıl aracı ücretsiz kalır.
+  const showCompass = isPremium && !indoor;
   const near = distance !== null && distance <= NEAR_DISTANCE_M;
 
   return (
@@ -197,7 +208,7 @@ export function FindMyCar({
 
           {/* AR yalnız yön hesaplanabildiğinde anlamlı: kapalı otoparkta pusula
               yalan söyler, orada foto/kat kartı doğru araçtır. */}
-          {!indoor && carCoords !== null && isArAvailable && (
+          {isPremium && !indoor && carCoords !== null && isArAvailable && (
             <Pressable
               onPress={() => setArOpen(true)}
               accessibilityRole="button"
@@ -238,7 +249,14 @@ export function FindMyCar({
         <View style={{ flex: 1, paddingHorizontal: spacing.s20, gap: spacing.s24 }}>
           {denied && <StatusLine label={t('locationOff')} onPress={openAppSettings} />}
 
-          {indoor ? (
+          {/* Kaydın doğruluğu kötüyse sayı gizlenmez, SÖYLENİR: yanlış noktaya
+              ters geocode'dan gelen sokak adı sahte otorite kazandırıyordu. */}
+          {session.accuracyM != null && session.accuracyM > 0 && isIndoorLike(session.accuracyM) && (
+            <StatusLine label={t('locationRough', { meters: Math.round(session.accuracyM) })} />
+          )}
+          {carCoords === null && <StatusLine label={t('locationMissing')} />}
+
+          {!showCompass ? (
             <SpotCard session={session} onOpenPhoto={() => setPhotoOpen(true)} />
           ) : (
             <View style={{ gap: spacing.s24, alignItems: 'center' }}>
@@ -263,10 +281,13 @@ export function FindMyCar({
 
           <View style={{ marginTop: 'auto', paddingBottom: insets.bottom + spacing.s20, gap: spacing.s8 }}>
             {indoor && carCoords !== null && <Caption>{t('indoorHint')}</Caption>}
+            {!isPremium && !indoor && carCoords !== null && (
+              <StatusLine label={t('compassLocked')} onPress={onOpenPaywall} />
+            )}
             {/* Aramanın bittiği an: ekran kapanır, sayaç durdurulsun mu diye sorulur. */}
             <PrimaryCta label={t('foundIt')} onPress={onFound} />
             <GhostButton label={t('openInMaps')} onPress={() => openInMaps(session)} disabled={!carCoords} />
-            {session.photoUri && !indoor && (
+            {session.photoUri && showCompass && (
               <GhostButton label={t('photo')} onPress={() => setPhotoOpen(true)} />
             )}
           </View>

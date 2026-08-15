@@ -202,6 +202,7 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
     removePhoto,
     scanTariff,
     setParkLocation,
+    useMyLocationForPark,
   } = useSessionStore.getState();
   const cancelPark = useSessionStore((s) => s.cancelPark);
   const [customReminder, setCustomReminder] = useState(false);
@@ -351,6 +352,15 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
 
       <PrimaryCta label={t('done')} onPress={confirmDetails} style={{ marginTop: spacing.s4 }} />
 
+      {/* Konum hiç alınamadıysa sessiz kalma: kullanıcı Done'a basıp gidiyor ve
+          dönüşte elimizde koordinat olmuyor. */}
+      {(locationState === 'unavailable' || locationState === 'denied') && (
+        <StatusLine
+          label={t('locationMissing')}
+          onPress={pickOnMap}
+        />
+      )}
+
       <PopupSheet visible={openField === 'location'} title={t('parkLocation')} onClose={closeField}>
         <SearchBar
           onPick={(result) => {
@@ -365,10 +375,8 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
         <GhostButton
           label={t('useMyLocation')}
           onPress={() => {
-            void captureCurrentPlace().then((outcome) => {
-              if (outcome.status === 'ok') setParkLocation(outcome.place);
-              closeField();
-            });
+            useMyLocationForPark();
+            closeField();
           }}
         />
         <GhostButton label={t('pickOnMap')} onPress={pickOnMap} />
@@ -530,6 +538,10 @@ export function ActiveSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   const isPremium = useIsPremium();
   const warnThresholdMin = useSettingsStore((s) => s.warnThresholdMin);
   const [findOpen, setFindOpen] = useState(false);
+  const [tariffOpen, setTariffOpen] = useState(false);
+  const { startPickingLocation, setTariff, scanTariff } = useSessionStore.getState();
+  const externalTariffVersion = useSessionStore((s) => s.externalTariffVersion);
+  const ocrState = useSessionStore((s) => s.ocrState);
   const now = useNow(1000);
   if (!session) return null;
 
@@ -618,9 +630,80 @@ export function ActiveSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
 
       {now - session.startedAtMs > 86_400_000 && <Caption>{t('stillParkedShort')}</Caption>}
 
+      {/* Konum hiç alınamadıysa bunu SÖYLE: kullanıcı PARKED. damgasını görüp
+          işin bittiğini sanıyor, dönüşte elimizde koordinat olmuyor. */}
+      {!hasLocation && (
+        <StatusLine label={t('locationMissing')} onPress={() => startPickingLocation('park')} />
+      )}
+
+      {/* Sayaç başladıktan sonra da düzeltilebilir/eklenebilir: yanlış pin çoğu
+          zaman saatler sonra, tarife ise otoparka girince fark ediliyor. */}
+      <View style={{ gap: spacing.s4 }}>
+        <DetailRow
+          label={t('fixLocation')}
+          value={session.placeName}
+          placeholder={t('pickOnMap')}
+          onPress={() => startPickingLocation('park')}
+        />
+        <DetailRow
+          label={t('tariff')}
+          value={session.tariff ? formatTariffSummary(session.tariff, locale) : null}
+          placeholder={t('addTariff')}
+          onPress={() => setTariffOpen(true)}
+        />
+      </View>
+
+      {/* Tarife oturum başladıktan sonra da girilebilir/düzeltilebilir. Gerçek
+          sıra "arabayı bırak → yürürken panoyu gör"; bu kapı olmadan hızlı
+          Done'a basan her oturum kalıcı olarak tarifesiz kalıyordu. */}
+      <PopupSheet visible={tariffOpen} title={t('tariff')} onClose={() => setTariffOpen(false)}>
+        <TariffForm key={externalTariffVersion} value={session.tariff} onChange={setTariff} />
+        <Pressable
+          accessibilityRole="button"
+          onPress={scanTariff}
+          disabled={ocrState === 'scanning'}
+          style={({ pressed }) => ({
+            height: 44,
+            borderRadius: radius.r12,
+            backgroundColor: pressed ? colors.insetPressed : colors.inset,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.s8,
+            paddingHorizontal: spacing.s12,
+          })}
+        >
+          {ocrState === 'scanning' ? (
+            <ActivityIndicator size="small" color={colors.textSecondary} />
+          ) : (
+            <SymbolView name="camera.viewfinder" size={17} tintColor={colors.ink} weight="regular" />
+          )}
+          <Text style={{ fontSize: 15, color: colors.ink }}>
+            {ocrState === 'scanning' ? t('scanning') : t('scanBoard')}
+          </Text>
+        </Pressable>
+        {ocrState === 'locked' && (
+          <StatusLine
+            label={t('scanPro')}
+            onPress={() => {
+              setTariffOpen(false);
+              trackPaywallShown('feature');
+              onOpenPaywall();
+            }}
+          />
+        )}
+        {ocrState === 'not_detected' && <StatusLine label={t('scanNotDetected')} />}
+        {ocrState === 'failed' && <StatusLine label={t('scanFailed')} />}
+      </PopupSheet>
+
       <FindMyCar
         visible={findOpen}
         session={session}
+        isPremium={isPremium}
+        onOpenPaywall={() => {
+          setFindOpen(false);
+          trackPaywallShown('feature');
+          onOpenPaywall();
+        }}
         onClose={() => setFindOpen(false)}
         onFound={() => {
           // Arabayı buldun: arama biter ve sayaç durdurulsun mu diye sorulur.
@@ -641,14 +724,11 @@ export function ActiveSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
           {/* Ekranın tek siyah CTA'sı: dönüş anının aksiyonu (İlke 4).
               Pusulalı dönüş premium; free'de araba haritada pin olarak durmaya
               devam eder, CTA paywall'a köprüdür. */}
+          {/* Dönüş anının aksiyonu herkese açıktır: ücretsiz kullanıcı yerini,
+              fotoğrafını ve notunu görür. Satılan şey pusula ve AR. */}
           <PrimaryCta
             label={t('findMyCar')}
             onPress={() => {
-              if (!isPremium) {
-                trackPaywallShown('feature');
-                onOpenPaywall();
-                return;
-              }
               trackFindMyCar(hasLocation ? 'compass' : 'indoor');
               setFindOpen(true);
             }}

@@ -128,7 +128,7 @@ Uygulama dokümanı: **[ar-find-my-car.md](ar-find-my-car.md)** — mimari, koor
 ## 11. Paywall — pageSheet (§7.10)
 
 - [x] Plan kartları: aylık · yıllık · lifetime (RevenueCat offering; anahtar girilince dolar)
-- [x] Premium özellik listesi (4 satır — OCR premium değil, herkese ücretsiz)
+- [x] Premium özellik listesi (4 satır: tarife taraması · Arabamı Bul · oto-algılama · otopark filtresi — hepsi kodda `isPremium` kapılı)
 - [x] Restore purchases + yasal satırlar
 - [ ] Tetik noktaları: [x] geçmiş kilidi · [x] Ayarlar satırı · [x] ilk varyant-c kutlaması sonrası · [ ] LA teşviki
 

@@ -18,6 +18,7 @@ const baseSession: ParkSession = {
   placeName: 'Test',
   photoUri: null,
   reminderAtMs: null,
+  accuracyM: null,
 };
 
 describe('sessionStore — tarife önerisi', () => {
@@ -104,5 +105,42 @@ describe('sessionStore — tarife önerisi', () => {
 
     expect(useSessionStore.getState().session).toBeNull();
     expect(useSessionStore.getState().externalTariffVersion).toBe(0);
+  });
+});
+
+describe('konum düzeltmesi', () => {
+  const pinned = { latitude: 41.5, longitude: 29.5, placeName: 'Otopark' };
+
+  it('kullanıcı pin attıktan sonra geciken GPS onu ezemez', () => {
+    useSessionStore.setState({
+      phase: 'parking',
+      session: { ...baseSession },
+      locationPinnedByUser: false,
+      locationEditSeq: 0,
+    });
+
+    useSessionStore.getState().setParkLocation(pinned);
+    expect(useSessionStore.getState().locationPinnedByUser).toBe(true);
+
+    // park() içindeki gecikmeli yakalama bu bayrağa bakıp vazgeçer.
+    expect(useSessionStore.getState().session?.latitude).toBe(41.5);
+  });
+
+  it('elle işaretlenen nokta doğruluk yarıçapı taşımaz', () => {
+    useSessionStore.setState({ phase: 'parking', session: { ...baseSession, accuracyM: 180 } });
+    useSessionStore.getState().setParkLocation(pinned);
+    expect(useSessionStore.getState().session?.accuracyM).toBe(0);
+  });
+
+  it('sayaç başladıktan sonra da düzeltilebilir', () => {
+    useSessionStore.setState({ phase: 'active', session: { ...baseSession } });
+    useSessionStore.getState().setParkLocation(pinned);
+    expect(useSessionStore.getState().session?.longitude).toBe(29.5);
+  });
+
+  it('oturum bittiyse konum artık değişmez', () => {
+    useSessionStore.setState({ phase: 'ended', session: { ...baseSession } });
+    useSessionStore.getState().setParkLocation(pinned);
+    expect(useSessionStore.getState().session?.latitude).toBe(baseSession.latitude);
   });
 });

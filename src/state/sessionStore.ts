@@ -53,6 +53,13 @@ export interface ParkSession {
    * hesaplamak yerine kullanıcıya söylenir.
    */
   tariffSchedule?: ScheduleKind | null;
+  /**
+   * Kaydın alındığı andaki GPS doğruluğu (metre). Elle işaretlenmişse 0 —
+   * kullanıcının haritada gösterdiği nokta elimizdeki en doğru veridir.
+   * Find My Car kapalı otopark kararını BUNA bakarak verir: dönüş anındaki
+   * canlı doğruluk (açık gökyüzü) kaydın doğruluğunu temsil etmez.
+   */
+  accuracyM: number | null;
 }
 
 interface SessionStore {
@@ -85,6 +92,17 @@ interface SessionStore {
    * o anki konumdur ama başlatmadan önce düzeltilebilir.
    */
   setParkLocation: (place: { latitude: number; longitude: number; placeName: string | null }) => void;
+  /** "Konumumu kullan" — gecikmeli sonucun daha yeni bir düzeltmeyi ezmemesi için store'da. */
+  useMyLocationForPark: () => void;
+  /**
+   * Kullanıcı konumu kendi belirledi mi. Park anında başlatılan GPS yakalaması
+   * saniyeler sonra dönüyor; o sırada kullanıcı pini arabanın üstüne taşımışsa
+   * geciken sonuç düzeltmeyi SESSİZCE geri alıyordu. Yavaş fix tam olarak
+   * kapalı otoparkta oluyor — yani düzeltmenin en çok gerektiği yerde.
+   */
+  locationPinnedByUser: boolean;
+  /** Her kullanıcı düzeltmesinde artar; gecikmeli işler buna bakıp vazgeçer. */
+  locationEditSeq: number;
   /**
    * Haritadan pin bırakma modu — harita ortasındaki artı işareti konumu belirler.
    * Değer aynı zamanda AÇANI söyler: seçim bitince o popup geri açılır.
@@ -123,6 +141,8 @@ interface SessionStore {
   confirmEnd: () => void;
   undoEnd: () => void;
   finish: () => void;
+  /** Geçmişten tek kaydı siler (fotoğrafıyla birlikte). */
+  deleteEndedSession: (id: string) => void;
 }
 
 // Repo import'u fonksiyon içinde: testler saf mantığa native sqlite olmadan dokunur.
@@ -195,6 +215,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   pickedCenter: null,
   reopenAfterPick: null,
   autoDetected: false,
+  locationPinnedByUser: false,
+  locationEditSeq: 0,
 
   hydrate: () => {
     if (get().hydrated) return;
@@ -206,7 +228,15 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     }
     set(
       active
-        ? { hydrated: true, phase: 'active', session: active, locationState: active.latitude === null ? 'idle' : 'ok' }
+        ? {
+            hydrated: true,
+            phase: 'active',
+            session: active,
+            // Kaydın kendi doğruluğu geri yüklenir: soğuk açılış 'weak' işaretini
+            // eskiden siliyordu ve oturum sonuna kadar bir daha görünmüyordu.
+            locationState:
+              active.latitude === null ? 'unavailable' : isIndoorLike(active.accuracyM) ? 'weak' : 'ok',
+          }
         : { hydrated: true },
     );
     if (active) {
@@ -241,15 +271,24 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       photoUri: null,
       reminderAtMs: null,
       tariffSchedule: null,
+      accuracyM: null,
     };
     persist(session);
-    set({ phase: 'parking', session, locationState: 'capturing', suggestedTariff: null });
+    set({
+      phase: 'parking',
+      session,
+      locationState: 'capturing',
+      suggestedTariff: null,
+      locationPinnedByUser: false,
+    });
     trackParkStarted(get().autoDetected ? 'auto' : 'manual');
 
     // Konum yakalama kaydı BLOKLAMAZ; sonuç geldiğinde oturuma işlenir.
     void captureCurrentPlace().then((outcome) => {
       const current = get().session;
       if (!current || current.id !== session.id) return; // oturum bitmiş/değişmiş
+      // Kullanıcı bu arada konumu kendi belirlediyse geciken GPS onu EZMEZ.
+      if (get().locationPinnedByUser) return;
       if (outcome.status !== 'ok') {
         set({ locationState: outcome.status });
         return;
@@ -259,6 +298,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         latitude: outcome.place.latitude,
         longitude: outcome.place.longitude,
         placeName: outcome.place.placeName,
+        accuracyM: outcome.place.accuracyM,
       };
       persist(next);
 
@@ -391,6 +431,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       suggestedTariff: null,
       ocrState: 'idle',
       locationState: 'idle',
+      locationPinnedByUser: false,
     });
   },
 
@@ -443,29 +484,69 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
   setParkLocation: ({ latitude, longitude, placeName }) => {
     const { session, phase } = get();
-    // Yalnız sayaç başlamadan önce: oturum başladıktan sonra konumu oynatmak
-    // geçmişi ve tarife hafızasını bozar.
-    if (!session || phase !== 'parking') return;
-    const next = { ...session, latitude, longitude, placeName };
+    // Sayaç başladıktan SONRA da düzeltilebilir: pinin yanlış olduğu çoğu zaman
+    // saatler sonra, arabaya dönerken anlaşılıyor. Yalnız konum değişir —
+    // startedAtMs, recordedAtMs ve geçmiş dokunulmaz.
+    if (!session || (phase !== 'parking' && phase !== 'active')) return;
+    // Elle belirlenen nokta en doğru veridir: doğruluk yarıçapı yok.
+    const next = { ...session, latitude, longitude, placeName, accuracyM: 0 };
     persist(next);
 
-    // Yeni yerin tarife hafızası varsa öneri de tazelenir.
+    // Tarife hafızası yalnız park formunda tazelenir; oturum başladıktan sonra
+    // tarife çoktan girilmiş olabilir ve altını oymak yanlış olur.
     let remembered: Tariff | null = null;
-    if (!next.tariff) {
+    if (phase === 'parking' && !next.tariff) {
       try {
         remembered = repo().findRememberedTariff(latitude, longitude);
       } catch {
         remembered = null;
       }
     }
-    set({ session: next, locationState: 'ok', suggestedTariff: remembered });
+    set({
+      session: next,
+      locationState: 'ok',
+      suggestedTariff: phase === 'parking' ? remembered : get().suggestedTariff,
+      locationPinnedByUser: true,
+      locationEditSeq: get().locationEditSeq + 1,
+    });
+  },
+
+  useMyLocationForPark: () => {
+    const { session, phase } = get();
+    if (!session || (phase !== 'parking' && phase !== 'active')) return;
+    const seq = get().locationEditSeq;
+    set({ locationState: 'capturing' });
+    void captureCurrentPlace().then((outcome) => {
+      // Bekleme sırasında kullanıcı haritadan pin attıysa o karar daha yenidir.
+      if (get().locationEditSeq !== seq) return;
+      const current = get().session;
+      if (!current || current.id !== session.id) return;
+      if (outcome.status !== 'ok') {
+        set({ locationState: outcome.status });
+        return;
+      }
+      const next = {
+        ...current,
+        latitude: outcome.place.latitude,
+        longitude: outcome.place.longitude,
+        placeName: outcome.place.placeName,
+        accuracyM: outcome.place.accuracyM,
+      };
+      persist(next);
+      set({
+        session: next,
+        locationState: isIndoorLike(outcome.place.accuracyM) ? 'weak' : 'ok',
+        locationPinnedByUser: true,
+        locationEditSeq: get().locationEditSeq + 1,
+      });
+    });
   },
 
   clearReopenAfterPick: () => set({ reopenAfterPick: null }),
 
   startPickingLocation: (target = 'park') => {
     const { phase, session } = get();
-    if (target === 'park' && phase !== 'parking') return;
+    if (target === 'park' && phase !== 'parking' && phase !== 'active') return;
     // Haritaya hiç dokunulmazsa onaylanacak değer başlangıç noktasıdır:
     // park için arabanın bilinen yeri, filtre için aramanın mevcut merkezi.
     const current =
@@ -566,7 +647,18 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       locationState: 'idle',
       suggestedTariff: null,
       notificationState: 'idle',
+      locationPinnedByUser: false,
     });
     void cancelSessionAlerts();
+  },
+
+  deleteEndedSession: (id) => {
+    try {
+      const uri = repo().getSessionPhotoUri(id);
+      if (uri) deleteSpotPhoto(uri);
+      repo().deleteSession(id);
+    } catch {
+      // Silinemezse liste bir sonraki açılışta kaydı yine gösterir.
+    }
   },
 }));

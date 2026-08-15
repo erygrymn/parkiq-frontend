@@ -1,6 +1,6 @@
 import { SymbolView } from 'expo-symbols';
 import { useMemo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 import { PageSheet } from '../components/PageSheet';
 import { useIsPremium } from '../state/premiumStore';
 import { GhostButton } from '../components/Buttons';
@@ -17,6 +17,7 @@ import { formatClock, formatDateShort, formatDurationStamp, formatMoney, isSameD
 import { computeExitSummary } from '../lib/tariffMath';
 import { getLocale, t } from '../localization';
 import { listEndedSessions } from '../db/sessionRepo';
+import { useSessionStore } from '../state/sessionStore';
 import type { ParkSession } from '../state/sessionStore';
 import { useTheme } from '../theme';
 import { radius, spacing } from '../theme/tokens';
@@ -120,6 +121,8 @@ export function HistorySheet({
   const { colors } = useTheme();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [shareData, setShareData] = useState<SavingsCardData | null>(null);
+  // Silme sonrası listeyi tazelemek için: memo yalnız `visible`e bakıyordu.
+  const [revision, setRevision] = useState(0);
 
   // Modal her açılışta taze okur; visible değişimi memo'yu tazeler.
   const sessions = useMemo(() => {
@@ -129,7 +132,8 @@ export function HistorySheet({
     } catch {
       return [];
     }
-  }, [visible]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, revision]);
 
   // KPI'lar her zaman TÜM oturumlardan hesaplanır (§7.8: free'de de KPI görünür).
   const stats = useMemo(() => computeStats(sessions), [sessions]);
@@ -150,6 +154,28 @@ export function HistorySheet({
         onBack={() => setSelectedId(null)}
       >
         <SessionDetail session={selected} />
+
+        {/* Yanlış kaydı geçmişte taşımak zorunda kalmak istatistikleri de bozar. */}
+        <Text
+          accessibilityRole="button"
+          onPress={() => {
+            Alert.alert(t('deleteSessionTitle'), t('deleteSessionBody'), [
+              { text: t('cancel'), style: 'cancel' },
+              {
+                text: t('delete'),
+                style: 'destructive',
+                onPress: () => {
+                  useSessionStore.getState().deleteEndedSession(selected.id);
+                  setSelectedId(null);
+                  setRevision((r) => r + 1);
+                },
+              },
+            ]);
+          }}
+          style={{ fontSize: 15, color: colors.warnText, paddingVertical: spacing.s16 }}
+        >
+          {t('delete')}
+        </Text>
       </PageSheet>
     );
   }

@@ -19,6 +19,7 @@ function session(over: Partial<ParkSession>): ParkSession {
     placeName: null,
     photoUri: null,
     reminderAtMs: null,
+    accuracyM: null,
     ...over,
   };
 }
