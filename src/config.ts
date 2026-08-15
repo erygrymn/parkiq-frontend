@@ -25,6 +25,13 @@ export const MAPBOX_STYLE_URL_DARK: string | null = null;
  * tarife OCR proxy'si (/api/ocr). İlk Vercel deploy'undan sonra gerçek alan adıyla
  * güncellenir; alan adı kararı ASO çalışmasının ardından.
  */
+/**
+ * Mağaza sayfaları. Uzaktan (Twice remote config) ezilebilir — `getStoreUrl`
+ * bunları yalnız yedek olarak kullanır.
+ */
+export const APP_STORE_URL = 'https://apps.apple.com/app/id6756688254';
+export const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.twiceapps.parkiq';
+
 export const BACKEND_BASE_URL = 'https://parkiq-backend-beta.vercel.app';
 
 /**

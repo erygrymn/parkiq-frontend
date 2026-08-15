@@ -119,6 +119,24 @@ export function trackError(name: string, params?: Params): void {
 
 // --- Remote config ---
 
+/**
+ * Mağaza linkleri panelden yönetilir: App ID değişirse ya da Android yayına
+ * çıkarsa build beklemeden düzeltilir. Paylaşım linki ürünün tek organik
+ * büyüme mekanizması — bir kez yanlış girildiğinde her paylaşım boşa gider.
+ */
+const STORE_URL_KEYS = { ios: 'store_url_ios', android: 'store_url_android' } as const;
+
+/** Uzaktan gelen mağaza linki; anahtar boşsa `fallback` döner. */
+export function getStoreUrl(platform: 'ios' | 'android', fallback: string): string {
+  if (!isAnalyticsEnabled) return fallback;
+  try {
+    const value = TwiceRemoteConfig.getString(STORE_URL_KEYS[platform]);
+    return value && value.startsWith('http') ? value : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 /** Uzak yapılandırma değişince yeniden çizmek için. */
 export function onRemoteConfigUpdated(listener: () => void): () => void {
   if (!isAnalyticsEnabled) return () => undefined;

@@ -1,7 +1,7 @@
-import { Share } from 'react-native';
-import { BACKEND_BASE_URL } from '../config';
+import { Platform, Share } from 'react-native';
+import { APP_STORE_URL, BACKEND_BASE_URL, PLAY_STORE_URL } from '../config';
 import type { ParkSession } from '../state/sessionStore';
-import { trackLocationShared } from './analytics';
+import { getStoreUrl, trackLocationShared } from './analytics';
 
 // Konum paylaşımı — ürünün ana organik büyüme döngüsü.
 // GİZLİLİK KURALI (CLAUDE.md): veri linkin HASH parçasında taşınır (#...).
@@ -19,6 +19,12 @@ export interface SharePayload {
   f?: string;
   /** parked at (epoch ms) */
   t: number;
+  /**
+   * Mağaza linki. Sayfanın CTA'sı bunu kullanır; böylece App ID ya da kampanya
+   * etiketi backend'i yeniden dağıtmadan, panelden değiştirilebilir.
+   * Sayfa tarafında beyaz listeden geçer — href'e ham veri konmaz.
+   */
+  s?: string;
 }
 
 function toBase64Url(input: string): string {
@@ -63,6 +69,10 @@ export function buildShareUrl(session: ParkSession): string | null {
   };
   if (session.placeName) payload.n = session.placeName;
   if (session.floor) payload.f = session.floor;
+  payload.s = getStoreUrl(
+    Platform.OS === 'android' ? 'android' : 'ios',
+    Platform.OS === 'android' ? PLAY_STORE_URL : APP_STORE_URL,
+  );
   return `${BACKEND_BASE_URL}/s#${encodeSharePayload(payload)}`;
 }
 
