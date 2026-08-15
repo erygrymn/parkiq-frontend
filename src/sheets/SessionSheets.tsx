@@ -125,6 +125,10 @@ export function IdleSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
         <View style={{ height: 56, borderRadius: radius.r12, backgroundColor: colors.inset }} />
       )}
 
+      {/* Sorgu çöktüyse bunu SÖYLE. Aksi halde ekran "burada otopark yok" gibi
+          okunuyor ve kullanıcı yanlış bir şehir bilgisiyle uzaklaşıyor. */}
+      {discoveryState === 'error' && <StatusLine label={t('poiError')} />}
+
       {/* Filtre sonuç vermeyince sessiz boşluk kalıyordu — "Kapalı" özellikle
           seyrek, çünkü OSM çoğu otoparkı kapalı/açık diye etiketlemiyor. */}
       {discoveryState === 'ready' && pois.length > 0 && visible.length === 0 && (
@@ -159,7 +163,7 @@ export function IdleSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
                 {/* Adsız POI'de filtre etiketi ("Tümü") basılıyordu — türün adı doğrusu */}
                 {upper(poi.name ?? t(poi.kind === 'charging' ? 'poiCharging' : 'poiParking'))}
               </Text>
-              <Pressable accessibilityRole="button" onPress={() => openCoordsInMaps(poi, poi.name)} hitSlop={8}>
+              <Pressable accessibilityRole="button" onPress={() => openCoordsInMaps(poi, poi.name, { directions: true })} hitSlop={8}>
                 <Caption color={colors.ink} style={{ fontWeight: '600' }}>
                   {t('directions')}
                 </Caption>

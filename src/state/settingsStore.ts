@@ -22,6 +22,8 @@ interface SettingsStore {
   onboardingSeen: boolean;
   completeOnboarding: () => void;
   resetOnboarding: () => void;
+  /** Her şeyi sil sonrası tercihleri cihaz varsayılanına döndürür. */
+  resetToDefaults: () => void;
   /** §7.4b oto-algılama açık mı (premium; kullanıcı Ayarlar'dan açar). */
   autoDetectEnabled: boolean;
   setAutoDetect: (value: boolean) => void;
@@ -99,6 +101,23 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     if (!__DEV__) return;
     write('onboardingSeen', '0');
     set({ onboardingSeen: false });
+  },
+
+  /**
+   * Ayarlar > Veri "her şeyi sil" sonrası: tercihler cihaz varsayılanlarına
+   * döner ve onboarding yeniden gösterilir. Kopya "uygulama sıfırlanır" diyor;
+   * ayarların sessizce kalması o sözü tutmamak olurdu.
+   */
+  resetToDefaults: () => {
+    const device = detectDeviceDefaults();
+    set({
+      onboardingSeen: false,
+      themeMode: 'system',
+      locale: device.locale,
+      currency: device.currency,
+      warnThresholdMin: DEFAULT_WARN_THRESHOLD_MIN,
+      autoDetectEnabled: true,
+    });
   },
 
   hydrate: () => {

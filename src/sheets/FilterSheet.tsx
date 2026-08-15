@@ -163,7 +163,7 @@ export function FilterSheet({ visible, onClose }: { visible: boolean; onClose: (
                 )}
                 <Pressable
                   accessibilityRole="button"
-                  onPress={() => openCoordsInMaps(poi, poi.name)}
+                  onPress={() => openCoordsInMaps(poi, poi.name, { directions: true })}
                   hitSlop={8}
                 >
                   <Caption color={colors.ink} style={{ fontWeight: '600' }}>

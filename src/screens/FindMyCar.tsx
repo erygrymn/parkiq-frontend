@@ -28,26 +28,49 @@ import { radius, spacing, typeScale } from '../theme/tokens';
 
 type Fix = { coords: Location.LocationObjectCoords } | null;
 
-function useHeading(active: boolean): number | null {
+/**
+ * Pusula yönü + o yönün kalitesi.
+ *
+ * iOS `accuracy` alanını 0-3 olarak verir (0 = kalibrasyon yok). Bu okunmadan
+ * çizilen ok, kalibresiz telefonda kendinden emin biçimde yanlış yeri gösterir
+ * — pazar araştırmasındaki "yaklaştıkça 45-90 derece sapıyor" şikayeti bu.
+ * Akış hiç kurulamazsa (izin yok, cihazda pusula yok) heading kalıcı null
+ * kalır; o durumda ok çizilmez, mesafe tek başına gösterilir.
+ */
+function useHeading(active: boolean): { heading: number | null; accuracy: number | null } {
   const [heading, setHeading] = useState<number | null>(null);
+  const [accuracy, setAccuracy] = useState<number | null>(null);
+
   useEffect(() => {
     if (!active) return;
     let subscription: Location.LocationSubscription | null = null;
     let cancelled = false;
+
     void Location.watchHeadingAsync((value) => {
       // trueHeading yoksa (pusula kalibre değil) magHeading'e düş.
       const next = value.trueHeading >= 0 ? value.trueHeading : value.magHeading;
       setHeading(next);
-    }).then((sub) => {
-      if (cancelled) sub.remove();
-      else subscription = sub;
-    });
+      setAccuracy(typeof value.accuracy === 'number' ? value.accuracy : null);
+    })
+      .then((sub) => {
+        if (cancelled) sub.remove();
+        else subscription = sub;
+      })
+      .catch(() => {
+        // Pusula yoksa ya da izin reddedildiyse: sessizce yönsüz moda düş.
+        setHeading(null);
+        setAccuracy(null);
+      });
+
     return () => {
       cancelled = true;
       subscription?.remove();
+      setHeading(null);
+      setAccuracy(null);
     };
   }, [active]);
-  return heading;
+
+  return { heading, accuracy };
 }
 
 function useUserFix(active: boolean): { fix: Fix; denied: boolean } {
@@ -112,7 +135,16 @@ function SpotCard({ session, onOpenPhoto }: { session: ParkSession; onOpenPhoto:
   );
 }
 
-function Compass({ rotation, near }: { rotation: number; near: boolean }) {
+function Compass({
+  rotation,
+  near,
+  shaky,
+}: {
+  rotation: number;
+  near: boolean;
+  /** Pusula kalibre değil: ok soluklaşır, kesinlik iddiasını geri çeker. */
+  shaky: boolean;
+}) {
   const { colors } = useTheme();
   return (
     <View
@@ -126,7 +158,7 @@ function Compass({ rotation, near }: { rotation: number; near: boolean }) {
         alignSelf: 'center',
       }}
     >
-      <View style={{ transform: [{ rotate: `${rotation}deg` }] }}>
+      <View style={{ transform: [{ rotate: `${rotation}deg` }], opacity: shaky ? 0.45 : 1 }}>
         <SymbolView
           name={near ? 'mappin.circle.fill' : 'location.north.fill'}
           size={near ? 88 : 96}
@@ -162,7 +194,7 @@ export function FindMyCar({
   const [arOpen, setArOpen] = useState(false);
 
   const { fix, denied } = useUserFix(visible);
-  const heading = useHeading(visible);
+  const { heading, accuracy: headingAccuracy } = useHeading(visible);
 
   const carCoords = useMemo(
     () =>
@@ -177,7 +209,11 @@ export function FindMyCar({
   const userCoords = fix ? { latitude: fix.coords.latitude, longitude: fix.coords.longitude } : null;
   const distance = carCoords && userCoords ? distanceMeters(userCoords, carCoords) : null;
   const bearing = carCoords && userCoords ? bearingDegrees(userCoords, carCoords) : null;
-  const rotation = bearing !== null && heading !== null ? relativeBearing(bearing, heading) : 0;
+  const hasHeading = bearing !== null && heading !== null;
+  const rotation = hasHeading ? relativeBearing(bearing, heading) : 0;
+  // iOS ölçeğinde 1 ve altı "güvenme" demek — expo'nun kendi getHeadingAsync'i de
+  // 1'in üstünü bekler.
+  const headingShaky = headingAccuracy !== null && headingAccuracy <= 1;
 
   // Kapalı otopark kararı KAYDIN doğruluğuna bakar. Dönüş anındaki canlı
   // doğruluk (kullanıcı çoktan dışarı çıkmış, açık gökyüzü) kaydın kalitesini
@@ -260,7 +296,9 @@ export function FindMyCar({
             <SpotCard session={session} onOpenPhoto={() => setPhotoOpen(true)} />
           ) : (
             <View style={{ gap: spacing.s24, alignItems: 'center' }}>
-              <Compass rotation={rotation} near={near} />
+              {/* Yön yoksa ok HİÇ çizilmez: 0° "araba tam karşında" demektir ve
+                  bu, elimizde olmayan bir bilgiyi uydurmak olur. */}
+              {hasHeading && <Compass rotation={rotation} near={near} shaky={headingShaky} />}
               <View style={{ alignItems: 'center', gap: spacing.s4 }}>
                 <Text
                   style={{
@@ -274,7 +312,15 @@ export function FindMyCar({
                 >
                   {distance === null ? '—' : formatDistance(distance, locale)}
                 </Text>
-                <Caption>{near ? t('youAreClose') : t('walkToCar')}</Caption>
+                <Caption>
+                  {!hasHeading
+                    ? t('headingUnavailable')
+                    : headingShaky
+                      ? t('calibrateCompass')
+                      : near
+                        ? t('youAreClose')
+                        : t('walkToCar')}
+                </Caption>
               </View>
             </View>
           )}

@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react';
 import Constants from 'expo-constants';
+import * as Location from 'expo-location';
+import * as Notifications from 'expo-notifications';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { SymbolView } from 'expo-symbols';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Linking, Pressable, Switch, Text, TextInput, View } from 'react-native';
 import { useIsPremium, usePremiumStore } from '../state/premiumStore';
 import { ChipGroup } from '../components/ChipGroup';
@@ -22,6 +24,7 @@ import {
   type ThemeMode,
 } from '../state/settingsStore';
 import { trackPaywallShown } from '../lib/analytics';
+import { deleteSpotPhoto } from '../lib/photo';
 import { useTheme } from '../theme';
 import { radius, spacing } from '../theme/tokens';
 
@@ -92,6 +95,44 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
+
+/**
+ * İzinlerin GERÇEK durumu.
+ *
+ * Panel eskiden oturum store'undaki `locationState`/`notificationState`e
+ * bakıyordu; ikisi de 'idle' başlıyor ve hiç izin istenmemişken "açık" diye
+ * okunuyordu. Sıkışan kullanıcının sorununu teşhis etmek için baktığı tek yer
+ * ona tam tersini söylüyor ve iOS Ayarlar'a giden köprüyü gizliyordu.
+ */
+function usePermissions(visible: boolean): { location: boolean | null; notifications: boolean | null } {
+  const [location, setLocation] = useState<boolean | null>(null);
+  const [notifications, setNotifications] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!visible) return;
+    let cancelled = false;
+    void Location.getForegroundPermissionsAsync()
+      .then((p) => {
+        if (!cancelled) setLocation(p.status === Location.PermissionStatus.GRANTED);
+      })
+      .catch(() => {
+        if (!cancelled) setLocation(null);
+      });
+    void Notifications.getPermissionsAsync()
+      .then((p) => {
+        if (!cancelled) setNotifications(p.granted);
+      })
+      .catch(() => {
+        if (!cancelled) setNotifications(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [visible]);
+
+  return { location, notifications };
+}
+
 export function SettingsSheet({
   visible,
   onClose,
@@ -109,8 +150,7 @@ export function SettingsSheet({
   const { themeMode, locale, currency, warnThresholdMin, autoDetectEnabled } = useSettingsStore();
   const { setThemeMode, setLocalePref, setCurrency, setWarnThreshold, setAutoDetect } =
     useSettingsStore.getState();
-  const locationState = useSessionStore((s) => s.locationState);
-  const notificationState = useSessionStore((s) => s.notificationState);
+  const permissions = usePermissions(visible);
 
   const confirmDeleteAll = () => {
     Alert.alert(t('deleteAllData'), t('deleteAllConfirm'), [
@@ -121,8 +161,20 @@ export function SettingsSheet({
         onPress: () => {
           try {
             // eslint-disable-next-line @typescript-eslint/no-require-imports
-            (require('../db/sessionRepo') as typeof import('../db/sessionRepo')).deleteAllSessions();
-            useSessionStore.setState({ phase: 'idle', session: null, suggestedTariff: null });
+            const repo = require('../db/sessionRepo') as typeof import('../db/sessionRepo');
+            // Fotoğraflar dosya sisteminde yaşıyor: tablo silinince onlar
+            // yetim kalıyordu. "Her şey" demek gerçekten her şey demek.
+            for (const uri of repo.listAllPhotoUris()) deleteSpotPhoto(uri);
+            repo.deleteEverything();
+            useSessionStore.setState({
+              phase: 'idle',
+              session: null,
+              suggestedTariff: null,
+              locationState: 'idle',
+              notificationState: 'idle',
+            });
+            useSettingsStore.getState().resetToDefaults();
+            onClose();
           } catch {
             // Silme başarısızsa mevcut durum korunur.
           }
@@ -226,15 +278,17 @@ export function SettingsSheet({
       </Section>
 
       <Section title={t('permissions')}>
-        {locationState === 'denied' ? (
-          <StatusLine label={t('locationOff')} onPress={openAppSettings} />
-        ) : (
+        {/* Sorulmamış izin de "kapalı" tarafında gösterilir: park kaydı konum
+            olmadan, dilim uyarısı bildirim olmadan çalışmaz. */}
+        {permissions.location === true ? (
           <Caption>{t('locationGranted')}</Caption>
-        )}
-        {notificationState === 'denied' ? (
-          <StatusLine label={t('notificationsOff')} onPress={openAppSettings} />
         ) : (
+          <StatusLine label={t('locationOff')} onPress={openAppSettings} />
+        )}
+        {permissions.notifications === true ? (
           <Caption>{t('notificationsGranted')}</Caption>
+        ) : (
+          <StatusLine label={t('notificationsOff')} onPress={openAppSettings} />
         )}
       </Section>
 
