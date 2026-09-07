@@ -6,9 +6,10 @@ import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useState } from 'react';
-import { Alert, Linking, Pressable, Switch, Text, TextInput, View } from 'react-native';
+import { Linking, Pressable, Switch, Text, View } from 'react-native';
 import { useIsPremium, usePremiumStore } from '../state/premiumStore';
 import { ChipGroup } from '../components/ChipGroup';
+import { ConfirmSheet } from '../components/ConfirmSheet';
 import { PageSheet, Section } from '../components/PageSheet';
 import { SelectRow } from '../components/SelectRow';
 import { openAppSettings, StatusLine } from '../components/StatusLine';
@@ -26,7 +27,7 @@ import {
 import { trackPaywallShown } from '../lib/analytics';
 import { deleteSpotPhoto } from '../lib/photo';
 import { useTheme } from '../theme';
-import { radius, spacing } from '../theme/tokens';
+import { spacing } from '../theme/tokens';
 
 // screens.md §10 / design.md §7.9. Premium satırları (oto-algılama,
 // abonelik) RevenueCat tuğlasıyla gelecek — burada henüz yok.
@@ -159,35 +160,27 @@ export function SettingsSheet({
   } = useSettingsStore.getState();
   const permissions = usePermissions(visible);
 
-  const confirmDeleteAll = () => {
-    Alert.alert(t('deleteAllData'), t('deleteAllConfirm'), [
-      { text: t('cancel'), style: 'cancel' },
-      {
-        text: t('delete'),
-        style: 'destructive',
-        onPress: () => {
-          try {
-            // eslint-disable-next-line @typescript-eslint/no-require-imports
-            const repo = require('../db/sessionRepo') as typeof import('../db/sessionRepo');
-            // Fotoğraflar dosya sisteminde yaşıyor: tablo silinince onlar
-            // yetim kalıyordu. "Her şey" demek gerçekten her şey demek.
-            for (const uri of repo.listAllPhotoUris()) deleteSpotPhoto(uri);
-            repo.deleteEverything();
-            useSessionStore.setState({
-              phase: 'idle',
-              session: null,
-              suggestedTariff: null,
-              locationState: 'idle',
-              notificationState: 'idle',
-            });
-            useSettingsStore.getState().resetToDefaults();
-            onClose();
-          } catch {
-            // Silme başarısızsa mevcut durum korunur.
-          }
-        },
-      },
-    ]);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const confirmDeleteAll = () => setConfirmDeleteOpen(true);
+  const deleteAll = () => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const repo = require('../db/sessionRepo') as typeof import('../db/sessionRepo');
+      // Fotoğraflar dosya sisteminde yaşıyor: tablo silinince onlar yetim kalıyordu.
+      for (const uri of repo.listAllPhotoUris()) deleteSpotPhoto(uri);
+      repo.deleteEverything();
+      useSessionStore.setState({
+        phase: 'idle',
+        session: null,
+        suggestedTariff: null,
+        locationState: 'idle',
+        notificationState: 'idle',
+      });
+      useSettingsStore.getState().resetToDefaults();
+      onClose();
+    } catch {
+      // Silme başarısızsa mevcut durum korunur.
+    }
   };
 
   return (
@@ -317,6 +310,16 @@ export function SettingsSheet({
           <StatusLine label={t('notificationsOff')} onPress={openAppSettings} />
         )}
       </Section>
+
+      <ConfirmSheet
+        visible={confirmDeleteOpen}
+        title={t('deleteAllData')}
+        body={t('deleteAllConfirm')}
+        confirmLabel={t('delete')}
+        cancelLabel={t('cancel')}
+        onClose={() => setConfirmDeleteOpen(false)}
+        onConfirm={deleteAll}
+      />
 
       <Section title={t('data')}>
         <LinkRow label={t('exportData')} onPress={exportData} />

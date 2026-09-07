@@ -1,9 +1,12 @@
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { hapticSelect } from '../lib/haptics';
 import { useTheme } from '../theme';
 import { radius, spacing } from '../theme/tokens';
+import { PressScale } from './motion/PressScale';
 
-// §5.5 chip: 32pt, tam radius. Seçili = ink dolgu, seçili değil = inset.
-// Tarife formu ve Ayarlar aynı bileşeni kullanır (ikinci kopya yazılmaz).
+// design.md §5 chip: 36pt görsel + hitSlop, tam radius, 13/600. Seçili = ink dolgu + beyaz metin,
+// seçili değil = inset. Pressed 0.97 (PressScale), seçim değişince `selection` haptiği (§3).
+// Tarife formu, park formu ve Ayarlar aynı bileşeni kullanır (ikinci kopya yazılmaz).
 
 export interface ChipOption<T extends string | number> {
   key: T;
@@ -25,14 +28,19 @@ export function ChipGroup<T extends string | number>({
       {options.map((opt) => {
         const selected = value === opt.key;
         return (
-          <Pressable
+          <PressScale
             key={String(opt.key)}
             accessibilityRole="button"
             accessibilityState={{ selected }}
-            onPress={() => onChange(opt.key)}
-            style={({ pressed }) => ({
-              height: 32,
-              paddingHorizontal: spacing.s12,
+            hitSlop={4}
+            onPress={() => {
+              if (opt.key === value) return;
+              hapticSelect();
+              onChange(opt.key);
+            }}
+            style={(pressed) => ({
+              height: 36,
+              paddingHorizontal: spacing.s16,
               borderRadius: radius.rFull,
               alignItems: 'center',
               justifyContent: 'center',
@@ -42,7 +50,7 @@ export function ChipGroup<T extends string | number>({
             <Text style={{ fontSize: 13, fontWeight: '600', color: selected ? colors.card : colors.ink }}>
               {opt.label}
             </Text>
-          </Pressable>
+          </PressScale>
         );
       })}
     </View>

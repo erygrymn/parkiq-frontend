@@ -1,14 +1,22 @@
-import Mapbox, { Camera, LocationPuck, MapView, MarkerView } from '@rnmapbox/maps';
+import Mapbox, { Camera, LineLayer, LocationPuck, MapView, MarkerView, ShapeSource } from '@rnmapbox/maps';
+import { Image } from 'expo-image';
 import * as Location from 'expo-location';
 import { SymbolView } from 'expo-symbols';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import { SPRING } from '../theme/motion';
 import { MAPBOX_PUBLIC_TOKEN, MAPBOX_STYLE_URL_DARK, MAPBOX_STYLE_URL_LIGHT } from '../config';
+import { hapticSelect } from '../lib/haptics';
+import { buildMapStyle } from '../lib/mapStyle';
 import { applyFilter, type PoiKind } from '../lib/parkingPoi';
 import { useDiscoveryStore } from '../state/discoveryStore';
 import { useSessionStore } from '../state/sessionStore';
+import { useUiStore } from '../state/uiStore';
+import { CROSSFADE_MS } from '../theme/motion';
+import { sheetIndex } from '../theme/sheetMotion';
 import { useTheme } from '../theme';
-import { radius, shadow } from '../theme/tokens';
+import { lightColors, radius, shadow } from '../theme/tokens';
 
 // Gerçek harita katmanı — YALNIZ native build'de yüklenir (MapCanvas koruması).
 // Expo Go bu dosyayı hiç require etmez.
@@ -23,17 +31,23 @@ Mapbox.setAccessToken(MAPBOX_PUBLIC_TOKEN);
 
 const DEFAULT_ZOOM = 15.5;
 
-/** §5.8 araba pini: 32pt ink kare + alt uç. Harita üstündeki tek koyu öğe. */
+/**
+ * design.md §4 araba pini = marka işareti: app ikonunun kendisi (mürekkep kare + beyaz P + yeşil
+ * nokta), 36pt, 2pt beyaz ring, shadow/1. Tema bağımsız: ikon = pin = LA glyph'i tek DNA.
+ */
 function CarPin() {
   const { colors, scheme } = useTheme();
   return (
     <View style={{ alignItems: 'center' }}>
       <View
         style={{
-          width: 32,
-          height: 32,
+          width: 36,
+          height: 36,
           borderRadius: radius.r12,
-          backgroundColor: colors.ink,
+          borderCurve: 'continuous',
+          backgroundColor: colors.la,
+          borderWidth: 2,
+          borderColor: lightColors.card,
           alignItems: 'center',
           justifyContent: 'center',
           shadowColor: shadow.s1.ambient.color,
@@ -42,9 +56,13 @@ function CarPin() {
           shadowOpacity: scheme === 'dark' ? 0 : 1,
         }}
       >
-        {/* Araba pini araba ikonu taşır — haritada "P" ile otopark POI'lerinden
-            ayırt edilemiyordu; bu pin ARABANIN yeridir. */}
-        <SymbolView name="car.fill" size={17} tintColor={colors.card} weight="regular" />
+        <Image
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          source={require('../../assets/brand/mark.png')}
+          style={{ width: 24, height: 24 }}
+          contentFit="contain"
+          accessibilityIgnoresInvertColors
+        />
       </View>
       <View
         style={{
@@ -52,7 +70,7 @@ function CarPin() {
           height: 10,
           marginTop: -5,
           borderRadius: 2,
-          backgroundColor: colors.ink,
+          backgroundColor: colors.la,
           transform: [{ rotate: '45deg' }],
         }}
       />
@@ -60,26 +78,32 @@ function CarPin() {
   );
 }
 
-/** §5.8 küçük POI pini: otopark ink, şarj yeşil (yeşil = para + şarj + canlı). */
+/** §4 POI pini: otopark ink, şarj yeşil; beyaz ring; seçiliyken 1.25× SPRING (§3). */
 function PoiPin({ kind, selected }: { kind: PoiKind; selected?: boolean }) {
   const { colors } = useTheme();
   const charging = kind === 'charging';
+  const scale = useSharedValue(selected ? 1.25 : 1);
+  useEffect(() => {
+    scale.value = withSpring(selected ? 1.25 : 1, SPRING);
+  }, [selected, scale]);
+  const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
-    <View
-      style={{
-        width: 22,
-        height: 22,
-        borderRadius: 7,
-        backgroundColor: charging ? colors.accentFill : colors.ink,
-        alignItems: 'center',
-        justifyContent: 'center',
-        // Seçili pin tam opak ve biraz büyük — hangisine baktığın belli olsun
-        opacity: selected ? 1 : 0.9,
-        transform: [{ scale: selected ? 1.25 : 1 }],
-        // §2.2: krem harita üstündeki renkli işaret beyaz ring taşır
-        borderWidth: 1.5,
-        borderColor: colors.card,
-      }}
+    <Animated.View
+      style={[
+        {
+          width: 22,
+          height: 22,
+          borderRadius: 7,
+          borderCurve: 'continuous',
+          backgroundColor: charging ? colors.accentFill : colors.ink,
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: selected ? 1 : 0.9,
+          borderWidth: 1.5,
+          borderColor: lightColors.card,
+        },
+        animated,
+      ]}
     >
       {/* §5.13: emoji glyph yasak — şarj için SF Symbol bolt.fill */}
       {charging ? (
@@ -87,7 +111,7 @@ function PoiPin({ kind, selected }: { kind: PoiKind; selected?: boolean }) {
       ) : (
         <Text style={{ fontSize: 11, fontWeight: '900', color: colors.card }}>P</Text>
       )}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -114,6 +138,21 @@ export function MapboxCanvas() {
       : null;
 
   const active = phase !== 'idle';
+  const finding = phase === 'finding';
+  const userFix = useUiStore((s) => s.userFix);
+
+  // §4 derinlik davranıştan: sheet büyürken harita 0.97'ye küçülür ve scrim gelir; aktif
+  // oturumda scrim sabit kalır. Yalnız transform/opacity — Mapbox view'ı yeniden boyutlanmaz.
+  const activeScrim = useSharedValue(active ? 1 : 0);
+  useEffect(() => {
+    activeScrim.value = withTiming(active ? 1 : 0, { duration: CROSSFADE_MS });
+  }, [active, activeScrim]);
+  const mapStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: interpolate(sheetIndex.value, [0, 1], [1, 0.97], 'clamp') }],
+  }));
+  const scrimStyle = useAnimatedStyle(() => ({
+    opacity: Math.max(activeScrim.value, interpolate(sheetIndex.value, [0.4, 1], [0, 1], 'clamp')),
+  }));
 
   // Callback'ler içinden güncel değeri okumak için ref'ler (kapanış tuzağı yok).
   const followingRef = useRef(true);
@@ -202,16 +241,48 @@ export function MapboxCanvas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [carCoords?.[0], carCoords?.[1], active, phase]);
 
-  const styleURL =
-    scheme === 'dark'
-      ? (MAPBOX_STYLE_URL_DARK ?? Mapbox.StyleURL.Dark)
-      : (MAPBOX_STYLE_URL_LIGHT ?? Mapbox.StyleURL.Light);
+  // §7.6 finding: kamera kullanıcı + arabayı birlikte çerçeveler (faza girişte ve ilk düzeltmede).
+  const framedRef = useRef(false);
+  useEffect(() => {
+    if (!finding) {
+      framedRef.current = false;
+      return;
+    }
+    if (framedRef.current || !carCoords || !userFix) return;
+    framedRef.current = true;
+    const lngs = [carCoords[0], userFix.longitude];
+    const lats = [carCoords[1], userFix.latitude];
+    cameraRef.current?.setCamera({
+      bounds: {
+        ne: [Math.max(...lngs), Math.max(...lats)],
+        sw: [Math.min(...lngs), Math.min(...lats)],
+      },
+      padding: { paddingTop: 140, paddingBottom: 380, paddingLeft: 64, paddingRight: 64 },
+      animationDuration: 600,
+    });
+    // carCoords referansı bileşenlerine bağlanır
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finding, carCoords?.[0], carCoords?.[1], userFix?.latitude, userFix?.longitude]);
+
+  const findLine =
+    finding && carCoords && userFix
+      ? {
+          type: 'Feature' as const,
+          properties: {},
+          geometry: { type: 'LineString' as const, coordinates: [[userFix.longitude, userFix.latitude], carCoords] },
+        }
+      : null;
+
+  // §6: Studio URL verilmişse o; yoksa gömülü krem editöryal stil (tema başına bir kez üretilir).
+  const customStyleURL = scheme === 'dark' ? MAPBOX_STYLE_URL_DARK : MAPBOX_STYLE_URL_LIGHT;
+  const styleJSON = useMemo(() => (customStyleURL ? undefined : buildMapStyle(scheme)), [customStyleURL, scheme]);
 
   return (
-    <View style={StyleSheet.absoluteFill}>
+    <Animated.View style={[StyleSheet.absoluteFill, mapStyle]}>
       <MapView
         style={StyleSheet.absoluteFill}
-        styleURL={styleURL}
+        styleURL={customStyleURL ?? undefined}
+        styleJSON={styleJSON}
         // Mapbox kullanım şartları: wordmark + attribution ZORUNLU (kapatılamaz)
         logoEnabled
         attributionEnabled
@@ -247,13 +318,23 @@ export function MapboxCanvas() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={poi.name ?? undefined}
-              onPress={() => selectPoi(poi.id)}
+              onPress={() => {
+                hapticSelect();
+                selectPoi(poi.id);
+              }}
               hitSlop={10}
             >
               <PoiPin kind={poi.kind} selected={poi.id === selectedPoiId} />
             </Pressable>
           </MarkerView>
         ))}
+
+      {/* §7.6 kullanıcıdan arabaya düz hairline çizgi (kesikli değil). */}
+      {findLine && (
+        <ShapeSource id="find-line" shape={findLine}>
+          <LineLayer id="find-line-layer" style={{ lineColor: colors.ink, lineWidth: 2, lineOpacity: 0.9, lineCap: 'round' }} />
+        </ShapeSource>
+      )}
 
       {carCoords && !pickingLocation && (
         <MarkerView coordinate={carCoords} anchor={{ x: 0.5, y: 1 }}>
@@ -262,10 +343,8 @@ export function MapboxCanvas() {
       )}
       </MapView>
 
-      {/* §7.5 aktif oturumda uniform scrim — dikey vignette YASAK (§6) */}
-      {active && (
-        <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: colors.scrim }]} />
-      )}
-    </View>
+      {/* §7.5 uniform scrim: aktif oturumda sabit, keşifte sheet ile gelir — dikey vignette YASAK */}
+      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: colors.scrim }, scrimStyle]} />
+    </Animated.View>
   );
 }

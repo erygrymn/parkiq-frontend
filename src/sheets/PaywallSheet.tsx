@@ -1,6 +1,6 @@
 import { SymbolView, type SFSymbol } from 'expo-symbols';
 import { useEffect, useMemo } from 'react';
-import { Alert, ActivityIndicator, Linking, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PrimaryCta } from '../components/Buttons';
 import { Body, Caption, Overline } from '../components/Typography';
@@ -8,6 +8,7 @@ import { formatMoney } from '../lib/format';
 import type { PlanPeriod, PurchasePlan } from '../lib/purchases';
 import { getLocale, t, upper } from '../localization';
 import { usePremiumStore } from '../state/premiumStore';
+import { useUiStore } from '../state/uiStore';
 import { useTheme } from '../theme';
 import { radius, spacing, typeScale } from '../theme/tokens';
 
@@ -99,12 +100,11 @@ function PlanCard({
       style={{
         minHeight: 68,
         borderRadius: radius.r16,
-        backgroundColor: colors.inset,
+        borderCurve: 'continuous',
+        backgroundColor: colors.card,
         borderWidth: 2,
-        // Seçilmemiş kart da 2pt taşır ama rengi zeminle aynı: seçim değişince
-        // kartlar zıplamasın (kenarlık kalınlığı düzeni oynatıyordu).
-        borderColor: selected ? colors.ink : colors.inset,
-        opacity: selected ? 1 : 0.72,
+        // §7.11 plan kartı: hairline; seçili 2pt ink. Kalınlık sabit ki seçim değişince zıplamasın.
+        borderColor: selected ? colors.ink : colors.gridline,
         paddingHorizontal: spacing.s16,
         paddingVertical: spacing.s12,
         justifyContent: 'center',
@@ -169,26 +169,24 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
     if (visible) openPlans();
   }, [visible, openPlans]);
 
-  // Başarı SESSİZ olmamalı: ekran kapanıp hiçbir şey söylememek, para ödemiş
-  // kullanıcıyı "geçti mi geçmedi mi" halinde bırakıyordu.
+  // design.md §7.11.4: başarı sessiz değil ama sistem alert de değil — sheet kapanır, geldiği
+  // ekranda "PRO." damgası + notificationSuccess (kök ProStamp).
   useEffect(() => {
     if (!justPurchased) return;
     consumeJustPurchased();
-    Alert.alert(t('purchaseDoneTitle'), t('purchaseDoneBody'), [{ text: t('done'), onPress: onClose }]);
+    useUiStore.getState().showProStamp();
+    onClose();
   }, [justPurchased, consumeJustPurchased, onClose]);
 
-  // Restore'un üç sonucu da söylenir; "hiçbir şey bulunamadı" özellikle önemli:
-  // yeni cihaza geçen ödemiş kullanıcının doğrudan destek yazdığı an burası.
+  // Restore sonuçları alt blokta satır olarak söylenir (§7.11.5). Başarıda sheet 1.2 s sonra kapanır;
+  // "hiçbir şey bulunamadı" satırı kalır — yeni cihaza geçen ödemiş kullanıcının destek yazdığı an.
   useEffect(() => {
-    if (notice === 'restored') {
+    if (notice !== 'restored') return;
+    const id = setTimeout(() => {
       clearNotice();
-      Alert.alert(t('restoredTitle'), t('restoredBody'), [{ text: t('done'), onPress: onClose }]);
-      return;
-    }
-    if (notice === 'none') {
-      clearNotice();
-      Alert.alert(t('noPurchases'), t('noPurchasesBody'), [{ text: t('done') }]);
-    }
+      onClose();
+    }, 1200);
+    return () => clearTimeout(id);
   }, [notice, clearNotice, onClose]);
 
   // Geçmişten gelen toplam tasarruf; paywall her açıldığında taze okunur.
@@ -323,6 +321,13 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
           }}
         >
           {notice === 'failed' && <Caption color={colors.warnText}>{t('purchaseFailed')}</Caption>}
+          {notice === 'restored' && <Caption color={colors.accentText}>{t('restoredTitle')}</Caption>}
+          {notice === 'none' && (
+            <View style={{ gap: 2 }}>
+              <Caption color={colors.ink}>{t('noPurchases')}</Caption>
+              <Caption>{t('noPurchasesBody')}</Caption>
+            </View>
+          )}
 
           {/* §3.1.2(a)(c): otomatik yenileme + ücretlendirme beyanı zorunlu */}
           {selectedIsSubscription && <Caption>{t('autoRenewNotice')}</Caption>}

@@ -44,7 +44,7 @@ export interface Reminder {
   kind: ReminderKind;
 }
 
-export type SessionPhase = 'idle' | 'parking' | 'active' | 'ending' | 'ended';
+export type SessionPhase = 'idle' | 'parking' | 'active' | 'finding' | 'ending' | 'ended';
 export type LocationState = 'idle' | 'capturing' | 'ok' | 'weak' | 'denied' | 'unavailable';
 export type NotificationState = 'idle' | 'granted' | 'denied';
 export type CameraState = 'idle' | 'ok' | 'denied';
@@ -172,6 +172,9 @@ interface SessionStore {
   acceptSuggestedTariff: () => void;
   dismissSuggestedTariff: () => void;
   confirmDetails: () => void;
+  /** §7.6 Arabamı Bul bir sheet fazıdır: active ↔ finding. */
+  startFinding: () => void;
+  stopFinding: () => void;
   requestEnd: () => void;
   keep: () => void;
   confirmEnd: () => void;
@@ -695,8 +698,17 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     syncLiveActivity('start');
   },
 
+  startFinding: () => {
+    if (get().phase === 'active') set({ phase: 'finding' });
+  },
+
+  stopFinding: () => {
+    if (get().phase === 'finding') set({ phase: 'active' });
+  },
+
   requestEnd: () => {
-    if (get().phase === 'active') set({ phase: 'ending' });
+    const phase = get().phase;
+    if (phase === 'active' || phase === 'finding') set({ phase: 'ending' });
   },
 
   keep: () => {
@@ -740,7 +752,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
    */
   resumeLiveActivity: () => {
     const { phase, session } = get();
-    if (phase !== 'active' || !session) return;
+    if ((phase !== 'active' && phase !== 'finding') || !session) return;
     syncLiveActivity(isLiveActivityRunning() ? 'refresh' : 'start');
   },
 

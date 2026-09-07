@@ -1,14 +1,29 @@
-import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import BottomSheet, {
+  BottomSheetModalProvider,
+  BottomSheetScrollView,
+  useBottomSheetSpringConfigs,
+} from '@gorhom/bottom-sheet';
+import Animated, { FadeIn, interpolate, useAnimatedStyle } from 'react-native-reanimated';
 import * as Notifications from 'expo-notifications';
 import { AUTO_PARK_KIND } from './src/lib/notifications';
 import { StatusBar } from 'expo-status-bar';
 import { SymbolView, type SFSymbol } from 'expo-symbols';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, Linking, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { AppState, Linking, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { t } from './src/localization';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GhostButton, PrimaryCta } from './src/components/Buttons';
+import { Glass } from './src/components/motion/Glass';
+import { PhotoViewer } from './src/components/motion/PhotoViewer';
+import { ProStamp } from './src/components/motion/ProStamp';
+import { ArOverlay } from './src/screens/ArOverlay';
+import { FindingSheet } from './src/sheets/FindingSheet';
+import { useUiStore } from './src/state/uiStore';
+import { refreshSessionActivity } from './src/lib/liveActivity';
+import { CROSSFADE_MS, SPRING } from './src/theme/motion';
+import { sheetIndex } from './src/theme/sheetMotion';
+import { PressScale } from './src/components/motion/PressScale';
 import { Caption } from './src/components/Typography';
 import { initAnalytics, trackPaywallShown } from './src/lib/analytics';
 import { ForceUpdateScreen, useForcedUpdate } from './src/screens/ForceUpdateGate';
@@ -52,26 +67,24 @@ function FloatingIconButton({
   onPress: () => void;
 }) {
   const { colors, scheme } = useTheme();
+  // design.md §5 kare cam ikon buton: gerçek blur, 22pt Light sembol, pressed 0.97 (PressScale).
   return (
-    <Pressable
+    <PressScale
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={({ pressed }) => ({
-        width: 44,
-        height: 44,
+      style={{
         borderRadius: radius.r12,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: pressed ? colors.insetPressed : colors.card,
         shadowColor: shadow.s2.ambient.color,
         shadowOffset: { width: 0, height: shadow.s2.ambient.offsetY },
         shadowRadius: shadow.s2.ambient.blur,
         shadowOpacity: scheme === 'dark' ? 0 : 1,
-      })}
+      }}
     >
-      <SymbolView name={symbol} size={19} tintColor={colors.ink} weight="light" />
-    </Pressable>
+      <Glass radius={radius.r12} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
+        <SymbolView name={symbol} size={22} tintColor={colors.ink} weight="light" />
+      </Glass>
+    </PressScale>
   );
 }
 
@@ -81,18 +94,31 @@ function SheetContent({ phase, onOpenPaywall }: { phase: SessionPhase; onOpenPay
   const pois = useDiscoveryStore((s) => s.pois);
   const selectedPoi = selectedPoiId ? (pois.find((p) => p.id === selectedPoiId) ?? null) : null;
 
-  switch (phase) {
-    case 'idle':
-      return selectedPoi ? <PoiSheet poi={selectedPoi} /> : <IdleSheet onOpenPaywall={onOpenPaywall} />;
-    case 'parking':
-      return <ParkingSheet onOpenPaywall={onOpenPaywall} />;
-    case 'active':
-    case 'ending':
-      return <ActiveSheet onOpenPaywall={onOpenPaywall} />;
-    case 'ended':
-      // Kapanış tam ekran bir sayfa (kök seviyede render edilir); panel boş kalır.
-      return null;
-  }
+  // design.md §3 sheet morph: yükseklik gorhom spring'i ile, içerik 200 ms fade ile gelir.
+  // Çıkış animasyonu yok: eski içerik bir an daha kalsa dinamik yükseklik ikiye katlanırdı.
+  const content = (() => {
+    switch (phase) {
+      case 'idle':
+        return selectedPoi ? <PoiSheet poi={selectedPoi} /> : <IdleSheet onOpenPaywall={onOpenPaywall} />;
+      case 'parking':
+        return <ParkingSheet onOpenPaywall={onOpenPaywall} />;
+      case 'active':
+      case 'ending':
+        return <ActiveSheet onOpenPaywall={onOpenPaywall} />;
+      case 'finding':
+        return <FindingSheet onOpenPaywall={onOpenPaywall} />;
+      case 'ended':
+        // Kutlama kök seviyede kapak olarak çizilir; panel boş kalır.
+        return null;
+    }
+  })();
+  if (!content) return null;
+  const key = phase === 'idle' ? (selectedPoi ? `poi:${selectedPoi.id}` : 'idle') : phase;
+  return (
+    <Animated.View key={key} entering={FadeIn.duration(CROSSFADE_MS)}>
+      {content}
+    </Animated.View>
+  );
 }
 
 /**
@@ -188,6 +214,24 @@ function Root() {
   const [filterOpen, setFilterOpen] = useState(false);
   const sheetRef = useRef<BottomSheet>(null);
   const insets = useSafeAreaInsets();
+  const arOpen = useUiStore((s) => s.arOpen);
+  const sheetSprings = useBottomSheetSpringConfigs(SPRING);
+
+  // §4 derinlik davranıştan: sheet full detent'e giderken yüzen cam kareler çekilir.
+  const floatingStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(sheetIndex.value, [0.6, 1], [1, 0], 'clamp'),
+  }));
+
+  // Live Activity dakikada bir tazelenir: sayaç sistemde akar, çubuk/amber burada güncellenir.
+  // §4.10: premium kontrolü YOK — Live Activity işletim sistemi yeteneğidir, satılmaz.
+  const session = useSessionStore((s) => s.session);
+  const warnThresholdMin = useSettingsStore((s) => s.warnThresholdMin);
+  const sessionLive = (phase === 'active' || phase === 'finding' || phase === 'ending') && session !== null;
+  useEffect(() => {
+    if (!sessionLive || !session) return;
+    const id = setInterval(() => refreshSessionActivity(session, warnThresholdMin), 60_000);
+    return () => clearInterval(id);
+  }, [sessionLive, session, warnThresholdMin]);
 
   // Faz değişince panel ilk kademesine döner: keşifte kompakt çubuk,
   // diğer fazlarda tek kademe olan içerik yüksekliği.
@@ -195,6 +239,8 @@ function Root() {
     sheetRef.current?.snapToIndex(0);
     // Keşiften çıkarken haritada seçili kalan pin temizlenir.
     if (phase !== 'idle') useDiscoveryStore.getState().selectPoi(null);
+    // Faz değişince geçici overlay'ler kapanır (AR yalnız finding'de yaşar).
+    if (phase !== 'finding') useUiStore.getState().closeAr();
   }, [phase]);
 
   // Haritada pin seçilince kart kompakt kademede yarım kalmasın.
@@ -274,16 +320,15 @@ function Root() {
   );
 
   return (
+    <BottomSheetModalProvider>
     <View style={{ flex: 1 }}>
       <MapCanvas />
 
       {pickingLocation && <PickLocationLayer target={pickingLocation} />}
 
-      {phase === 'ended' && <EndedSheet onOpenPaywall={() => setPaywallOpen(true)} />}
-
-      {/* §5.4 kare cam ikon butonlar — harita üstünde yüzen kontroller */}
+      {/* §5 kare cam ikon butonlar — harita üstünde yüzen kontroller; sheet büyüyünce çekilir */}
       {!pickingLocation && (
-      <View style={{ position: 'absolute', top: insets.top + spacing.s8, right: spacing.s12, gap: spacing.s8 }}>
+      <Animated.View style={[{ position: 'absolute', top: insets.top + spacing.s8, right: spacing.s12, gap: spacing.s8 }, floatingStyle]}>
         <FloatingIconButton
           symbol="clock.arrow.circlepath"
           label={t('history')}
@@ -305,7 +350,7 @@ function Root() {
             }}
           />
         )}
-      </View>
+      </Animated.View>
       )}
 
       {!pickingLocation && (
@@ -322,6 +367,9 @@ function Root() {
         onClose={() => useSessionStore.getState().cancelPark()}
         keyboardBehavior="interactive"
         keyboardBlurBehavior="restore"
+        // §3: yükseklik tek genel spring ile; index shared value'su harita ve kareleri sürer.
+        animationConfigs={sheetSprings}
+        animatedIndex={sheetIndex}
         backgroundStyle={backgroundStyle}
         handleIndicatorStyle={{ backgroundColor: colors.insetPressed, width: 36, height: 4.5 }}
       >
@@ -359,8 +407,15 @@ function Root() {
         onClose={() => setFilterOpen(false)}
       />
       <PaywallSheet visible={paywallOpen} onClose={() => setPaywallOpen(false)} />
-      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+
+      {/* Kök overlay'ler (İlke 9): kutlama kapağı, AR kamera, tam ekran foto. Sheet'in ÜSTÜNDE. */}
+      {phase === 'ended' && <EndedSheet onOpenPaywall={() => setPaywallOpen(true)} />}
+      {arOpen && phase === 'finding' && <ArOverlay />}
+      <PhotoViewer />
+      <ProStamp />
+      <StatusBar style={scheme === 'dark' || (arOpen && phase === 'finding') ? 'light' : 'dark'} />
     </View>
+    </BottomSheetModalProvider>
   );
 }
 

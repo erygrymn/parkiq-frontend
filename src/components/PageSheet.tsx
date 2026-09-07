@@ -1,3 +1,4 @@
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { SymbolView } from 'expo-symbols';
 import type { ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
@@ -39,6 +40,8 @@ export function PageSheet({
       presentationStyle={fullScreen ? 'fullScreen' : 'pageSheet'}
       onRequestClose={onClose}
     >
+      {/* RN Modal ayrı bir pencere: içindeki ConfirmSheet'in kendi portal sağlayıcısı olmalı. */}
+      <BottomSheetModalProvider>
       <View style={{ flex: 1, backgroundColor: colors.bg }}>
         <View
           style={{
@@ -105,6 +108,7 @@ export function PageSheet({
           {children}
         </ScrollView>
       </View>
+      </BottomSheetModalProvider>
     </Modal>
   );
 }

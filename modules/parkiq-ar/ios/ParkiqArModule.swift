@@ -12,7 +12,8 @@ public class ParkiqArModule: Module {
     }
 
     View(ParkiqArView.self) {
-      Events("onStatus")
+      // onStatus: durum makinesi. onTarget: hedefin ekran izdüşümü, ≤6 Hz (kenar göstergesi).
+      Events("onStatus", "onTarget")
 
       // Arabanın konumu — oturum boyunca sabittir.
       Prop("car") { (view: ParkiqArView, value: [String: Double]) in
@@ -20,15 +21,11 @@ public class ParkiqArModule: Module {
         view.setCar(latitude: latitude, longitude: longitude)
       }
 
-      // Kullanıcının son GPS düzeltmesi. Konum akışı RN'de tektir; burada
-      // ikinci bir CoreLocation aboneliği açmak pil ve tutarlılık kaybıdır.
+      // Kullanıcının son GPS düzeltmesi. Konum akışı RN'de tektir; burada ikinci bir
+      // CoreLocation aboneliği açmak pil ve tutarlılık kaybıdır.
       Prop("user") { (view: ParkiqArView, value: [String: Double]) in
         guard let latitude = value["latitude"], let longitude = value["longitude"] else { return }
         view.setUser(latitude: latitude, longitude: longitude)
-      }
-
-      OnViewDidUpdateProps { (view: ParkiqArView) in
-        // no-op: prop setter'ları sahneyi zaten tazeliyor.
       }
     }
   }

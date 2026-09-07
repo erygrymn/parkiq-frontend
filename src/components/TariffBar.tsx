@@ -1,4 +1,7 @@
+import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { LAYOUT_MS } from '../theme/motion';
 import { formatClock, formatMoney } from '../lib/format';
 import { getLocale, t } from '../localization';
 import type { TariffState } from '../lib/tariffMath';
@@ -32,6 +35,15 @@ export function TariffBar({ state }: { state: TariffState }) {
     return { ...seg, startPct };
   });
 
+  // Knob konumu: gerçek matematik dakikada bir değişir, hareket 300 ms translateX (layout prop değil).
+  const [trackWidth, setTrackWidth] = useState(0);
+  const knobX = useSharedValue(0);
+  const knobTarget = state.knobPct !== null ? (trackWidth * state.knobPct) / 100 : 0;
+  useEffect(() => {
+    knobX.value = trackWidth === 0 ? knobTarget : withTiming(knobTarget, { duration: LAYOUT_MS });
+  }, [knobTarget, trackWidth, knobX]);
+  const knobStyle = useAnimatedStyle(() => ({ transform: [{ translateX: knobX.value - KNOB_SIZE / 2 }] }));
+
   const knobRing = scheme === 'dark' ? colors.card : '#FFFFFF';
   const knobFill = amber ? colors.warnFill : scheme === 'dark' ? colors.accentFill : colors.ink;
   const approaching = state.barTone === 'amber-approaching';
@@ -47,7 +59,7 @@ export function TariffBar({ state }: { state: TariffState }) {
         )}
       </View>
 
-      <View style={{ height: TRACK_HEIGHT, flexDirection: 'row' }}>
+      <View style={{ height: TRACK_HEIGHT, flexDirection: 'row' }} onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}>
         {segs.map((seg, i) => {
           const first = i === 0;
           const last = i === segs.length - 1;
@@ -82,14 +94,13 @@ export function TariffBar({ state }: { state: TariffState }) {
           );
         })}
 
-        {state.knobPct !== null && (
-          <View
+        {state.knobPct !== null && trackWidth > 0 && (
+          <Animated.View
             pointerEvents="none"
-            style={{
+            style={[knobStyle, {
               position: 'absolute',
-              left: `${state.knobPct}%`,
+              left: 0,
               top: TRACK_HEIGHT / 2 - KNOB_SIZE / 2,
-              marginLeft: -KNOB_SIZE / 2,
               width: KNOB_SIZE,
               height: KNOB_SIZE,
               borderRadius: KNOB_SIZE / 2,
@@ -97,7 +108,7 @@ export function TariffBar({ state }: { state: TariffState }) {
               backgroundColor: approaching ? colors.card : knobFill,
               borderWidth: approaching ? 4 : 3.5,
               borderColor: approaching ? colors.warnFill : knobRing,
-            }}
+            }]}
           />
         )}
       </View>

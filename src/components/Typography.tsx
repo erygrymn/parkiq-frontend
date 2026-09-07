@@ -2,6 +2,7 @@ import { Text, type TextProps, type TextStyle } from 'react-native';
 import { upper } from '../localization';
 import { useTheme } from '../theme';
 import { typeScale, type TypeToken } from '../theme/tokens';
+import { Stamp } from './motion/Stamp';
 
 function tokenStyle(token: TypeToken): TextStyle {
   return {
@@ -48,31 +49,22 @@ export function Body({ color, style, ...rest }: TypoProps) {
 }
 
 /**
- * §3.3 NOKTA imzası: display damga + renkli nokta. Nokta rengi çağıran belirler —
- * whitelist (PARKED. / SAVED ₺X.) yeşil, süre damgaları ve yer adları INK (kanun).
+ * design.md §2 NOKTA imzası: display damga + renkli nokta, §3 damga sekansıyla (metin fade/rise →
+ * nokta DOT_SPRING). Nokta rengi çağıran belirler — whitelist (PARKED. / SAVED ₺X.) yeşil, süre
+ * damgaları ve yer adları INK. `onLanded` nokta inişinde çağrılır (haptik burada bağlanır).
  */
 export function DisplayStamp({
   text,
   dotColor,
   size = 'M',
+  animate = true,
+  onLanded,
 }: {
   text: string;
   dotColor: string;
   size?: 'S' | 'M';
+  animate?: boolean;
+  onLanded?: () => void;
 }) {
-  const { colors } = useTheme();
-  const token = size === 'M' ? typeScale.displayM : typeScale.displayS;
-  return (
-    <Text
-      style={[tokenStyle(token), { color: colors.ink }]}
-      // §3.1: display katmanı max 1.3×; yer adları 2 satır + %70'e kadar küçülür
-      maxFontSizeMultiplier={1.3}
-      numberOfLines={2}
-      adjustsFontSizeToFit
-      minimumFontScale={0.7}
-    >
-      {upper(text)}
-      <Text style={{ color: dotColor }}>.</Text>
-    </Text>
-  );
+  return <Stamp text={text} dotColor={dotColor} size={size} animate={animate} onLanded={onLanded} />;
 }

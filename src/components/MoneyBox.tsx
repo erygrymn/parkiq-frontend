@@ -1,4 +1,6 @@
-import { Text, View } from 'react-native';
+import { Text } from 'react-native';
+import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
+import { CROSSFADE_MS, SPRING } from '../theme/motion';
 import { formatMoney } from '../lib/format';
 import { getLocale, t } from '../localization';
 import type { TariffState } from '../lib/tariffMath';
@@ -39,8 +41,11 @@ export function MoneyBox({ state }: { state: TariffState }) {
   };
   const parts = minutes < 1 ? t('exitNowPay', money) : t('exitWithinPay', { minutes, ...money });
 
+  // §5 para kutusu: geliş LinearTransition spring + 200 ms fade; tutar değişince yerinde güncellenir.
   return (
-    <View
+    <Animated.View
+      entering={FadeIn.duration(CROSSFADE_MS)}
+      layout={LinearTransition.springify().damping(SPRING.damping).stiffness(SPRING.stiffness).mass(SPRING.mass)}
       style={{
         borderRadius: radius.r16,
         backgroundColor: bg,
@@ -51,6 +56,6 @@ export function MoneyBox({ state }: { state: TariffState }) {
       }}
     >
       <Text style={{ fontSize: 13, fontWeight: '400', lineHeight: 18, color: textColor }}>{parts}</Text>
-    </View>
+    </Animated.View>
   );
 }

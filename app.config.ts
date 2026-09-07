@@ -21,6 +21,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
   },
   plugins: [
+    // expo-image: SDWebImage/AVIF/heic desteği için config plugin
+    'expo-image',
     [
       '@rnmapbox/maps',
       {

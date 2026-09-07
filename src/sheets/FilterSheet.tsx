@@ -43,7 +43,6 @@ export function FilterSheet({ visible, onClose }: { visible: boolean; onClose: (
   const locale = getLocale();
   const filter = useDiscoveryStore((s) => s.filter);
   const radiusM = useDiscoveryStore((s) => s.radiusM);
-  const pois = useDiscoveryStore((s) => s.pois);
   const state = useDiscoveryStore((s) => s.state);
   const { setFilter, setRadius, pinTo, requestFollow, visiblePois, selectPoi } =
     useDiscoveryStore.getState();

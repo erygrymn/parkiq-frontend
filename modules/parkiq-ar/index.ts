@@ -5,14 +5,25 @@ import type { ViewProps } from 'react-native';
 // ARKit köprüsü. Native modül yalnız `expo run:ios` build'inde vardır;
 // Expo Go'da yüklenmez ve AR butonu hiç gösterilmez.
 
-export type ArStatus = 'initializing' | 'ready' | 'near' | 'failed' | 'unsupported';
+export type ArStatus = 'initializing' | 'ready' | 'near' | 'limited' | 'failed' | 'unsupported';
+
+export interface ArTargetEvent {
+  /** Hedefin görünüm koordinatlarında izdüşümü (pt). Ekran dışındaysa kenarın ötesinde bir nokta. */
+  x: number;
+  y: number;
+  onScreen: boolean;
+  distanceM: number;
+  near: boolean;
+}
 
 export interface ParkiqArViewProps extends ViewProps {
-  /** Arabanın koordinatı — huzmenin dikildiği nokta. */
+  /** Arabanın koordinatı — monolitin dikildiği nokta. */
   car: { latitude: number; longitude: number };
   /** Kullanıcının son GPS düzeltmesi; hedef her düzeltmede yeniden bağlanır. */
   user: { latitude: number; longitude: number } | null;
   onStatus?: (event: { nativeEvent: { state: ArStatus; message?: string } }) => void;
+  /** ≤6 Hz; kenar göstergesi için. */
+  onTarget?: (event: { nativeEvent: ArTargetEvent }) => void;
 }
 
 interface NativeArModule {

@@ -21,6 +21,8 @@ Pod::Spec.new do |s|
   s.frameworks = 'ARKit', 'RealityKit', 'CoreLocation'
 
   s.source_files = "**/*.{h,m,swift}"
+  # Monolit yüz dokusu (app ikonu, 512px). Static framework: ana bundle'a kopyalanır.
+  s.resources = ["assets/*.png"]
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES'
   }
