@@ -1,11 +1,10 @@
 import { SymbolView } from 'expo-symbols';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { GhostButton } from '../components/Buttons';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { MonthlySavingsChart } from '../components/MonthlySavingsChart';
-import { PageSheet } from '../components/PageSheet';
 import type { SavingsCardData } from '../components/SavingsCard';
 import { ShareCardRenderer } from '../components/ShareCardRenderer';
 import { StatTiles } from '../components/StatTiles';
@@ -13,20 +12,23 @@ import { Caption, Overline } from '../components/Typography';
 import { listEndedSessions } from '../db/sessionRepo';
 import { trackPaywallShown, trackShareCard } from '../lib/analytics';
 import { formatClock, formatDateShort, formatDurationStamp, formatMoney, isSameDay } from '../lib/format';
+import { hapticSelect } from '../lib/haptics';
 import { monthlySavings } from '../lib/monthlyStats';
 import { computeStats } from '../lib/stats';
 import { computeExitSummary } from '../lib/tariffMath';
-import { getLocale, t } from '../localization';
+import { getLocale, t, upper } from '../localization';
 import { useIsPremium } from '../state/premiumStore';
 import { useSessionStore, type ParkSession } from '../state/sessionStore';
+import { useUiStore } from '../state/uiStore';
 import { useTheme } from '../theme';
 import { CROSSFADE_MS } from '../theme/motion';
-import { radius, spacing } from '../theme/tokens';
+import { radius, spacing, typeScale } from '../theme/tokens';
 import { SessionDetail } from './SessionDetail';
 
-// design.md §7.9 Geçmiş — pageSheet. Kutusuz KPI satırı, gün gruplu hairline satırlar,
-// ilk açılışta ≤8 satır 50 ms stagger. Silme onayı ConfirmSheet (sistem alert yok).
-// Geçmiş HERKESE AÇIK (2026-08-15 premium kararı).
+// design.md §7.9 Geçmiş — ayrı ekran değil, kök sheet'in bir sahnesi (İlke 9). Harita üstte kalır:
+// geçmiş park noktaları haritada işaretlenir, satıra dokununca kamera o noktaya uçar ve pin
+// büyür; detay aynı sheet içinde açılır. Kutusuz KPI, hairline satırlar, ilk 8 satır stagger.
+// Silme onayı ConfirmSheet. Geçmiş HERKESE AÇIK (2026-08-15 premium kararı).
 
 const STAGGER_MAX = 8;
 
@@ -50,13 +52,35 @@ function groupByDay(sessions: ParkSession[], nowMs: number, locale: string): Day
   return groups;
 }
 
+function SquareButton({ symbol, label, onPress }: { symbol: 'chevron.left' | 'xmark'; label: string; onPress: () => void }) {
+  const { colors } = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      hitSlop={8}
+      style={({ pressed }) => ({
+        width: 32,
+        height: 32,
+        borderRadius: radius.r12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: pressed ? colors.insetPressed : colors.inset,
+      })}
+    >
+      <SymbolView name={symbol} size={14} tintColor={colors.ink} weight="semibold" />
+    </Pressable>
+  );
+}
+
 function SessionRow({ session, onPress }: { session: ParkSession; onPress: () => void }) {
   const { colors } = useTheme();
   const locale = getLocale();
   const endedAt = session.endedAtMs ?? session.startedAtMs;
   const exit = computeExitSummary(session.tariff, session.startedAtMs, endedAt);
   const currency = session.tariff?.currency;
-  const meta = [session.placeName, session.floor, session.note].filter(Boolean).join(' · ');
+  const meta = [session.placeName, session.floor].filter(Boolean).join(' · ');
   const saved = exit.saved !== null && exit.saved > 0;
 
   return (
@@ -109,58 +133,58 @@ function EmptyState() {
   );
 }
 
-export function HistorySheet({
-  visible,
-  onClose,
-  onOpenPaywall,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  onOpenPaywall: () => void;
-}) {
+export function HistoryScene({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   const locale = getLocale();
   const isPremium = useIsPremium();
   const { colors } = useTheme();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selectedId = useUiStore((s) => s.historySelectedId);
+  const { closeHistory, selectHistory, setHistorySpots } = useUiStore.getState();
   const [shareData, setShareData] = useState<SavingsCardData | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  // Silme sonrası listeyi tazelemek için: memo yalnız `visible`e bakıyordu.
+  // Silme sonrası listeyi tazelemek için.
   const [revision, setRevision] = useState(0);
 
   const sessions = useMemo(() => {
-    if (!visible) return [];
     try {
       return listEndedSessions();
     } catch {
       return [];
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, revision]);
+  }, [revision]);
+
+  // Harita katmanı: koordinatı olan her oturum bir nokta. Sahne kapanınca temizlenir.
+  useEffect(() => {
+    setHistorySpots(
+      sessions
+        .filter((s) => s.latitude !== null && s.longitude !== null)
+        .map((s) => ({ id: s.id, latitude: s.latitude as number, longitude: s.longitude as number })),
+    );
+    return () => setHistorySpots([]);
+  }, [sessions, setHistorySpots]);
 
   const stats = useMemo(() => computeStats(sessions), [sessions]);
   const groups = useMemo(() => groupByDay(sessions, Date.now(), locale), [sessions, locale]);
   const selected = selectedId ? sessions.find((s) => s.id === selectedId) : undefined;
 
-  const close = () => {
-    setSelectedId(null);
-    onClose();
-  };
-
   if (selected) {
     return (
-      <PageSheet
-        visible={visible}
-        title={selected.placeName ?? t('sessionDetail')}
-        onClose={close}
-        onBack={() => setSelectedId(null)}
-      >
+      <Animated.View key={selected.id} entering={FadeIn.duration(CROSSFADE_MS)} style={{ paddingHorizontal: spacing.s20, paddingBottom: spacing.s20, gap: spacing.s16 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s12 }}>
+          <SquareButton symbol="chevron.left" label={t('history')} onPress={() => selectHistory(null)} />
+          <Overline style={{ flex: 1 }} numberOfLines={1}>
+            {t('history')}
+          </Overline>
+          <SquareButton symbol="xmark" label={t('close')} onPress={closeHistory} />
+        </View>
+
         <SessionDetail session={selected} />
 
         {/* Yanlış kaydı geçmişte taşımak zorunda kalmak istatistikleri de bozar. */}
         <Text
           accessibilityRole="button"
           onPress={() => setConfirmDelete(true)}
-          style={{ fontSize: 15, color: colors.warnText, paddingVertical: spacing.s16 }}
+          style={{ fontSize: 15, color: colors.warnText, paddingVertical: spacing.s8 }}
         >
           {t('delete')}
         </Text>
@@ -174,30 +198,40 @@ export function HistorySheet({
           onClose={() => setConfirmDelete(false)}
           onConfirm={() => {
             useSessionStore.getState().deleteEndedSession(selected.id);
-            setSelectedId(null);
+            selectHistory(null);
             setRevision((r) => r + 1);
           }}
         />
-      </PageSheet>
+      </Animated.View>
     );
   }
 
   let rowIndex = 0;
 
   return (
-    <PageSheet
-      visible={visible}
-      title={t('history')}
-      onClose={close}
-      header={
-        sessions.length > 0 ? (
-          <>
-            <StatTiles stats={stats} />
-            <MonthlySavingsChart buckets={monthlySavings(sessions, Date.now())} currency={stats.savedCurrency} />
-          </>
-        ) : null
-      }
-    >
+    <View style={{ paddingHorizontal: spacing.s20, paddingBottom: spacing.s20, gap: spacing.s16 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s12 }}>
+        <Text
+          style={{
+            flex: 1,
+            fontSize: typeScale.title.fontSize,
+            fontWeight: typeScale.title.fontWeight,
+            letterSpacing: typeScale.title.letterSpacing,
+            color: colors.ink,
+          }}
+        >
+          {upper(t('history'))}
+        </Text>
+        <SquareButton symbol="xmark" label={t('close')} onPress={closeHistory} />
+      </View>
+
+      {sessions.length > 0 && (
+        <View>
+          <StatTiles stats={stats} />
+          <MonthlySavingsChart buckets={monthlySavings(sessions, Date.now())} currency={stats.savedCurrency} />
+        </View>
+      )}
+
       {/* §9 aylık özet kartı — geçmişin viral bacağı */}
       {stats.totalSaved !== null && stats.totalSaved > 0 && (
         <GhostButton
@@ -213,7 +247,6 @@ export function HistorySheet({
               tariffState: null,
             });
           }}
-          style={{ marginBottom: spacing.s24 }}
         />
       )}
 
@@ -229,7 +262,6 @@ export function HistorySheet({
             flexDirection: 'row',
             alignItems: 'center',
             gap: spacing.s12,
-            marginBottom: spacing.s24,
             paddingVertical: spacing.s12,
             borderTopWidth: 1,
             borderBottomWidth: 1,
@@ -244,17 +276,28 @@ export function HistorySheet({
       )}
 
       <ShareCardRenderer data={shareData} onDone={() => setShareData(null)} />
+
       {groups.length === 0 ? (
         <EmptyState />
       ) : (
         groups.map((group) => (
-          <View key={group.label} style={{ marginBottom: spacing.s24 }}>
+          <View key={group.label}>
             <Overline style={{ marginBottom: spacing.s4 }}>{group.label}</Overline>
             <View style={{ borderTopWidth: 1, borderTopColor: colors.gridline }}>
               {group.sessions.map((s) => {
                 const index = rowIndex;
                 rowIndex += 1;
-                const row = <SessionRow key={s.id} session={s} onPress={() => setSelectedId(s.id)} />;
+                const row = (
+                  <SessionRow
+                    key={s.id}
+                    session={s}
+                    onPress={() => {
+                      // Satır seçimi haritayı o noktaya uçurur (MapboxCanvas uiStore'u izler).
+                      hapticSelect();
+                      selectHistory(s.id);
+                    }}
+                  />
+                );
                 // §3 stagger: yalnız ilk 8 satır, yalnız ilk mount.
                 return index < STAGGER_MAX ? (
                   <Animated.View key={s.id} entering={FadeInDown.delay(index * 50).duration(CROSSFADE_MS)}>
@@ -268,6 +311,6 @@ export function HistorySheet({
           </View>
         ))
       )}
-    </PageSheet>
+    </View>
   );
 }

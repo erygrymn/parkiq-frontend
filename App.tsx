@@ -20,6 +20,7 @@ import { PhotoViewer } from './src/components/motion/PhotoViewer';
 import { ProStamp } from './src/components/motion/ProStamp';
 import { ArOverlay } from './src/screens/ArOverlay';
 import { FindingSheet } from './src/sheets/FindingSheet';
+import { HistoryScene } from './src/sheets/HistoryScene';
 import { useUiStore } from './src/state/uiStore';
 import { refreshSessionActivity } from './src/lib/liveActivity';
 import { CROSSFADE_MS, SPRING } from './src/theme/motion';
@@ -30,7 +31,6 @@ import { initAnalytics, trackPaywallShown } from './src/lib/analytics';
 import { ForceUpdateScreen, useForcedUpdate } from './src/screens/ForceUpdateGate';
 import { MapCanvas } from './src/screens/MapCanvas';
 import { Onboarding } from './src/screens/Onboarding';
-import { HistorySheet } from './src/sheets/HistorySheet';
 import { FilterSheet } from './src/sheets/FilterSheet';
 import { PaywallSheet } from './src/sheets/PaywallSheet';
 import { PoiSheet } from './src/sheets/PoiSheet';
@@ -57,6 +57,8 @@ const IDLE_COMPACT_HEIGHT = 172;
 
 /** İçerik ekranı aşarsa panel burada durur ve içerik kaydırılır. */
 const MAX_SHEET_RATIO = 0.88;
+/** Geçmiş sahnesinde harita görünür kalsın diye daha alçak tavan. */
+const HISTORY_SHEET_RATIO = 0.62;
 
 function FloatingIconButton({
   symbol,
@@ -94,10 +96,14 @@ function SheetContent({ phase, onOpenPaywall }: { phase: SessionPhase; onOpenPay
   const selectedPoiId = useDiscoveryStore((s) => s.selectedPoiId);
   const pois = useDiscoveryStore((s) => s.pois);
   const selectedPoi = selectedPoiId ? (pois.find((p) => p.id === selectedPoiId) ?? null) : null;
+  // §7.9: Geçmiş fazdan bağımsız bir sahnedir; açıkken sheet'in içeriği odur, harita üstte kalır.
+  const historyOpen = useUiStore((s) => s.historyOpen);
+  const historySelectedId = useUiStore((s) => s.historySelectedId);
 
   // design.md §3 sheet morph: yükseklik gorhom spring'i ile, içerik 200 ms fade ile gelir.
   // Çıkış animasyonu yok: eski içerik bir an daha kalsa dinamik yükseklik ikiye katlanırdı.
   const content = (() => {
+    if (historyOpen) return <HistoryScene onOpenPaywall={onOpenPaywall} />;
     switch (phase) {
       case 'idle':
         return selectedPoi ? <PoiSheet poi={selectedPoi} /> : <IdleSheet onOpenPaywall={onOpenPaywall} />;
@@ -114,7 +120,13 @@ function SheetContent({ phase, onOpenPaywall }: { phase: SessionPhase; onOpenPay
     }
   })();
   if (!content) return null;
-  const key = phase === 'idle' ? (selectedPoi ? `poi:${selectedPoi.id}` : 'idle') : phase;
+  const key = historyOpen
+    ? `history:${historySelectedId ?? 'list'}`
+    : phase === 'idle'
+      ? selectedPoi
+        ? `poi:${selectedPoi.id}`
+        : 'idle'
+      : phase;
   return (
     <Animated.View key={key} entering={FadeIn.duration(CROSSFADE_MS)}>
       {content}
@@ -205,14 +217,20 @@ function Root() {
   const { colors, scheme } = useTheme();
   const phase = useSessionStore((s) => s.phase);
   const pickingLocation = useSessionStore((s) => s.pickingLocation);
-  const [historyOpen, setHistoryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const sheetRef = useRef<BottomSheet>(null);
   const insets = useSafeAreaInsets();
   const arOpen = useUiStore((s) => s.arOpen);
+  const historyOpen = useUiStore((s) => s.historyOpen);
   const sheetSprings = useBottomSheetSpringConfigs(SPRING);
+
+  // Geçmiş açılınca sheet yükselir ama haritanın üst üçte biri görünür kalır: noktalar orada.
+  useEffect(() => {
+    if (historyOpen) sheetRef.current?.expand();
+    else sheetRef.current?.snapToIndex(0);
+  }, [historyOpen]);
 
   // §4 derinlik davranıştan: sheet full detent'e giderken yüzen cam kareler çekilir.
   const floatingStyle = useAnimatedStyle(() => ({
@@ -236,8 +254,9 @@ function Root() {
     sheetRef.current?.snapToIndex(0);
     // Keşiften çıkarken haritada seçili kalan pin temizlenir.
     if (phase !== 'idle') useDiscoveryStore.getState().selectPoi(null);
-    // Faz değişince geçici overlay'ler kapanır (AR yalnız finding'de yaşar).
+    // Faz değişince geçici overlay'ler ve geçmiş sahnesi kapanır (AR yalnız finding'de yaşar).
     if (phase !== 'finding') useUiStore.getState().closeAr();
+    useUiStore.getState().closeHistory();
   }, [phase]);
 
   // Haritada pin seçilince kart kompakt kademede yarım kalmasın.
@@ -308,7 +327,8 @@ function Root() {
   );
 
   const { height: windowHeight } = useWindowDimensions();
-  const maxSheetHeight = Math.round(windowHeight * MAX_SHEET_RATIO);
+  // Geçmişte sheet %62'de durur; üstte kalan harita geçmiş noktalarını gösterir.
+  const maxSheetHeight = Math.round(windowHeight * (historyOpen ? HISTORY_SHEET_RATIO : MAX_SHEET_RATIO));
   // Yalnız keşifte ikinci (kompakt) kademe var; dinamik içerik kademesi kütüphane
   // tarafından sona eklenir. Diğer fazlarda tek kademe = içerik yüksekliği.
   const snapPoints = useMemo(
@@ -329,7 +349,7 @@ function Root() {
         <FloatingIconButton
           symbol="clock.arrow.circlepath"
           label={t('history')}
-          onPress={() => setHistoryOpen(true)}
+          onPress={() => (historyOpen ? useUiStore.getState().closeHistory() : useUiStore.getState().openHistory())}
         />
         <FloatingIconButton symbol="gearshape" label={t('settings')} onPress={() => setSettingsOpen(true)} />
         {/* Filtre yalnız keşifte anlamlı: oturum başlayınca sahne arabaya aittir. */}
@@ -360,7 +380,7 @@ function Root() {
         maxDynamicContentSize={maxSheetHeight}
         // Park formu aşağı çekilerek de terk edilebilir (kayıt silinir, keşfe döner).
         // Diğer fazlarda panel kapanamaz: harita tek başına çıkışsız bir ekran olurdu.
-        enablePanDownToClose={phase === 'parking'}
+        enablePanDownToClose={phase === 'parking' && !historyOpen}
         onClose={() => useSessionStore.getState().cancelPark()}
         keyboardBehavior="interactive"
         keyboardBlurBehavior="restore"
@@ -381,14 +401,6 @@ function Root() {
       </BottomSheet>
       )}
 
-      <HistorySheet
-        visible={historyOpen}
-        onClose={() => setHistoryOpen(false)}
-        onOpenPaywall={() => {
-          setHistoryOpen(false);
-          setPaywallOpen(true);
-        }}
-      />
       <SettingsSheet
         visible={settingsOpen}
         onClose={() => setSettingsOpen(false)}

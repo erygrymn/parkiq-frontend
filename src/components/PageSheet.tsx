@@ -6,83 +6,49 @@ import { upper } from '../localization';
 import { useTheme } from '../theme';
 import { radius, spacing, typeScale } from '../theme/tokens';
 
-// §7 mimarisi: Geçmiş/Ayarlar/Paywall iOS pageSheet olarak açılır.
-// Ortak kabuk: başlık + kapatma + kaydırılabilir gövde.
+// design.md §7: Ayarlar iOS pageSheet olarak açılır (Geçmiş kök sheet sahnesi, Paywall tam ekran).
+// Ortak kabuk: ortalanmış 17/600 başlık (sistem nav bar hissi, çift kabuk yok) + kapatma +
+// kaydırılabilir gövde. Koyu temada kart zemini bir basamak açık (`surface/card`): arkadaki
+// kararmış haritayla kaynaşmasın.
 
 export function PageSheet({
   visible,
   title,
   onClose,
-  onBack,
-  fullScreen,
-  header,
   children,
 }: {
   visible: boolean;
   title: string;
   onClose: () => void;
-  /** Verilirse başlığın soluna geri oku çıkar (liste → detay gezinmesi). */
-  onBack?: () => void;
-  /** Paywall gibi karar ekranları tam ekran açılır: arkadaki app dikkat dağıtmasın. */
-  fullScreen?: boolean;
-  /**
-   * Kaydırma alanının ÜSTÜNDE sabit kalan blok (geçmişteki KPI + grafik gibi).
-   * Böylece uzun listede özet ekrandan kaçmaz.
-   */
-  header?: ReactNode;
   children: ReactNode;
 }) {
-  const { colors } = useTheme();
+  const { colors, scheme } = useTheme();
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle={fullScreen ? 'fullScreen' : 'pageSheet'}
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       {/* RN Modal ayrı bir pencere: içindeki ConfirmSheet'in kendi portal sağlayıcısı olmalı. */}
       <BottomSheetModalProvider>
-      <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <View style={{ flex: 1, backgroundColor: scheme === 'dark' ? colors.card : colors.bg }}>
         <View
           style={{
             flexDirection: 'row',
-            justifyContent: 'space-between',
             alignItems: 'center',
+            height: 56,
             paddingHorizontal: spacing.s20,
-            paddingTop: spacing.s20,
-            paddingBottom: spacing.s12,
             gap: spacing.s12,
           }}
         >
-          {onBack && (
-            <Pressable
-              onPress={onBack}
-              accessibilityRole="button"
-              accessibilityLabel={title}
-              hitSlop={8}
-              style={({ pressed }) => ({
-                width: 32,
-                height: 32,
-                borderRadius: radius.r8 + 2,
-                backgroundColor: pressed ? colors.insetPressed : colors.inset,
-                alignItems: 'center',
-                justifyContent: 'center',
-              })}
-            >
-              <SymbolView name="chevron.left" size={14} tintColor={colors.ink} weight="semibold" />
-            </Pressable>
-          )}
+          <View style={{ width: 32 }} />
           <Text
             numberOfLines={1}
             style={{
               flex: 1,
-              fontSize: typeScale.title.fontSize,
-              fontWeight: typeScale.title.fontWeight,
-              letterSpacing: typeScale.title.letterSpacing,
+              textAlign: 'center',
+              fontSize: typeScale.headline.fontSize,
+              fontWeight: typeScale.headline.fontWeight,
               color: colors.ink,
             }}
           >
-            {upper(title)}
+            {title}
           </Text>
           <Pressable
             onPress={onClose}
@@ -102,9 +68,7 @@ export function PageSheet({
           </Pressable>
         </View>
 
-        {header && <View style={{ paddingHorizontal: spacing.s20 }}>{header}</View>}
-
-        <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.s20, paddingBottom: spacing.s40 }}>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.s20, paddingTop: spacing.s8, paddingBottom: spacing.s40 }}>
           {children}
         </ScrollView>
       </View>

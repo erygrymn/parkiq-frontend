@@ -95,6 +95,7 @@ Bağlayıcı olduğunda claude.ai bağlayıcı ayarlarından yetkilendirilmesi g
 - [x] Onboarding: Reanimated; gezen nokta (üç yuva scroll offset'inden interpolasyon: konum, renk, boy);
       zemin `interpolateColor`; giriş 200 ms + `DOT_SPRING`; Reduce Motion'da inline nokta + crossfade; RN `Animated` kalmadı.
 - [x] Geçmiş: kutusuz KPI (`StatTiles`), hairline satırlar, ilk 8 satır stagger, silme onayı `ConfirmSheet`.
+- [x] Geçmiş kök sheet sahnesi oldu (2026-09-08): ayrı pageSheet yok; noktalar haritada, satır → kamera uçuşu + araba pini, detay sheet içinde. Ayarlar pageSheet kaldı (koyu yüzey `surface/card`, 17/600 ortalanmış başlık).
 - [x] Paywall: sistem Alert'ler kalktı; başarı → sheet kapanır + kök `ProStamp` ("PRO." ink nokta + haptik);
       restore satırları in-surface; plan kartı hairline + seçili ink border. Kullanıcının rakamı zaten başlık altında.
 - [x] Ayarlar: tüm veriyi sil → `ConfirmSheet` (Alert kalktı); satırlar zaten metin satırı. · [ ] oto-algılama açılış kartı (izin açıklaması; ayrı iş).
@@ -147,7 +148,7 @@ noktası · [x] düzlem algılama · [x] oklüzyon · [x] cam HUD · [x] kenar g
 · [x] bildirim iptali · [x] Reanimated kapak · [x] count-up + nokta + haptik · [x] canlı minyatür
 · [x] paywall yalnız Done sonrası
 
-**7.9 Geçmiş** · [x] liste + gruplar · [x] boş durum · [x] detay · [x] KPI + grafik · [x] aylık kart
+**7.9 Geçmiş (sheet sahnesi)** · [x] harita noktaları + uçuş · [x] liste + gruplar · [x] boş durum · [x] detay · [x] KPI + grafik · [x] aylık kart
 · [x] kutusuz KPI · [x] hairline satırlar · [x] stagger · [x] silme onayı sheet
 
 **7.10 Ayarlar** · [x] tema/dil/para/eşik · [x] oto-algılama · [x] abonelik · [x] izinler · [x] veri

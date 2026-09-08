@@ -232,8 +232,8 @@ Harita üstünde logo/watermark alanı yalnız Mapbox atfı.
 
 **Mimari:** Tab bar yok. Root = `MapCanvas` (asla unmount olmaz) + her zaman açık durum-güdümlü
 bottom sheet (`@gorhom/bottom-sheet`). Faz enum'u: `idle | parking | active | finding | ending |
-ended`. Faz değişimi = sheet morph (§3). Geçmiş/Ayarlar pageSheet; Paywall tam ekran; AR tam ekran
-overlay. Küçük düzenleme yüzeyleri `BottomSheetModal` (RN `Modal` yasak; tek istisna sistem kamera/
+ended`. Faz değişimi = sheet morph (§3). Geçmiş kök sheet sahnesidir (fazdan bağımsız, harita üstte);
+Ayarlar pageSheet; Paywall tam ekran; AR tam ekran overlay. Küçük düzenleme yüzeyleri `BottomSheetModal` (RN `Modal` yasak; tek istisna sistem kamera/
 foto seçici). Aynı anda tek aktif oturum. Cold start aktif oturum varsa doğrudan `active`.
 
 ### 7.1 Onboarding: 3 tipografik manifesto posteri (poster katmanı)
@@ -384,7 +384,12 @@ açılmaz; foto/kat kartı oradaki doğru araçtır.
 - Scene sheet: hero = ₺ rakamı · driver = "End" onayı · an = §3 kutlama sekansı (≤1.8 s) · sabit =
   alt buton bloğu (min 128pt rezerv) · sessiz = özet satırları (stagger dışında) · idle sıfır.
 
-### 7.9 Geçmiş + istatistik (pageSheet)
+### 7.9 Geçmiş + istatistik (kök sheet sahnesi)
+
+- Ayrı ekran değil: saat karesine dokununca kök sheet %62 tavana çıkar, içeriği Geçmiş olur; harita
+  üstte kalır ve geçmiş park noktaları mürekkep daire (beyaz ring) olarak görünür, kamera hepsini
+  çerçeveler. Satıra dokununca kamera o noktaya uçar, nokta araba pinine (marka işareti) dönüşür,
+  detay aynı sheet içinde açılır; geri dönünce liste, kapatınca keşif/aktif sheet morph ile döner.
 
 - Üstte KPI satırı **kutusuz**: 3 sütun, overline + değer (Total saved 28/900 `accent-text`
   proportional; Sessions, Avg duration 22/900 ink), altta 1px `gridline`.
@@ -398,7 +403,9 @@ açılmaz; foto/kat kartı oradaki doğru araçtır.
 
 ### 7.10 Ayarlar (pageSheet)
 
-Liste grupları hairline satırlarla: hatırlatıcı eşiği, bildirimler, görünüm, dil, para birimi,
+Tek pageSheet yüzeyi. Koyu temada kart zemini `surface/card` (arkadaki kararmış haritadan bir
+basamak açık); başlık ortalanmış 17/600, sistem nav bar hissi, çift kabuk yok. Liste grupları
+hairline satırlarla: hatırlatıcı eşiği, bildirimler, görünüm, dil, para birimi,
 oto-algılama (premium; açılış tek sayfalık kart + izinler), abonelik durumu → paywall, izin durumları
 (§5 durum satırı + Settings deep link), veri (dışa aktar / sil), hakkında. Başlık 22/900 uppercase
 noktasız. Geliştirici bölümü yalnız `__DEV__`.

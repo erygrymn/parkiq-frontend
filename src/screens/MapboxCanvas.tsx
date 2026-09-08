@@ -1,8 +1,8 @@
-import Mapbox, { Camera, LineLayer, LocationPuck, MapView, MarkerView, ShapeSource } from '@rnmapbox/maps';
+import Mapbox, { Camera, CircleLayer, LineLayer, LocationPuck, MapView, MarkerView, ShapeSource } from '@rnmapbox/maps';
 import * as Location from 'expo-location';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useMemo, useRef } from 'react';
-import { AppState, Pressable, StyleSheet, Text } from 'react-native';
+import { AppState, Pressable, StyleSheet, Text, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { SPRING } from '../theme/motion';
@@ -95,6 +95,10 @@ export function MapboxCanvas() {
   const active = phase !== 'idle';
   const finding = phase === 'finding';
   const userFix = useUiStore((s) => s.userFix);
+  const historyOpen = useUiStore((s) => s.historyOpen);
+  const historySpots = useUiStore((s) => s.historySpots);
+  const historySelectedId = useUiStore((s) => s.historySelectedId);
+  const { height: windowHeight } = useWindowDimensions();
 
   // §4 derinlik davranıştan: sheet büyürken harita 0.97'ye küçülür ve scrim gelir; aktif
   // oturumda scrim sabit kalır. Yalnız transform/opacity — Mapbox view'ı yeniden boyutlanmaz.
@@ -236,6 +240,72 @@ export function MapboxCanvas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finding, carCoords?.[0], carCoords?.[1], userFix?.latitude, userFix?.longitude]);
 
+  // §7.9 Geçmiş: noktalar tek ShapeSource (native daire katmanı), seçili olan gerçek araba pini.
+  // Açılışta hepsi çerçevelenir, satır seçilince kamera o noktaya uçar; sheet %62'de olduğu
+  // için alt padding görünür alanı üst üçte bire taşır.
+  const historyPadding = { paddingTop: insets.top + 72, paddingBottom: Math.round(windowHeight * 0.62) + 24, paddingLeft: 48, paddingRight: 48 };
+  const selectedSpot = historySelectedId ? (historySpots.find((s) => s.id === historySelectedId) ?? null) : null;
+  const historyWasOpenRef = useRef(false);
+  useEffect(() => {
+    if (!historyOpen) {
+      // Kapanış: sahne neyse ona dön — keşifte kullanıcıya (takip açılır), oturumda arabaya.
+      if (historyWasOpenRef.current) {
+        historyWasOpenRef.current = false;
+        const car = hasCarRef.current ? carCoordsRef.current : null;
+        const target = car ?? userCoordsRef.current;
+        if (!car && phase === 'idle') followingRef.current = true;
+        if (target) cameraRef.current?.setCamera({ centerCoordinate: target, zoomLevel: DEFAULT_ZOOM, animationDuration: 600 });
+      }
+      return;
+    }
+    historyWasOpenRef.current = true;
+    // Konum takibi kameraya dokunmasın; geçmiş noktaları sahnenin sahibi.
+    followingRef.current = false;
+    if (selectedSpot) {
+      cameraRef.current?.setCamera({
+        centerCoordinate: [selectedSpot.longitude, selectedSpot.latitude],
+        zoomLevel: 16,
+        padding: historyPadding,
+        animationDuration: 600,
+      });
+      return;
+    }
+    if (historySpots.length === 0) return;
+    if (historySpots.length === 1) {
+      cameraRef.current?.setCamera({
+        centerCoordinate: [historySpots[0].longitude, historySpots[0].latitude],
+        zoomLevel: 15,
+        padding: historyPadding,
+        animationDuration: 600,
+      });
+      return;
+    }
+    const lngs = historySpots.map((s) => s.longitude);
+    const lats = historySpots.map((s) => s.latitude);
+    cameraRef.current?.setCamera({
+      bounds: { ne: [Math.max(...lngs), Math.max(...lats)], sw: [Math.min(...lngs), Math.min(...lats)] },
+      padding: historyPadding,
+      animationDuration: 600,
+    });
+    // padding nesnesi her render değişir; tetik yalnız açılış, nokta listesi ve seçim
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historyOpen, historySpots, selectedSpot?.id]);
+
+  const historyShape =
+    historyOpen && historySpots.length > 0
+      ? {
+          type: 'FeatureCollection' as const,
+          features: historySpots
+            .filter((s) => s.id !== historySelectedId)
+            .map((s) => ({
+              type: 'Feature' as const,
+              id: s.id,
+              properties: {},
+              geometry: { type: 'Point' as const, coordinates: [s.longitude, s.latitude] },
+            })),
+        }
+      : null;
+
   const findLine =
     finding && carCoords && userFix
       ? {
@@ -280,8 +350,30 @@ export function MapboxCanvas() {
       <Camera ref={cameraRef} defaultSettings={{ zoomLevel: DEFAULT_ZOOM }} />
       <LocationPuck puckBearingEnabled puckBearing="heading" />
 
-      {/* §7.2 keşif pinleri — aktif oturumda gizlenir, sahne arabaya ait olur */}
+      {/* §7.9 geçmiş noktaları: mürekkep daire + beyaz ring; seçili olan aşağıda araba pini olarak. */}
+      {historyShape && (
+        <ShapeSource id="history-spots" shape={historyShape}>
+          <CircleLayer
+            id="history-spots-layer"
+            style={{
+              circleRadius: 6,
+              circleColor: colors.ink,
+              circleStrokeWidth: 2,
+              circleStrokeColor: lightColors.card,
+              circleOpacity: 0.9,
+            }}
+          />
+        </ShapeSource>
+      )}
+      {historyOpen && selectedSpot && (
+        <MarkerView coordinate={[selectedSpot.longitude, selectedSpot.latitude]} anchor={{ x: 0.5, y: 1 }} allowOverlap allowOverlapWithPuck>
+          <CarPin />
+        </MarkerView>
+      )}
+
+      {/* §7.2 keşif pinleri — aktif oturumda ve geçmiş sahnesinde gizlenir */}
       {phase === 'idle' &&
+        !historyOpen &&
         visiblePois.slice(0, 24).map((poi) => (
           <MarkerView
             key={poi.id}
