@@ -1,12 +1,12 @@
 import Mapbox, { Camera, LineLayer, LocationPuck, MapView, MarkerView, ShapeSource } from '@rnmapbox/maps';
-import { Image } from 'expo-image';
 import * as Location from 'expo-location';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useMemo, useRef } from 'react';
-import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppState, Pressable, StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { SPRING } from '../theme/motion';
+import { CarPin } from '../components/CarPin';
 import { MAPBOX_PUBLIC_TOKEN, MAPBOX_STYLE_URL_DARK, MAPBOX_STYLE_URL_LIGHT } from '../config';
 import { hapticSelect } from '../lib/haptics';
 import { buildMapStyle } from '../lib/mapStyle';
@@ -17,7 +17,7 @@ import { useUiStore } from '../state/uiStore';
 import { CROSSFADE_MS } from '../theme/motion';
 import { sheetIndex } from '../theme/sheetMotion';
 import { useTheme } from '../theme';
-import { lightColors, radius, shadow } from '../theme/tokens';
+import { lightColors } from '../theme/tokens';
 
 // Gerçek harita katmanı — YALNIZ native build'de yüklenir (MapCanvas koruması).
 // Expo Go bu dosyayı hiç require etmez.
@@ -31,53 +31,6 @@ if (!MAPBOX_PUBLIC_TOKEN) {
 Mapbox.setAccessToken(MAPBOX_PUBLIC_TOKEN);
 
 const DEFAULT_ZOOM = 15.5;
-
-/**
- * design.md §4 araba pini = marka işareti: app ikonunun kendisi (mürekkep kare + beyaz P + yeşil
- * nokta), 36pt, 2pt beyaz ring, shadow/1. Tema bağımsız: ikon = pin = LA glyph'i tek DNA.
- */
-function CarPin() {
-  const { colors, scheme } = useTheme();
-  return (
-    <View style={{ alignItems: 'center' }}>
-      <View
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: radius.r12,
-          borderCurve: 'continuous',
-          backgroundColor: colors.la,
-          borderWidth: 2,
-          borderColor: lightColors.card,
-          alignItems: 'center',
-          justifyContent: 'center',
-          shadowColor: shadow.s1.ambient.color,
-          shadowOffset: { width: 0, height: shadow.s1.ambient.offsetY },
-          shadowRadius: shadow.s1.ambient.blur,
-          shadowOpacity: scheme === 'dark' ? 0 : 1,
-        }}
-      >
-        <Image
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
-          source={require('../../assets/brand/mark.png')}
-          style={{ width: 24, height: 24 }}
-          contentFit="contain"
-          accessibilityIgnoresInvertColors
-        />
-      </View>
-      <View
-        style={{
-          width: 10,
-          height: 10,
-          marginTop: -5,
-          borderRadius: 2,
-          backgroundColor: colors.la,
-          transform: [{ rotate: '45deg' }],
-        }}
-      />
-    </View>
-  );
-}
 
 /** §4 POI pini: otopark ink, şarj yeşil; beyaz ring; seçiliyken 1.25× SPRING (§3). */
 function PoiPin({ kind, selected }: { kind: PoiKind; selected?: boolean }) {

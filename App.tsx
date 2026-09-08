@@ -9,11 +9,12 @@ import { AUTO_PARK_KIND } from './src/lib/notifications';
 import { StatusBar } from 'expo-status-bar';
 import { SymbolView, type SFSymbol } from 'expo-symbols';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, Linking, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { AppState, Linking, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { t } from './src/localization';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GhostButton, PrimaryCta } from './src/components/Buttons';
+import { CarPin } from './src/components/CarPin';
 import { Glass } from './src/components/motion/Glass';
 import { PhotoViewer } from './src/components/motion/PhotoViewer';
 import { ProStamp } from './src/components/motion/ProStamp';
@@ -129,54 +130,32 @@ function SheetContent({ phase, onOpenPaywall }: { phase: SessionPhase; onOpenPay
 function PickLocationLayer({ target }: { target: PickTarget }) {
   const { colors, scheme } = useTheme();
   const insets = useSafeAreaInsets();
-  const { cancelPickingLocation, confirmPickedLocation } = useSessionStore.getState();
+  const { cancelPickingLocation, confirmPickedLocation, useMyLocationForPark } = useSessionStore.getState();
   const forPark = target === 'park';
 
   return (
     <>
       <View pointerEvents="none" style={StyleSheet.absoluteFill}>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <View
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: radius.r12,
-              backgroundColor: colors.ink,
-              alignItems: 'center',
-              justifyContent: 'center',
-              shadowColor: shadow.s2.ambient.color,
-              shadowOffset: { width: 0, height: shadow.s2.ambient.offsetY },
-              shadowRadius: shadow.s2.ambient.blur,
-              shadowOpacity: scheme === 'dark' ? 0 : 1,
-            }}
-          >
-            <SymbolView
-              name={forPark ? 'car.fill' : 'magnifyingglass'}
-              size={17}
-              tintColor={colors.card}
-              weight="regular"
-            />
-          </View>
-          <View
-            style={{
-              width: 10,
-              height: 10,
-              marginTop: -5,
-              borderRadius: 2,
-              backgroundColor: colors.ink,
-              transform: [{ rotate: '45deg' }],
-            }}
-          />
-          {/* Pinin ucunun tam olarak nereye denk geldiğini gösteren nokta */}
-          <View
-            style={{
-              width: 5,
-              height: 5,
-              borderRadius: 3,
-              marginTop: 3,
-              backgroundColor: colors.accentFill,
-            }}
-          />
+          {/* Park: gerçek araba pini (marka işareti); alan seçimi: mürekkep büyüteç karesi.
+              Ucun altındaki yeşil nokta, koordinatın tam olarak nereye düşeceğini gösterir. */}
+          {forPark ? (
+            <CarPin />
+          ) : (
+            <View
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: radius.r12,
+                backgroundColor: colors.ink,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <SymbolView name="magnifyingglass" size={17} tintColor={colors.card} weight="regular" />
+            </View>
+          )}
+          <View style={{ width: 5, height: 5, borderRadius: 3, marginTop: 3, backgroundColor: colors.accentFill }} />
         </View>
       </View>
 
@@ -189,6 +168,7 @@ function PickLocationLayer({ target }: { target: PickTarget }) {
           gap: spacing.s8,
           padding: spacing.s16,
           borderRadius: radius.r24,
+          borderCurve: 'continuous',
           backgroundColor: colors.card,
           shadowColor: shadow.s2.ambient.color,
           shadowOffset: { width: 0, height: shadow.s2.ambient.offsetY },
@@ -198,7 +178,24 @@ function PickLocationLayer({ target }: { target: PickTarget }) {
       >
         <Caption>{t(forPark ? 'pickOnMapHint' : 'pickAreaHint')}</Caption>
         <PrimaryCta label={t(forPark ? 'usePin' : 'useThisArea')} onPress={confirmPickedLocation} />
-        <GhostButton label={t('cancel')} onPress={cancelPickingLocation} />
+        {/* Konum düzeltmenin tek yüzeyi burası: "konumumu kullan" da bu kartta, formda ayrı buton yok. */}
+        {forPark && (
+          <GhostButton
+            label={t('useMyLocation')}
+            onPress={() => {
+              useMyLocationForPark();
+              cancelPickingLocation();
+            }}
+          />
+        )}
+        <Pressable
+          accessibilityRole="button"
+          onPress={cancelPickingLocation}
+          hitSlop={8}
+          style={{ height: 44, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textSecondary }}>{t('cancel')}</Text>
+        </Pressable>
       </View>
     </>
   );

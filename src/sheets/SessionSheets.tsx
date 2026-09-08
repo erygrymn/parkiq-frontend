@@ -35,12 +35,7 @@ import { shareParkedLocation } from '../lib/share';
 import { computeExitSummary, computeTariffState } from '../lib/tariffMath';
 import { appliesAt } from '../lib/tariffSchedule';
 import { getLocale, t, upper } from '../localization';
-import {
-  useSessionStore,
-  type ParkSession,
-  type ReminderAnchor,
-  type ReminderKind,
-} from '../state/sessionStore';
+import { useSessionStore, type ParkSession, type ReminderKind } from '../state/sessionStore';
 import { useSettingsStore } from '../state/settingsStore';
 import { useTheme } from '../theme';
 import { CROSSFADE_MS, SPRING } from '../theme/motion';
@@ -253,7 +248,7 @@ export function IdleSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
 }
 
 /** Park formunda inline açık olan alan. */
-type ParkField = 'location' | 'floor' | 'note' | 'photo' | 'backdate' | 'reminder';
+type ParkField = 'floor' | 'note' | 'photo' | 'backdate' | 'reminder';
 
 /** Tarife formu + tarama satırı + OCR durumları — park ve aktif sheet'lerde aynı. */
 function TariffEditor({ onOpenPaywall, onClose }: { onOpenPaywall: () => void; onClose: () => void }) {
@@ -342,8 +337,6 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
     setReminder,
     capturePhoto,
     removePhoto,
-    setParkLocation,
-    useMyLocationForPark,
   } = useSessionStore.getState();
   const cancelPark = useSessionStore((s) => s.cancelPark);
   const [customReminder, setCustomReminder] = useState(false);
@@ -374,7 +367,6 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
     if (reopenAfterPick !== 'park') return;
     useSessionStore.getState().clearReopenAfterPick();
     setDetailsOpen(true);
-    setOpenField('location');
   }, [reopenAfterPick]);
 
   const pickOnMap = () => {
@@ -462,34 +454,15 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
         </Animated.View>
       ) : (
         <Animated.View entering={FadeIn.duration(CROSSFADE_MS)} layout={layoutSpring} style={{ borderTopWidth: 1, borderTopColor: colors.gridline }}>
+          {/* Konum düzeltmenin tek yolu harita: satıra dokun, pini arabanın üstüne getir (§7.3).
+              Arama, "konumumu kullan" ve "haritada seç" üçlüsü aynı işi üç yerden yapıyordu. */}
           <Field
             label={t('parkLocation')}
             value={session.placeName}
-            placeholder={locationState === 'capturing' ? t('locating') : t('useMyLocation')}
-            open={openField === 'location'}
-            onToggle={() => toggle('location')}
-          >
-            <SearchBar
-              onPick={(result) => {
-                setParkLocation({ ...result.coords, placeName: result.label });
-                setOpenField(null);
-              }}
-              trailingSymbol="mappin.and.ellipse"
-              trailingLabel={t('pickOnMap')}
-              onLocate={pickOnMap}
-            />
-            <View style={{ flexDirection: 'row', gap: spacing.s8 }}>
-              <GhostButton
-                label={t('useMyLocation')}
-                onPress={() => {
-                  useMyLocationForPark();
-                  setOpenField(null);
-                }}
-                style={{ flex: 1 }}
-              />
-              <GhostButton label={t('pickOnMap')} onPress={pickOnMap} style={{ flex: 1 }} />
-            </View>
-          </Field>
+            placeholder={locationState === 'capturing' ? t('locating') : t('pickOnMap')}
+            open={false}
+            onToggle={pickOnMap}
+          />
 
           <Field
             label={t('floor')}
@@ -557,7 +530,8 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
             />
           </Field>
 
-          {/* Hatırlatıcı üç soruyu AYRI AYRI sorar: neye göre, ne kadar önce/sonra, nasıl. */}
+          {/* Hatırlatıcı: başlık yok, üç kısa çip satırı. "Kapalı / park sonrası / fiyat artmadan
+              önce" tek soru; süre ve uyarı biçimi yalnız açıkken. Açıklama yalnız sesli uyarıda. */}
           <Field
             label={t('remindMe')}
             value={reminderSummary}
@@ -565,15 +539,13 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
             open={openField === 'reminder'}
             onToggle={() => toggle('reminder')}
           >
-            <Overline>{t('reminderAnchor')}</Overline>
-            <ChipGroup<'off' | ReminderAnchor>
+            <ChipGroup<'off' | 'afterPark' | 'beforeEveryTier'>
               options={[
                 { key: 'off', label: t('reminderOff') },
                 { key: 'afterPark', label: t('anchorAfterPark') },
-                { key: 'beforeFirstTier', label: t('anchorFirstTier') },
                 { key: 'beforeEveryTier', label: t('anchorEveryTier') },
               ]}
-              value={reminder?.anchor ?? 'off'}
+              value={reminder ? (reminder.anchor === 'afterPark' ? 'afterPark' : 'beforeEveryTier') : 'off'}
               onChange={(next) => {
                 if (next === 'off') {
                   setReminder(null);
@@ -591,7 +563,6 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
             )}
             {reminder && (
               <>
-                <Overline>{reminder.anchor === 'afterPark' ? t('reminderAfterHow') : t('reminderBeforeHow')}</Overline>
                 <ChipGroup<number>
                   options={[
                     ...(reminder.anchor === 'afterPark'
@@ -627,7 +598,6 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
                     style={{ ...inputStyle(colors.inset, colors.ink), fontVariant: ['tabular-nums'] }}
                   />
                 )}
-                <Overline>{t('reminderKind')}</Overline>
                 <ChipGroup<ReminderKind>
                   options={[
                     { key: 'notification', label: t('kindNotification') },
@@ -637,7 +607,7 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
                   value={reminder.kind}
                   onChange={(kind) => setReminder({ ...reminder, kind })}
                 />
-                <Caption>{t('kindHint')}</Caption>
+                {reminder.kind !== 'notification' && <Caption>{t('kindHint')}</Caption>}
               </>
             )}
           </Field>
@@ -983,26 +953,6 @@ export function EndedSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
           )}
         </View>
 
-        {(session.photoUri || details.length > 0) && (
-          <View style={{ gap: spacing.s12 }}>
-            {session.photoUri && (
-              <PhotoThumb uri={session.photoUri}>
-                <Image
-                  source={{ uri: session.photoUri }}
-                  style={{ width: '100%', height: 200, borderRadius: radius.r16, backgroundColor: colors.inset }}
-                  contentFit="cover"
-                  accessibilityIgnoresInvertColors
-                />
-              </PhotoThumb>
-            )}
-            {details.map((line) => (
-              <Caption key={line} color={colors.ink}>
-                {line}
-              </Caption>
-            ))}
-          </View>
-        )}
-
         <View
           style={{
             flexDirection: 'row',
@@ -1018,6 +968,26 @@ export function EndedSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
             <SummaryColumn label={t('avoided')} value={`−${formatMoney(exit.saved, currency, locale)}`} valueColor={colors.accentText} />
           )}
         </View>
+
+        {/* Yer: küçük foto + kat + not. Para özetinin altında, ikincil; foto dokununca büyür. */}
+        {(session.photoUri || details.length > 0) && (
+          <View style={{ flexDirection: 'row', gap: spacing.s12, alignItems: 'center' }}>
+            {session.photoUri && (
+              <PhotoThumb uri={session.photoUri}>
+                <Image
+                  source={{ uri: session.photoUri }}
+                  style={{ width: 64, height: 64, borderRadius: radius.r16, backgroundColor: colors.inset }}
+                  contentFit="cover"
+                  accessibilityIgnoresInvertColors
+                />
+              </PhotoThumb>
+            )}
+            <View style={{ flex: 1, gap: 2 }}>
+              {!!session.floor && <Text style={{ fontSize: 15, fontWeight: '600', color: colors.ink }}>{session.floor}</Text>}
+              {!!session.note && <Caption>{session.note}</Caption>}
+            </View>
+          </View>
+        )}
 
         {/* Paylaşım kartı yalnız tasarruf varken: canlı minyatür + siyah "Share Card" (§7.8). */}
         {green && (
