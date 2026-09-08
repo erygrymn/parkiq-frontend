@@ -23,7 +23,6 @@ export const nlNL: Record<CopyKey, string> = {
   shareLocation: 'Locatie delen',
   endSession: 'Stoppen',
   done: 'Klaar',
-  keep: 'Laat lopen',
   undo: 'Ongedaan maken',
   shareCard: 'Besparing delen',
   // Keşif
@@ -71,7 +70,6 @@ export const nlNL: Record<CopyKey, string> = {
   perHour: '{amount} / uur',
   lastTimeTariff: 'Vorige keer: {summary} — gebruiken?',
   // Park sheet'i + tarife formu (§7.3–7.4)
-  detailsOptional: 'Details optioneel',
   pickOnMap: 'Kies op de kaart',
   pickOnMapHint: 'Schuif de kaart tot de speld op je auto staat',
   pickAreaHint: 'Schuif de kaart naar het gebied waar je zoekt',
@@ -111,10 +109,7 @@ export const nlNL: Record<CopyKey, string> = {
   scanUnavailable: 'Scannen werkt alleen in de volledige app',
   amountPerHour: 'Bedrag per uur',
   flatAmount: 'Totaalbedrag',
-  endQuestion: 'Parkeren stoppen?',
   addDetails: 'Details toevoegen',
-  endSessionStamp: 'Sessie beëindigen',
-  endAndSave: 'Beëindigen en {amount} besparen',
   savedWord: 'BESPAARD',
   parkedWord: 'GEPARKEERD',
   duration: 'Duur',
@@ -281,4 +276,15 @@ export const nlNL: Record<CopyKey, string> = {
   today: 'Vandaag',
   yesterday: 'Gisteren',
   stillParkedShort: 'Sta je er nog? Deze sessie loopt sinds gisteren.',
+  // Park anı hızlı soruları (§7.3) + aktif sheet Detaylar satırı (§7.5)
+  qLevel: 'Welke verdieping?',
+  qTariff: 'Wat kost het?',
+  qRemind: 'Later herinneren?',
+  street: 'Straat',
+  ground: 'Begane grond',
+  otherLevel: 'Anders',
+  enterTariff: 'Invoeren',
+  scanShort: 'Scannen',
+  lastTimeChip: 'Vorige keer · {summary}',
+  details: 'Details',
 };

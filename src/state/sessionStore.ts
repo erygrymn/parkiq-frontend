@@ -44,7 +44,7 @@ export interface Reminder {
   kind: ReminderKind;
 }
 
-export type SessionPhase = 'idle' | 'parking' | 'active' | 'finding' | 'ending' | 'ended';
+export type SessionPhase = 'idle' | 'parking' | 'active' | 'finding' | 'ended';
 export type LocationState = 'idle' | 'capturing' | 'ok' | 'weak' | 'denied' | 'unavailable';
 export type NotificationState = 'idle' | 'granted' | 'denied';
 export type CameraState = 'idle' | 'ok' | 'denied';
@@ -103,6 +103,8 @@ interface SessionStore {
   locationState: LocationState;
   /** Aynı yere tekrar park edildiğinde önerilen önceki tarife (§7.3 hafıza). */
   suggestedTariff: Tariff | null;
+  /** Aynı yerdeki son oturumun katı; park anı kat sorusunda ilk çip. */
+  suggestedFloor: string | null;
   /**
    * Tarife forma DIŞARIDAN yazıldığında artar (öneri kabulü gibi). Form bunu key
    * olarak kullanıp kendini tazeler; kullanıcı yazarken artmaz, odak kaybolmaz.
@@ -175,9 +177,8 @@ interface SessionStore {
   /** §7.6 Arabamı Bul bir sheet fazıdır: active ↔ finding. */
   startFinding: () => void;
   stopFinding: () => void;
-  requestEnd: () => void;
-  keep: () => void;
-  confirmEnd: () => void;
+  /** Tek dokunuşla biter (active|finding → ended); geri alma kutlama kapağındaki Undo (§7.8). */
+  endSession: () => void;
   undoEnd: () => void;
   /** Ön plana dönüşte kilit ekranı kartını yaşayan duruma getirir. */
   resumeLiveActivity: () => void;
@@ -246,6 +247,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   hydrated: false,
   locationState: 'idle',
   suggestedTariff: null,
+  suggestedFloor: null,
   externalTariffVersion: 0,
   notificationState: 'idle',
   cameraState: 'idle',
@@ -336,6 +338,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       session,
       locationState: 'capturing',
       suggestedTariff: null,
+      suggestedFloor: null,
       locationPinnedByUser: false,
     });
     trackParkStarted(get().autoDetected ? 'auto' : 'manual');
@@ -360,18 +363,20 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       persist(next);
 
       let remembered: Tariff | null = null;
-      if (!next.tariff) {
-        try {
-          remembered = repo().findRememberedTariff(outcome.place.latitude, outcome.place.longitude);
-        } catch {
-          remembered = null;
-        }
+      let rememberedFloor: string | null = null;
+      try {
+        if (!next.tariff) remembered = repo().findRememberedTariff(outcome.place.latitude, outcome.place.longitude);
+        if (!next.floor) rememberedFloor = repo().findRememberedFloor(outcome.place.latitude, outcome.place.longitude);
+      } catch {
+        remembered = null;
+        rememberedFloor = null;
       }
       // Doğruluk kötüyse kapalı otopark sinyali: kullanıcıyı kat/foto eklemeye yönlendir.
       set({
         session: next,
         locationState: isIndoorLike(outcome.place.accuracyM) ? 'weak' : 'ok',
         suggestedTariff: remembered,
+        suggestedFloor: rememberedFloor,
       });
     });
   },
@@ -706,18 +711,9 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     if (get().phase === 'finding') set({ phase: 'active' });
   },
 
-  requestEnd: () => {
-    const phase = get().phase;
-    if (phase === 'active' || phase === 'finding') set({ phase: 'ending' });
-  },
-
-  keep: () => {
-    if (get().phase === 'ending') set({ phase: 'active' });
-  },
-
-  confirmEnd: () => {
+  endSession: () => {
     const { phase, session } = get();
-    if (phase !== 'ending' || !session) return;
+    if ((phase !== 'active' && phase !== 'finding') || !session) return;
     const next = { ...session, endedAtMs: Date.now() };
     persist(next);
     set({ phase: 'ended', session: next });
@@ -739,7 +735,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     persist(next);
     set({ phase: 'active', session: next });
     syncAlerts(next, false, set); // Undo → uyarılar geri kurulur
-    // confirmEnd aktiviteyi kapatmıştı; geri alınca kilit ekranı da geri gelir.
+    // endSession aktiviteyi kapatmıştı; geri alınca kilit ekranı da geri gelir.
     syncLiveActivity('start');
   },
 

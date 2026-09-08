@@ -23,7 +23,6 @@ export const frFR: Record<CopyKey, string> = {
   shareLocation: 'Partager la position',
   endSession: 'Terminer',
   done: 'OK',
-  keep: 'Continuer',
   undo: 'Annuler',
   shareCard: 'Partager en image',
   // Keşif
@@ -71,7 +70,6 @@ export const frFR: Record<CopyKey, string> = {
   perHour: '{amount} / heure',
   lastTimeTariff: 'La dernière fois : {summary} — l’utiliser ?',
   // Park sheet'i + tarife formu (§7.3–7.4)
-  detailsOptional: 'Détails facultatifs',
   pickOnMap: 'Choisir sur la carte',
   pickOnMapHint: 'Déplacez la carte pour poser le repère sur votre voiture',
   pickAreaHint: 'Déplacez la carte pour choisir la zone de recherche',
@@ -111,10 +109,7 @@ export const frFR: Record<CopyKey, string> = {
   scanUnavailable: 'Le scan demande la version complète de l’app',
   amountPerHour: 'Montant par heure',
   flatAmount: 'Montant total',
-  endQuestion: 'Terminer ce stationnement ?',
   addDetails: 'Ajouter des détails',
-  endSessionStamp: 'Terminer la session',
-  endAndSave: 'Terminer et économiser {amount}',
   savedWord: 'ÉCONOMISÉ',
   parkedWord: 'GARÉE',
   duration: 'Durée',
@@ -281,4 +276,15 @@ export const frFR: Record<CopyKey, string> = {
   today: 'Aujourd’hui',
   yesterday: 'Hier',
   stillParkedShort: 'Toujours garé ? Ce stationnement a commencé hier.',
+  // Park anı hızlı soruları (§7.3) + aktif sheet Detaylar satırı (§7.5)
+  qLevel: 'Quel niveau ?',
+  qTariff: 'Quel tarif ?',
+  qRemind: 'Un rappel plus tard ?',
+  street: 'Rue',
+  ground: 'Rez-de-chaussée',
+  otherLevel: 'Autre',
+  enterTariff: 'Saisir',
+  scanShort: 'Scanner',
+  lastTimeChip: 'Dernière fois · {summary}',
+  details: 'Détails',
 };

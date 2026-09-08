@@ -11,6 +11,8 @@ import { PressScale } from './motion/PressScale';
 export interface ChipOption<T extends string | number> {
   key: T;
   label: string;
+  /** Yeşil para tonu: hafızadan gelen tarife önerisi gibi "bunu seç" çipleri (§5.10). */
+  tone?: 'accent';
 }
 
 export function ChipGroup<T extends string | number>({
@@ -19,7 +21,8 @@ export function ChipGroup<T extends string | number>({
   onChange,
 }: {
   options: ChipOption<T>[];
-  value: T;
+  /** null = hiçbiri seçili değil (park anı soruları: çipler cevaptır, durum değil). */
+  value: T | null;
   onChange: (key: T) => void;
 }) {
   const { colors } = useTheme();
@@ -44,10 +47,22 @@ export function ChipGroup<T extends string | number>({
               borderRadius: radius.rFull,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: selected ? colors.ink : pressed ? colors.insetPressed : colors.inset,
+              backgroundColor: selected
+                ? colors.ink
+                : pressed
+                  ? colors.insetPressed
+                  : opt.tone === 'accent'
+                    ? colors.alertBgMoney
+                    : colors.inset,
             })}
           >
-            <Text style={{ fontSize: 13, fontWeight: '600', color: selected ? colors.card : colors.ink }}>
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: '600',
+                color: selected ? colors.card : opt.tone === 'accent' ? colors.accentText : colors.ink,
+              }}
+            >
               {opt.label}
             </Text>
           </PressScale>

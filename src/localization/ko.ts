@@ -23,7 +23,6 @@ export const ko: Record<CopyKey, string> = {
   shareLocation: '위치 공유',
   endSession: '종료',
   done: '완료',
-  keep: '유지',
   undo: '되돌리기',
   shareCard: '카드 공유',
   // Keşif
@@ -71,7 +70,6 @@ export const ko: Record<CopyKey, string> = {
   perHour: '{amount} / 시간',
   lastTimeTariff: '지난번: {summary} — 그대로 쓸까요?',
   // Park sheet'i + tarife formu (§7.3–7.4)
-  detailsOptional: '세부 정보는 선택',
   pickOnMap: '지도에서 선택',
   pickOnMapHint: '핀이 차 위에 오도록 지도를 움직이세요',
   pickAreaHint: '검색할 곳으로 지도를 움직이세요',
@@ -111,10 +109,7 @@ export const ko: Record<CopyKey, string> = {
   scanUnavailable: '스캔은 정식 앱 빌드에서만 돼요',
   amountPerHour: '시간당 금액',
   flatAmount: '총 금액',
-  endQuestion: '주차를 끝낼까요?',
   addDetails: '세부 정보 추가',
-  endSessionStamp: '세션 종료',
-  endAndSave: '종료하고 {amount} 절약',
   savedWord: '절약',
   parkedWord: '주차',
   duration: '주차 시간',
@@ -281,4 +276,15 @@ export const ko: Record<CopyKey, string> = {
   today: '오늘',
   yesterday: '어제',
   stillParkedShort: '아직 주차 중인가요? 이 기록은 어제 시작됐어요.',
+  // Park anı hızlı soruları (§7.3) + aktif sheet Detaylar satırı (§7.5)
+  qLevel: '몇 층인가요?',
+  qTariff: '요금은요?',
+  qRemind: '나중에 알려드릴까요?',
+  street: '노상',
+  ground: '지상층',
+  otherLevel: '기타',
+  enterTariff: '입력',
+  scanShort: '스캔',
+  lastTimeChip: '지난번 · {summary}',
+  details: '세부 정보',
 };

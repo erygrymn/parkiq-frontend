@@ -23,7 +23,6 @@ export const zhHant: Record<CopyKey, string> = {
   shareLocation: '分享位置',
   endSession: '結束',
   done: '完成',
-  keep: '繼續',
   undo: '復原',
   shareCard: '分享卡片',
   // Keşif
@@ -71,7 +70,6 @@ export const zhHant: Record<CopyKey, string> = {
   perHour: '{amount} / 小時',
   lastTimeTariff: '上次：{summary} — 要用嗎？',
   // Park sheet'i + tarife formu (§7.3–7.4)
-  detailsOptional: '細節都是選填',
   pickOnMap: '在地圖上選',
   pickOnMapHint: '移動地圖，讓圖釘對準你的車',
   pickAreaHint: '移動地圖決定要搜尋的範圍',
@@ -111,10 +109,7 @@ export const zhHant: Record<CopyKey, string> = {
   scanUnavailable: '掃描需要完整版 App',
   amountPerHour: '每小時金額',
   flatAmount: '總金額',
-  endQuestion: '要結束這次停車嗎？',
   addDetails: '新增詳細資訊',
-  endSessionStamp: '結束停車',
-  endAndSave: '結束並省下 {amount}',
   savedWord: '省下',
   parkedWord: '停車',
   duration: '時間',
@@ -281,4 +276,15 @@ export const zhHant: Record<CopyKey, string> = {
   today: '今天',
   yesterday: '昨天',
   stillParkedShort: '還停著嗎？這次停車從昨天開始。',
+  // Park anı hızlı soruları (§7.3) + aktif sheet Detaylar satırı (§7.5)
+  qLevel: '哪一層？',
+  qTariff: '費用多少？',
+  qRemind: '稍後提醒？',
+  street: '路邊',
+  ground: '地面層',
+  otherLevel: '其他',
+  enterTariff: '輸入',
+  scanShort: '掃描',
+  lastTimeChip: '上次 · {summary}',
+  details: '詳細資料',
 };

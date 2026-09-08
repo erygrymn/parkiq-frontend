@@ -23,7 +23,6 @@ export const esES: Record<CopyKey, string> = {
   shareLocation: 'Compartir ubicación',
   endSession: 'Terminar',
   done: 'Listo',
-  keep: 'Seguir',
   undo: 'Deshacer',
   shareCard: 'Compartir tarjeta',
   // Keşif
@@ -71,7 +70,6 @@ export const esES: Record<CopyKey, string> = {
   perHour: '{amount} / hora',
   lastTimeTariff: 'La última vez: {summary} — ¿usarla?',
   // Park sheet'i + tarife formu (§7.3–7.4)
-  detailsOptional: 'Detalles opcionales',
   pickOnMap: 'Elegir en el mapa',
   pickOnMapHint: 'Mueve el mapa hasta que el pin quede sobre tu coche',
   pickAreaHint: 'Mueve el mapa para elegir dónde buscar',
@@ -111,10 +109,7 @@ export const esES: Record<CopyKey, string> = {
   scanUnavailable: 'El escaneo necesita la versión completa de la app',
   amountPerHour: 'Importe por hora',
   flatAmount: 'Importe total',
-  endQuestion: '¿Terminar la sesión?',
   addDetails: 'Añadir detalles',
-  endSessionStamp: 'Terminar sesión',
-  endAndSave: 'Terminar y ahorrar {amount}',
   savedWord: 'AHORRADO',
   parkedWord: 'APARCADO',
   duration: 'Duración',
@@ -281,4 +276,15 @@ export const esES: Record<CopyKey, string> = {
   today: 'Hoy',
   yesterday: 'Ayer',
   stillParkedShort: '¿Sigues aparcado? Esta sesión empezó ayer.',
+  // Park anı hızlı soruları (§7.3) + aktif sheet Detaylar satırı (§7.5)
+  qLevel: '¿Qué planta?',
+  qTariff: '¿Cuánto cuesta?',
+  qRemind: '¿Te aviso luego?',
+  street: 'Calle',
+  ground: 'Planta baja',
+  otherLevel: 'Otra',
+  enterTariff: 'Introducir',
+  scanShort: 'Escanear',
+  lastTimeChip: 'La última vez · {summary}',
+  details: 'Detalles',
 };

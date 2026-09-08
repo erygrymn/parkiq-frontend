@@ -23,7 +23,6 @@ export const deDE: Record<CopyKey, string> = {
   shareLocation: 'Standort teilen',
   endSession: 'Beenden',
   done: 'Fertig',
-  keep: 'Weiter parken',
   undo: 'Rückgängig',
   shareCard: 'Als Bild teilen',
   // Keşif
@@ -71,7 +70,6 @@ export const deDE: Record<CopyKey, string> = {
   perHour: '{amount} / Stunde',
   lastTimeTariff: 'Letztes Mal: {summary} — übernehmen?',
   // Park sheet'i + tarife formu (§7.3–7.4)
-  detailsOptional: 'Details optional',
   pickOnMap: 'Auf der Karte wählen',
   pickOnMapHint: 'Karte verschieben, bis der Pin auf dem Auto liegt',
   pickAreaHint: 'Karte verschieben, um den Suchbereich zu setzen',
@@ -111,10 +109,7 @@ export const deDE: Record<CopyKey, string> = {
   scanUnavailable: 'Scannen braucht den vollständigen App-Build',
   amountPerHour: 'Betrag pro Stunde',
   flatAmount: 'Gesamtbetrag',
-  endQuestion: 'Parkvorgang beenden?',
   addDetails: 'Details hinzufügen',
-  endSessionStamp: 'Sitzung beenden',
-  endAndSave: 'Beenden & {amount} sparen',
   savedWord: 'GESPART',
   parkedWord: 'GEPARKT',
   duration: 'Dauer',
@@ -281,4 +276,15 @@ export const deDE: Record<CopyKey, string> = {
   today: 'Heute',
   yesterday: 'Gestern',
   stillParkedShort: 'Stehst du noch? Dieser Parkvorgang läuft seit gestern.',
+  // Park anı hızlı soruları (§7.3) + aktif sheet Detaylar satırı (§7.5)
+  qLevel: 'Welche Ebene?',
+  qTariff: 'Was kostet es?',
+  qRemind: 'Später erinnern?',
+  street: 'Straße',
+  ground: 'Erdgeschoss',
+  otherLevel: 'Andere',
+  enterTariff: 'Eingeben',
+  scanShort: 'Scannen',
+  lastTimeChip: 'Letztes Mal · {summary}',
+  details: 'Details',
 };

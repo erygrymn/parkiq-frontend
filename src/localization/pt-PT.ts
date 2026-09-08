@@ -36,7 +36,6 @@ export const ptPT: Partial<Record<CopyKey, string>> = {
   scanNotDetected: 'Não foi possível ler a placa — chegue mais perto, evite reflexos ou introduza os valores',
   scanFailed: 'A leitura falhou — introduza os valores',
   scanning: 'A ler a placa',
-  endQuestion: 'Terminar esta sessão?',
   avoided: 'Poupança',
   locating: 'A localizar',
   indoorHint: 'O sinal está fraco aqui — use a foto e o piso.',

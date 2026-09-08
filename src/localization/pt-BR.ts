@@ -23,7 +23,6 @@ export const ptBR: Record<CopyKey, string> = {
   shareLocation: 'Compartilhar local',
   endSession: 'Encerrar',
   done: 'Pronto',
-  keep: 'Manter',
   undo: 'Desfazer',
   shareCard: 'Compartilhar cartão',
   // Keşif
@@ -71,7 +70,6 @@ export const ptBR: Record<CopyKey, string> = {
   perHour: '{amount} / hora',
   lastTimeTariff: 'Da última vez: {summary} — usar?',
   // Park sheet'i + tarife formu (§7.3–7.4)
-  detailsOptional: 'Detalhes opcionais',
   pickOnMap: 'Marcar no mapa',
   pickOnMapHint: 'Mova o mapa até o pino ficar sobre o carro',
   pickAreaHint: 'Mova o mapa para definir onde buscar',
@@ -111,10 +109,7 @@ export const ptBR: Record<CopyKey, string> = {
   scanUnavailable: 'A leitura só funciona na versão completa do app',
   amountPerHour: 'Valor por hora',
   flatAmount: 'Valor total',
-  endQuestion: 'Encerrar esta sessão?',
   addDetails: 'Adicionar detalhes',
-  endSessionStamp: 'Encerrar sessão',
-  endAndSave: 'Encerrar e economizar {amount}',
   savedWord: 'NO BOLSO',
   parkedWord: 'ESTACIONADO',
   duration: 'Duração',
@@ -281,4 +276,15 @@ export const ptBR: Record<CopyKey, string> = {
   today: 'Hoje',
   yesterday: 'Ontem',
   stillParkedShort: 'Ainda estacionado? Esta sessão começou ontem.',
+  // Park anı hızlı soruları (§7.3) + aktif sheet Detaylar satırı (§7.5)
+  qLevel: 'Qual andar?',
+  qTariff: 'Quanto custa?',
+  qRemind: 'Lembrar depois?',
+  street: 'Rua',
+  ground: 'Térreo',
+  otherLevel: 'Outro',
+  enterTariff: 'Digitar',
+  scanShort: 'Escanear',
+  lastTimeChip: 'Última vez · {summary}',
+  details: 'Detalhes',
 };

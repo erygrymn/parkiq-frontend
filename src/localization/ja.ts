@@ -23,7 +23,6 @@ export const ja: Record<CopyKey, string> = {
   shareLocation: '位置を共有',
   endSession: '終了',
   done: '完了',
-  keep: '続ける',
   undo: '取り消す',
   shareCard: 'カードを共有',
   // Keşif
@@ -71,7 +70,6 @@ export const ja: Record<CopyKey, string> = {
   perHour: '{amount} / 時間',
   lastTimeTariff: '前回：{summary} — 使いますか？',
   // Park sheet'i + tarife formu (§7.3–7.4)
-  detailsOptional: '詳細は任意',
   pickOnMap: '地図で選ぶ',
   pickOnMapHint: '地図を動かしてピンを車の位置に合わせてください',
   pickAreaHint: '地図を動かして探す場所を決めてください',
@@ -111,10 +109,7 @@ export const ja: Record<CopyKey, string> = {
   scanUnavailable: 'スキャンは完全版のビルドでのみ使えます',
   amountPerHour: '1時間あたりの金額',
   flatAmount: '合計金額',
-  endQuestion: 'この駐車を終了しますか？',
   addDetails: '詳細を追加',
-  endSessionStamp: 'セッション終了',
-  endAndSave: '終了して{amount}節約',
   savedWord: '節約',
   parkedWord: '駐車',
   duration: '駐車時間',
@@ -281,4 +276,15 @@ export const ja: Record<CopyKey, string> = {
   today: '今日',
   yesterday: '昨日',
   stillParkedShort: 'まだ駐車中ですか？この記録は昨日から続いています。',
+  // Park anı hızlı soruları (§7.3) + aktif sheet Detaylar satırı (§7.5)
+  qLevel: 'どの階？',
+  qTariff: '料金は？',
+  qRemind: '後で通知する？',
+  street: '路上',
+  ground: '1階',
+  otherLevel: 'その他',
+  enterTariff: '入力',
+  scanShort: 'スキャン',
+  lastTimeChip: '前回 · {summary}',
+  details: '詳細',
 };

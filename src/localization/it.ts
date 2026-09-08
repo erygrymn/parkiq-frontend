@@ -24,7 +24,6 @@ export const it: Record<CopyKey, string> = {
   shareLocation: 'Condividi posizione',
   endSession: 'Termina',
   done: 'Fatto',
-  keep: 'Prosegui',
   undo: 'Annulla',
   shareCard: 'Condividi scheda',
   // Keşif
@@ -72,7 +71,6 @@ export const it: Record<CopyKey, string> = {
   perHour: '{amount} / ora',
   lastTimeTariff: 'L’ultima volta: {summary} — la usi?',
   // Park sheet'i + tarife formu (§7.3–7.4)
-  detailsOptional: 'Dettagli facoltativi',
   pickOnMap: 'Segna sulla mappa',
   pickOnMapHint: 'Sposta la mappa finché il pin è sull’auto',
   pickAreaHint: 'Sposta la mappa per scegliere dove cercare',
@@ -112,10 +110,7 @@ export const it: Record<CopyKey, string> = {
   scanUnavailable: 'La scansione richiede la versione completa dell’app',
   amountPerHour: 'Importo orario',
   flatAmount: 'Importo totale',
-  endQuestion: 'Terminare la sosta?',
   addDetails: 'Aggiungi dettagli',
-  endSessionStamp: 'Termina sessione',
-  endAndSave: 'Termina e risparmia {amount}',
   savedWord: 'IN TASCA',
   parkedWord: 'PARCHEGGIATO',
   duration: 'Durata',
@@ -282,4 +277,15 @@ export const it: Record<CopyKey, string> = {
   today: 'Oggi',
   yesterday: 'Ieri',
   stillParkedShort: 'Ancora in sosta? Questa sosta è iniziata ieri.',
+  // Park anı hızlı soruları (§7.3) + aktif sheet Detaylar satırı (§7.5)
+  qLevel: 'Quale piano?',
+  qTariff: 'Quanto costa?',
+  qRemind: 'Ti ricordo più tardi?',
+  street: 'Strada',
+  ground: 'Piano terra',
+  otherLevel: 'Altro',
+  enterTariff: 'Inserisci',
+  scanShort: 'Scansiona',
+  lastTimeChip: 'L’ultima volta · {summary}',
+  details: 'Dettagli',
 };

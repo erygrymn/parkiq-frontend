@@ -95,6 +95,7 @@ Bağlayıcı olduğunda claude.ai bağlayıcı ayarlarından yetkilendirilmesi g
 - [x] Onboarding: Reanimated; gezen nokta (üç yuva scroll offset'inden interpolasyon: konum, renk, boy);
       zemin `interpolateColor`; giriş 200 ms + `DOT_SPRING`; Reduce Motion'da inline nokta + crossfade; RN `Animated` kalmadı.
 - [x] Geçmiş: kutusuz KPI (`StatTiles`), hairline satırlar, ilk 8 satır stagger, silme onayı `ConfirmSheet`.
+- [x] Park anı hızlı sorular (2026-09-08): form yerine Kat → Tarife → Hatırlat çip soruları, her biri atlanabilir; not/backdate/hatırlatıcı ayrıntıları aktif sheet "Details" satırına taşındı. Bitirme tek dokunuş (`endSession`), `ending` fazı silindi; Undo kutlama kapağında.
 - [x] Geçmiş kök sheet sahnesi oldu (2026-09-08): ayrı pageSheet yok; noktalar haritada, satır → kamera uçuşu + araba pini, detay sheet içinde. Ayarlar pageSheet kaldı (koyu yüzey `surface/card`, 17/600 ortalanmış başlık).
 - [x] Paywall: sistem Alert'ler kalktı; başarı → sheet kapanır + kök `ProStamp` ("PRO." ink nokta + haptik);
       restore satırları in-surface; plan kartı hairline + seçili ink border. Kullanıcının rakamı zaten başlık altında.

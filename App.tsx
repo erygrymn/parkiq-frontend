@@ -110,7 +110,6 @@ function SheetContent({ phase, onOpenPaywall }: { phase: SessionPhase; onOpenPay
       case 'parking':
         return <ParkingSheet onOpenPaywall={onOpenPaywall} />;
       case 'active':
-      case 'ending':
         return <ActiveSheet onOpenPaywall={onOpenPaywall} />;
       case 'finding':
         return <FindingSheet onOpenPaywall={onOpenPaywall} />;
@@ -241,7 +240,7 @@ function Root() {
   // §4.10: premium kontrolü YOK — Live Activity işletim sistemi yeteneğidir, satılmaz.
   const session = useSessionStore((s) => s.session);
   const warnThresholdMin = useSettingsStore((s) => s.warnThresholdMin);
-  const sessionLive = (phase === 'active' || phase === 'finding' || phase === 'ending') && session !== null;
+  const sessionLive = (phase === 'active' || phase === 'finding') && session !== null;
   useEffect(() => {
     if (!sessionLive || !session) return;
     const id = setInterval(() => refreshSessionActivity(session, warnThresholdMin), 60_000);

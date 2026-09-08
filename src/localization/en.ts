@@ -22,7 +22,6 @@ export const en = {
   shareLocation: 'Share Location',
   endSession: 'End',
   done: 'Done',
-  keep: 'Keep',
   undo: 'Undo',
   shareCard: 'Share Card',
   // Keşif
@@ -70,7 +69,6 @@ export const en = {
   perHour: '{amount} / hour',
   lastTimeTariff: 'Last time: {summary} — use it?',
   // Park sheet'i + tarife formu (§7.3–7.4)
-  detailsOptional: 'Details optional',
   pickOnMap: 'Pick on the map',
   pickOnMapHint: 'Move the map so the pin sits on your car',
   pickAreaHint: 'Move the map to set where to search',
@@ -110,10 +108,7 @@ export const en = {
   scanUnavailable: 'Scanning needs the full app build',
   amountPerHour: 'Amount per hour',
   flatAmount: 'Total amount',
-  endQuestion: 'End this session?',
   addDetails: 'Add details',
-  endSessionStamp: 'End session',
-  endAndSave: 'End & save {amount}',
   savedWord: 'SAVED',
   parkedWord: 'PARKED',
   duration: 'Duration',
@@ -280,5 +275,16 @@ export const en = {
   today: 'Today',
   yesterday: 'Yesterday',
   stillParkedShort: 'Still parked? This session started yesterday.',
+  // Park anı hızlı soruları (§7.3) + aktif sheet Detaylar satırı (§7.5)
+  qLevel: 'Which level?',
+  qTariff: 'What does it cost?',
+  qRemind: 'Remind you later?',
+  street: 'Street',
+  ground: 'Ground',
+  otherLevel: 'Other',
+  enterTariff: 'Enter',
+  scanShort: 'Scan',
+  lastTimeChip: 'Last time · {summary}',
+  details: 'Details',
 } as const;
 export type CopyKey = keyof typeof en;

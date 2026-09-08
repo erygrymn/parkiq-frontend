@@ -320,53 +320,67 @@ function TariffEditor({ onOpenPaywall, onClose }: { onOpenPaywall: () => void; o
   );
 }
 
+/** Park anı soruları: yalnız cevabı bir dokunuş olanlar. Tarife varsa dilim uyarıları zaten kurulur → hatırlatma sorulmaz. */
+type ParkStep = 'level' | 'tariff' | 'remind';
+
+function parkSteps(hasTariff: boolean): ParkStep[] {
+  return hasTariff ? ['level', 'tariff'] : ['level', 'tariff', 'remind'];
+}
+
+/** Soru başlığı satırı: overline + sağda "Atla". */
+function StepHeader({ label, question, onSkip }: { label: string; question: string; onSkip: () => void }) {
+  const { colors } = useTheme();
+  return (
+    <View style={{ gap: spacing.s4 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Overline>{label}</Overline>
+        <Pressable accessibilityRole="button" onPress={onSkip} hitSlop={12} style={{ height: 32, justifyContent: 'center' }}>
+          {({ pressed }) => (
+            <Text style={{ fontSize: 13, fontWeight: '600', color: pressed ? colors.ink : colors.textSecondary }}>{t('skip')}</Text>
+          )}
+        </Pressable>
+      </View>
+      <Text style={{ fontSize: typeScale.headline.fontSize, fontWeight: typeScale.headline.fontWeight, color: colors.ink }}>
+        {question}
+      </Text>
+    </View>
+  );
+}
+
+/** Seçim görünsün diye cevap 180 ms ekranda kalır, sonra sıradaki soru gelir. */
+const ANSWER_HOLD_MS = 180;
+
 export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   const { colors } = useTheme();
   const session = useSessionStore((s) => s.session);
   const locationState = useSessionStore((s) => s.locationState);
   const suggestedTariff = useSessionStore((s) => s.suggestedTariff);
+  const suggestedFloor = useSessionStore((s) => s.suggestedFloor);
   const cameraState = useSessionStore((s) => s.cameraState);
   const autoDetected = useSessionStore((s) => s.autoDetected);
   const dismissAutoPark = useSessionStore((s) => s.dismissAutoPark);
-  const {
-    setFloor,
-    setNote,
-    acceptSuggestedTariff,
-    confirmDetails,
-    setBackdateMinutes,
-    setReminder,
-    capturePhoto,
-    removePhoto,
-  } = useSessionStore.getState();
+  const { setFloor, acceptSuggestedTariff, confirmDetails, setReminder, capturePhoto, scanTariff } = useSessionStore.getState();
   const cancelPark = useSessionStore((s) => s.cancelPark);
-  const [customReminder, setCustomReminder] = useState(false);
-  const warnThresholdMin = useSettingsStore((s) => s.warnThresholdMin);
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [openField, setOpenField] = useState<ParkField | null>(null);
+  const [stepIndex, setStepIndex] = useState(0);
+  const [answered, setAnswered] = useState<string | null>(null);
+  const [customLevel, setCustomLevel] = useState(false);
   const [tariffOpen, setTariffOpen] = useState(false);
   const [undoVisible, setUndoVisible] = useState(true);
-  const toggle = (field: ParkField) => setOpenField((current) => (current === field ? null : field));
+  const holdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // §7.3: "Undo" 10 sn görünür; sonra sheet'i aşağı çekmek geri alma yolu olarak kalır.
   useEffect(() => {
     const id = setTimeout(() => setUndoVisible(false), 10_000);
-    return () => clearTimeout(id);
+    return () => {
+      clearTimeout(id);
+      if (holdRef.current) clearTimeout(holdRef.current);
+    };
   }, []);
 
-  // Soğuk açılışta yarım kalmış form: doldurulmuş alan varsa detaylar açık gelir.
-  useEffect(() => {
-    if (session && (session.floor || session.note || session.photoUri || session.tariff || session.reminder)) {
-      setDetailsOpen(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Pin bırakılırken bu panel tamamen unmount olur; dönüşte konum alanı yeniden açılır.
+  // Pin bırakılırken bu panel tamamen unmount olur; dönüşte sorular baştan başlar (hepsi atlanabilir).
   const reopenAfterPick = useSessionStore((s) => s.reopenAfterPick);
   useEffect(() => {
-    if (reopenAfterPick !== 'park') return;
-    useSessionStore.getState().clearReopenAfterPick();
-    setDetailsOpen(true);
+    if (reopenAfterPick === 'park') useSessionStore.getState().clearReopenAfterPick();
   }, [reopenAfterPick]);
 
   const pickOnMap = () => {
@@ -377,24 +391,28 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
     useSessionStore.getState().startPickingLocation('park');
   };
 
+  // Sıradaki soru; soru kalmadıysa oturum aktife geçer. Adım listesi o anki tarifeye göre hesaplanır
+  // (tarife girildiyse hatırlatma sorusu düşer).
+  const advance = () => {
+    const steps = parkSteps(useSessionStore.getState().session?.tariff != null);
+    const next = stepIndex + 1;
+    setAnswered(null);
+    setCustomLevel(false);
+    if (next >= steps.length) confirmDetails();
+    else setStepIndex(next);
+  };
+  const answer = (key: string | number, apply: () => void) => {
+    setAnswered(String(key));
+    apply();
+    if (holdRef.current) clearTimeout(holdRef.current);
+    holdRef.current = setTimeout(advance, ANSWER_HOLD_MS);
+  };
+
   if (!session) return null;
 
-  const backdateMinutes = Math.round((session.recordedAtMs - session.startedAtMs) / 60_000);
-  const reminder = session.reminder;
-  const reminderSummary = reminder
-    ? [
-        reminder.minutes < 60
-          ? t('minutesShort', { minutes: reminder.minutes })
-          : t('hoursShort', { hours: Math.round((reminder.minutes / 60) * 10) / 10 }),
-        t(
-          reminder.anchor === 'afterPark'
-            ? 'anchorAfterPark'
-            : reminder.anchor === 'beforeFirstTier'
-              ? 'anchorFirstTier'
-              : 'anchorEveryTier',
-        ).toLocaleLowerCase(),
-      ].join(' · ')
-    : null;
+  const steps = parkSteps(session.tariff != null);
+  const step = steps[Math.min(stepIndex, steps.length - 1)];
+  const levelKeys = ['−3', '−2', '−1', 'G', '1', '2', '3'];
 
   // Yer adı META'dır: nokta hakkı duygu damgasınındır (§2 tie-breaker).
   const overline = [
@@ -421,217 +439,119 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
       {locationState === 'denied' && <StatusLine label={t('locationOff')} onPress={openAppSettings} />}
       {/* §7.3 zayıf GPS = kapalı otopark sinyali → kat/foto burada işe yarar */}
       {locationState === 'weak' && <StatusLine label={t('weakGpsNudge')} />}
+      {(locationState === 'unavailable' || locationState === 'denied') && (
+        <StatusLine label={t('locationMissing')} onPress={pickOnMap} />
+      )}
       {/* Oto-algılama tetiklediyse geri alma yolu açık kalır */}
       {autoDetected && <StatusLine label={t('notParkedYet')} onPress={dismissAutoPark} />}
 
-      {suggestedTariff && (
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: spacing.s12,
-            borderRadius: radius.r16,
-            backgroundColor: colors.alertBgMoney,
-            borderWidth: 1,
-            borderColor: 'rgba(0,166,80,0.22)',
-            paddingVertical: spacing.s12,
-            paddingHorizontal: spacing.s16,
-          }}
-        >
-          <Text style={{ flex: 1, fontSize: 13, color: colors.accentText }}>
-            {t('lastTimeTariff', { summary: formatTariffSummary(suggestedTariff, getLocale()) })}
-          </Text>
-          <Pressable accessibilityRole="button" onPress={acceptSuggestedTariff} hitSlop={8}>
-            <Text style={{ fontSize: 13, fontWeight: '800', color: colors.accentText }}>{t('use')}</Text>
-          </Pressable>
-        </View>
-      )}
-
-      {/* Zorunlu alan sıfır: detaylar tek satırın arkasında, aynı sheet içinde açılır (§7.3). */}
-      {!detailsOpen ? (
-        <Animated.View layout={layoutSpring} style={{ borderTopWidth: 1, borderTopColor: colors.gridline }}>
-          <DetailRow label={`+ ${t('addDetails')}`} value={null} placeholder={t('detailsOptional')} onPress={() => setDetailsOpen(true)} />
-        </Animated.View>
-      ) : (
-        <Animated.View entering={FadeIn.duration(CROSSFADE_MS)} layout={layoutSpring} style={{ borderTopWidth: 1, borderTopColor: colors.gridline }}>
-          {/* Konum düzeltmenin tek yolu harita: satıra dokun, pini arabanın üstüne getir (§7.3).
-              Arama, "konumumu kullan" ve "haritada seç" üçlüsü aynı işi üç yerden yapıyordu. */}
-          <Field
-            label={t('parkLocation')}
-            value={session.placeName}
-            placeholder={locationState === 'capturing' ? t('locating') : t('pickOnMap')}
-            open={false}
-            onToggle={pickOnMap}
-          />
-
-          <Field
-            label={t('floor')}
-            value={session.floor || null}
-            placeholder={t('floorPlaceholder')}
-            open={openField === 'floor'}
-            onToggle={() => toggle('floor')}
-          >
-            <BottomSheetTextInput
-              defaultValue={session.floor}
-              onChangeText={setFloor}
-              placeholder={t('floorPlaceholder')}
-              placeholderTextColor={colors.textSecondary}
-              autoFocus
-              returnKeyType="done"
-              onSubmitEditing={() => setOpenField(null)}
-              style={inputStyle(colors.inset, colors.ink)}
-            />
-          </Field>
-
-          <Field
-            label={t('note')}
-            value={session.note || null}
-            placeholder={t('notePlaceholder')}
-            open={openField === 'note'}
-            onToggle={() => toggle('note')}
-          >
-            <BottomSheetTextInput
-              defaultValue={session.note}
-              onChangeText={setNote}
-              placeholder={t('notePlaceholder')}
-              placeholderTextColor={colors.textSecondary}
-              autoFocus
-              returnKeyType="done"
-              onSubmitEditing={() => setOpenField(null)}
-              style={inputStyle(colors.inset, colors.ink)}
-            />
-          </Field>
-
-          <Field
-            label={t('photo')}
-            value={session.photoUri ? t('photoAdded') : null}
-            placeholder={t('addPhoto')}
-            open={openField === 'photo'}
-            onToggle={() => toggle('photo')}
-          >
-            <PhotoField uri={session.photoUri} onCapture={capturePhoto} onRemove={removePhoto} />
-            {cameraState === 'denied' && <StatusLine label={t('cameraOff')} onPress={openAppSettings} />}
-          </Field>
-
-          <Field
-            label={t('parkedWhen')}
-            value={backdateMinutes === 0 ? null : t('minutesAgo', { minutes: backdateMinutes })}
-            placeholder={t('justNow')}
-            open={openField === 'backdate'}
-            onToggle={() => toggle('backdate')}
-          >
-            <ChipGroup<number>
+      {/* §7.3 hızlı sorular: form yok. Her soru tek dokunuşla cevaplanır ya da atlanır; yazı
+          yalnız "Başka" seçilince istenir. Cevap → 180 ms → sıradaki soru; sorular bitince aktif. */}
+      <Animated.View
+        key={step}
+        entering={FadeIn.duration(CROSSFADE_MS)}
+        layout={layoutSpring}
+        style={{ gap: spacing.s12, borderTopWidth: 1, borderTopColor: colors.gridline, paddingTop: spacing.s12 }}
+      >
+        {step === 'level' && (
+          <>
+            <StepHeader label={t('floor')} question={t('qLevel')} onSkip={advance} />
+            <ChipGroup<string>
               options={[
-                { key: 0, label: t('justNow') },
-                ...[5, 10, 15, 30].map((m) => ({ key: m, label: t('minutesAgo', { minutes: m }) })),
+                // Aynı yerdeki son kat: bir dokunuş, yeşil tonda; listedeki kopyası gizlenir.
+                ...(suggestedFloor ? [{ key: 'last', label: suggestedFloor, tone: 'accent' as const }] : []),
+                { key: 'street', label: t('street') },
+                ...levelKeys
+                  .filter((k) => (k === 'G' ? t('ground') : k) !== suggestedFloor)
+                  .map((k) => ({ key: k, label: k === 'G' ? t('ground') : k })),
+                { key: 'other', label: t('otherLevel') },
+                { key: 'photo', label: t('photo') },
               ]}
-              value={backdateMinutes}
-              onChange={setBackdateMinutes}
-            />
-          </Field>
-
-          {/* Hatırlatıcı: başlık yok, üç kısa çip satırı. "Kapalı / park sonrası / fiyat artmadan
-              önce" tek soru; süre ve uyarı biçimi yalnız açıkken. Açıklama yalnız sesli uyarıda. */}
-          <Field
-            label={t('remindMe')}
-            value={reminderSummary}
-            placeholder={t('reminderOff')}
-            open={openField === 'reminder'}
-            onToggle={() => toggle('reminder')}
-          >
-            <ChipGroup<'off' | 'afterPark' | 'beforeEveryTier'>
-              options={[
-                { key: 'off', label: t('reminderOff') },
-                { key: 'afterPark', label: t('anchorAfterPark') },
-                { key: 'beforeEveryTier', label: t('anchorEveryTier') },
-              ]}
-              value={reminder ? (reminder.anchor === 'afterPark' ? 'afterPark' : 'beforeEveryTier') : 'off'}
-              onChange={(next) => {
-                if (next === 'off') {
-                  setReminder(null);
+              value={answered ?? (customLevel ? 'other' : session.photoUri ? 'photo' : null)}
+              onChange={(key) => {
+                if (key === 'photo') {
+                  capturePhoto();
                   return;
                 }
-                setReminder({
-                  anchor: next,
-                  minutes: reminder?.minutes ?? (next === 'afterPark' ? 60 : warnThresholdMin),
-                  kind: reminder?.kind ?? 'notification',
-                });
+                if (key === 'other') {
+                  setCustomLevel(true);
+                  return;
+                }
+                answer(key, () =>
+                  setFloor(key === 'street' ? '' : key === 'last' ? (suggestedFloor ?? '') : key === 'G' ? t('ground') : key),
+                );
               }}
             />
-            {reminder && reminder.anchor !== 'afterPark' && session.tariff === null && (
-              <StatusLine label={t('reminderNeedsTariff')} onPress={() => setTariffOpen(true)} />
+            {customLevel && (
+              <BottomSheetTextInput
+                defaultValue={session.floor}
+                onChangeText={setFloor}
+                placeholder={t('floorPlaceholder')}
+                placeholderTextColor={colors.textSecondary}
+                autoFocus
+                returnKeyType="done"
+                onSubmitEditing={advance}
+                style={inputStyle(colors.inset, colors.ink)}
+              />
             )}
-            {reminder && (
-              <>
-                <ChipGroup<number>
-                  options={[
-                    ...(reminder.anchor === 'afterPark'
-                      ? [30, 60, 120, 180].map((m) => ({
-                          key: m,
-                          label: m < 60 ? t('minutesShort', { minutes: m }) : t('hoursShort', { hours: m / 60 }),
-                        }))
-                      : [5, 10, 15, 30].map((m) => ({ key: m, label: t('minutesShort', { minutes: m }) }))),
-                    { key: -1, label: t('custom') },
-                  ]}
-                  value={customReminder ? -1 : reminder.minutes}
-                  onChange={(minutes) => {
-                    if (minutes === -1) {
-                      setCustomReminder(true);
-                      return;
-                    }
-                    setCustomReminder(false);
-                    setReminder({ ...reminder, minutes });
-                  }}
-                />
-                {customReminder && (
-                  <BottomSheetTextInput
-                    defaultValue={String(reminder.minutes)}
-                    onChangeText={(text) => {
-                      const parsed = Number(text.replace(',', '.'));
-                      if (Number.isFinite(parsed) && parsed > 0) setReminder({ ...reminder, minutes: Math.round(parsed) });
-                    }}
-                    keyboardType="number-pad"
-                    autoFocus
-                    returnKeyType="done"
-                    placeholder={t('customMinutes')}
-                    placeholderTextColor={colors.textSecondary}
-                    style={{ ...inputStyle(colors.inset, colors.ink), fontVariant: ['tabular-nums'] }}
-                  />
-                )}
-                <ChipGroup<ReminderKind>
-                  options={[
-                    { key: 'notification', label: t('kindNotification') },
-                    { key: 'alarm', label: t('kindAlarm') },
-                    { key: 'both', label: t('kindBoth') },
-                  ]}
-                  value={reminder.kind}
-                  onChange={(kind) => setReminder({ ...reminder, kind })}
-                />
-                {reminder.kind !== 'notification' && <Caption>{t('kindHint')}</Caption>}
-              </>
-            )}
-          </Field>
+            {cameraState === 'denied' && <StatusLine label={t('cameraOff')} onPress={openAppSettings} />}
+          </>
+        )}
 
-          {/* Tarife editörü tek gerçek popup: dilim satırları + OCR (§7.4). */}
-          <Field
-            label={t('tariff')}
-            value={session.tariff ? formatTariffSummary(session.tariff, getLocale()) : null}
-            placeholder={t('tariffNone')}
-            open={false}
-            onToggle={() => setTariffOpen(true)}
-          />
-        </Animated.View>
-      )}
+        {step === 'tariff' && (
+          <>
+            <StepHeader label={t('tariff')} question={t('qTariff')} onSkip={advance} />
+            <ChipGroup<string>
+              options={[
+                ...(suggestedTariff
+                  ? [{ key: 'last', label: t('lastTimeChip', { summary: formatTariffSummary(suggestedTariff, getLocale()) }), tone: 'accent' as const }]
+                  : []),
+                { key: 'enter', label: t('enterTariff') },
+                { key: 'scan', label: t('scanShort') },
+              ]}
+              value={answered}
+              onChange={(key) => {
+                if (key === 'last') {
+                  answer(key, acceptSuggestedTariff);
+                  return;
+                }
+                // Editör tek gerçek popup (§7.4); kapanınca tarife girildiyse soru cevaplanmış sayılır.
+                setTariffOpen(true);
+                if (key === 'scan') scanTariff();
+              }}
+            />
+          </>
+        )}
+
+        {step === 'remind' && (
+          <>
+            <StepHeader label={t('remindMe')} question={t('qRemind')} onSkip={advance} />
+            <ChipGroup<number>
+              options={[
+                ...[1, 2, 3, 4].map((h) => ({ key: h * 60, label: t('hoursShort', { hours: h }) })),
+                { key: 0, label: t('reminderOff') },
+              ]}
+              value={answered === null ? null : Number(answered)}
+              onChange={(minutes) =>
+                answer(minutes, () => setReminder(minutes === 0 ? null : { anchor: 'afterPark', minutes, kind: 'notification' }))
+              }
+            />
+          </>
+        )}
+      </Animated.View>
 
       <Animated.View layout={layoutSpring}>
         <PrimaryCta label={t('done')} onPress={confirmDetails} />
       </Animated.View>
 
-      {(locationState === 'unavailable' || locationState === 'denied') && (
-        <StatusLine label={t('locationMissing')} onPress={pickOnMap} />
-      )}
-
-      <PopupSheet visible={tariffOpen} title={t('tariff')} onClose={() => setTariffOpen(false)}>
+      <PopupSheet
+        visible={tariffOpen}
+        title={t('tariff')}
+        onClose={() => {
+          setTariffOpen(false);
+          if (useSessionStore.getState().session?.tariff) advance();
+        }}
+      >
         <TariffEditor onOpenPaywall={onOpenPaywall} onClose={() => setTariffOpen(false)} />
       </PopupSheet>
     </Animated.View>
@@ -670,15 +590,120 @@ function ElapsedCounter({ startedAtMs }: { startedAtMs: number }) {
   );
 }
 
+/** Hatırlatıcı editörü: üç kısa çip satırı, açıklama yalnız sesli uyarıda. Yalnız aktif sheet'in Detaylar satırında. */
+function ReminderEditor({ session, onOpenTariff }: { session: ParkSession; onOpenTariff: () => void }) {
+  const { colors } = useTheme();
+  const { setReminder } = useSessionStore.getState();
+  const warnThresholdMin = useSettingsStore((s) => s.warnThresholdMin);
+  const [customReminder, setCustomReminder] = useState(false);
+  const reminder = session.reminder;
+  return (
+    <>
+      <ChipGroup<'off' | 'afterPark' | 'beforeEveryTier'>
+        options={[
+          { key: 'off', label: t('reminderOff') },
+          { key: 'afterPark', label: t('anchorAfterPark') },
+          { key: 'beforeEveryTier', label: t('anchorEveryTier') },
+        ]}
+        value={reminder ? (reminder.anchor === 'afterPark' ? 'afterPark' : 'beforeEveryTier') : 'off'}
+        onChange={(next) => {
+          if (next === 'off') {
+            setReminder(null);
+            return;
+          }
+          setReminder({
+            anchor: next,
+            minutes: reminder?.minutes ?? (next === 'afterPark' ? 60 : warnThresholdMin),
+            kind: reminder?.kind ?? 'notification',
+          });
+        }}
+      />
+      {reminder && reminder.anchor !== 'afterPark' && session.tariff === null && (
+        <StatusLine label={t('reminderNeedsTariff')} onPress={onOpenTariff} />
+      )}
+      {reminder && (
+        <>
+          <ChipGroup<number>
+            options={[
+              ...(reminder.anchor === 'afterPark'
+                ? [30, 60, 120, 180].map((m) => ({
+                    key: m,
+                    label: m < 60 ? t('minutesShort', { minutes: m }) : t('hoursShort', { hours: m / 60 }),
+                  }))
+                : [5, 10, 15, 30].map((m) => ({ key: m, label: t('minutesShort', { minutes: m }) }))),
+              { key: -1, label: t('custom') },
+            ]}
+            value={customReminder ? -1 : reminder.minutes}
+            onChange={(minutes) => {
+              if (minutes === -1) {
+                setCustomReminder(true);
+                return;
+              }
+              setCustomReminder(false);
+              setReminder({ ...reminder, minutes });
+            }}
+          />
+          {customReminder && (
+            <BottomSheetTextInput
+              defaultValue={String(reminder.minutes)}
+              onChangeText={(text) => {
+                const parsed = Number(text.replace(',', '.'));
+                if (Number.isFinite(parsed) && parsed > 0) setReminder({ ...reminder, minutes: Math.round(parsed) });
+              }}
+              keyboardType="number-pad"
+              autoFocus
+              returnKeyType="done"
+              placeholder={t('customMinutes')}
+              placeholderTextColor={colors.textSecondary}
+              style={{ ...inputStyle(colors.inset, colors.ink), fontVariant: ['tabular-nums'] }}
+            />
+          )}
+          <ChipGroup<ReminderKind>
+            options={[
+              { key: 'notification', label: t('kindNotification') },
+              { key: 'alarm', label: t('kindAlarm') },
+              { key: 'both', label: t('kindBoth') },
+            ]}
+            value={reminder.kind}
+            onChange={(kind) => setReminder({ ...reminder, kind })}
+          />
+          {reminder.kind !== 'notification' && <Caption>{t('kindHint')}</Caption>}
+        </>
+      )}
+    </>
+  );
+}
+
+function reminderSummaryOf(session: ParkSession): string | null {
+  const reminder = session.reminder;
+  if (!reminder) return null;
+  return [
+    reminder.minutes < 60
+      ? t('minutesShort', { minutes: reminder.minutes })
+      : t('hoursShort', { hours: Math.round((reminder.minutes / 60) * 10) / 10 }),
+    t(
+      reminder.anchor === 'afterPark'
+        ? 'anchorAfterPark'
+        : reminder.anchor === 'beforeFirstTier'
+          ? 'anchorFirstTier'
+          : 'anchorEveryTier',
+    ).toLocaleLowerCase(),
+  ].join(' · ');
+}
+
 export function ActiveSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   const { colors } = useTheme();
   const session = useSessionStore((s) => s.session);
-  const phase = useSessionStore((s) => s.phase);
   const notificationState = useSessionStore((s) => s.notificationState);
-  const { requestEnd, keep, confirmEnd, startFinding, startPickingLocation } = useSessionStore.getState();
+  const cameraState = useSessionStore((s) => s.cameraState);
+  const { endSession, startFinding, startPickingLocation, setFloor, setNote, setBackdateMinutes, capturePhoto, removePhoto } =
+    useSessionStore.getState();
   const online = useNetworkStore((s) => s.online);
   const warnThresholdMin = useSettingsStore((s) => s.warnThresholdMin);
   const [tariffOpen, setTariffOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [openField, setOpenField] = useState<ParkField | null>(null);
+  const toggle = (field: ParkField) => setOpenField((current) => (current === field ? null : field));
   // Çubuk, para kutusu ve amber durumu dakikalık bilgidir: 30 sn'de bir yeter; sayaç kendi 1 Hz'inde.
   const now = useNow(30_000);
   if (!session) return null;
@@ -690,8 +715,9 @@ export function ActiveSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   // Oturum, tarifenin okunduğu takvimin dışına taştı mı; fiyat SESSİZCE yeniden hesaplanmaz.
   const scheduleExpired = session.tariffSchedule != null && !appliesAt(session.tariffSchedule, new Date(now));
 
-  const exit = phase === 'ending' ? computeExitSummary(session.tariff, session.startedAtMs, now) : null;
-  const currency = session.tariff?.currency;
+  const backdateMinutes = Math.round((session.recordedAtMs - session.startedAtMs) / 60_000);
+  const detailsSummary =
+    [session.floor, session.photoUri ? t('photo') : null, session.note, reminderSummaryOf(session)].filter(Boolean).join(' · ') || null;
 
   return (
     <Animated.View layout={layoutSpring} style={{ paddingHorizontal: spacing.s20, paddingBottom: spacing.s20, gap: spacing.s16 }}>
@@ -745,71 +771,123 @@ export function ActiveSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
       {now - session.startedAtMs > 86_400_000 && <Caption>{t('stillParkedShort')}</Caption>}
       {!hasLocation && <StatusLine label={t('locationMissing')} onPress={() => startPickingLocation('park')} />}
 
-      {/* Sayaç başladıktan sonra da düzeltilebilir: hairline satırlar (§4 editöryal liste). */}
-      {phase !== 'ending' && (
-        <View style={{ borderTopWidth: 1, borderTopColor: colors.gridline }}>
-          <View style={{ borderBottomWidth: 1, borderBottomColor: colors.gridline }}>
-            <DetailRow
-              label={t('fixLocation')}
-              value={session.placeName}
-              placeholder={t('pickOnMap')}
-              onPress={() => startPickingLocation('park')}
+      {/* Sayaç başladıktan sonra da düzeltilebilir: üç hairline satır (§4 editöryal liste).
+          Park anında sorulmayan her şey (not, foto, "aslında … önce park ettim", hatırlatıcı
+          ayrıntıları) Detaylar satırının arkasında, aynı sheet içinde açılır. */}
+      <View style={{ borderTopWidth: 1, borderTopColor: colors.gridline }}>
+        <Field
+          label={t('fixLocation')}
+          value={session.placeName}
+          placeholder={t('pickOnMap')}
+          open={false}
+          onToggle={() => startPickingLocation('park')}
+        />
+        <Field
+          label={t('tariff')}
+          value={session.tariff ? formatTariffSummary(session.tariff, locale) : null}
+          placeholder={t('addTariff')}
+          open={false}
+          onToggle={() => setTariffOpen(true)}
+        />
+        <Field
+          label={t('details')}
+          value={detailsSummary}
+          placeholder={t('addDetails')}
+          open={detailsOpen}
+          onToggle={() => setDetailsOpen((open) => !open)}
+        >
+          <Field
+            label={t('floor')}
+            value={session.floor || null}
+            placeholder={t('floorPlaceholder')}
+            open={openField === 'floor'}
+            onToggle={() => toggle('floor')}
+          >
+            <BottomSheetTextInput
+              defaultValue={session.floor}
+              onChangeText={setFloor}
+              placeholder={t('floorPlaceholder')}
+              placeholderTextColor={colors.textSecondary}
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={() => setOpenField(null)}
+              style={inputStyle(colors.inset, colors.ink)}
             />
-          </View>
-          <View style={{ borderBottomWidth: 1, borderBottomColor: colors.gridline }}>
-            <DetailRow
-              label={t('tariff')}
-              value={session.tariff ? formatTariffSummary(session.tariff, locale) : null}
-              placeholder={t('addTariff')}
-              onPress={() => setTariffOpen(true)}
+          </Field>
+          <Field
+            label={t('note')}
+            value={session.note || null}
+            placeholder={t('notePlaceholder')}
+            open={openField === 'note'}
+            onToggle={() => toggle('note')}
+          >
+            <BottomSheetTextInput
+              defaultValue={session.note}
+              onChangeText={setNote}
+              placeholder={t('notePlaceholder')}
+              placeholderTextColor={colors.textSecondary}
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={() => setOpenField(null)}
+              style={inputStyle(colors.inset, colors.ink)}
             />
-          </View>
-        </View>
-      )}
+          </Field>
+          <Field
+            label={t('photo')}
+            value={session.photoUri ? t('photoAdded') : null}
+            placeholder={t('addPhoto')}
+            open={openField === 'photo'}
+            onToggle={() => toggle('photo')}
+          >
+            <PhotoField uri={session.photoUri} onCapture={capturePhoto} onRemove={removePhoto} />
+            {cameraState === 'denied' && <StatusLine label={t('cameraOff')} onPress={openAppSettings} />}
+          </Field>
+          <Field
+            label={t('parkedWhen')}
+            value={backdateMinutes === 0 ? null : t('minutesAgo', { minutes: backdateMinutes })}
+            placeholder={t('justNow')}
+            open={openField === 'backdate'}
+            onToggle={() => toggle('backdate')}
+          >
+            <ChipGroup<number>
+              options={[
+                { key: 0, label: t('justNow') },
+                ...[5, 10, 15, 30].map((m) => ({ key: m, label: t('minutesAgo', { minutes: m }) })),
+              ]}
+              value={backdateMinutes}
+              onChange={setBackdateMinutes}
+            />
+          </Field>
+          <Field
+            label={t('remindMe')}
+            value={reminderSummaryOf(session)}
+            placeholder={t('reminderOff')}
+            open={openField === 'reminder'}
+            onToggle={() => toggle('reminder')}
+          >
+            <ReminderEditor session={session} onOpenTariff={() => setTariffOpen(true)} />
+          </Field>
+        </Field>
+      </View>
 
       <PopupSheet visible={tariffOpen} title={t('tariff')} onClose={() => setTariffOpen(false)}>
         <TariffEditor onOpenPaywall={onOpenPaywall} onClose={() => setTariffOpen(false)} />
       </PopupSheet>
 
-      {phase === 'ending' ? (
-        // §7.8 bitirme: aynı sheet morph eder — "END SESSION." damgası (ink nokta) + para satırı.
-        <Animated.View entering={FadeIn.duration(CROSSFADE_MS)} style={{ gap: spacing.s12 }}>
-          <View style={{ gap: spacing.s4 }}>
-            <DisplayStamp text={t('endSessionStamp')} dotColor={colors.ink} size="S" />
-            {exit && exit.paid !== null && currency ? (
-              <Caption>
-                {`${t('paid')} ${formatMoney(exit.paid, currency, locale)}`}
-                {exit.saved !== null && exit.saved > 0 ? ` · ${t('avoided')} ${formatMoney(exit.saved, currency, locale)}` : ''}
-              </Caption>
-            ) : (
-              <Caption>{t('endQuestion')}</Caption>
-            )}
-          </View>
-          <PrimaryCta
-            label={
-              exit && exit.saved !== null && exit.saved > 0 && currency
-                ? t('endAndSave', { amount: formatMoney(exit.saved, currency, locale) })
-                : t('endSession')
-            }
-            onPress={confirmEnd}
+      <View style={{ gap: spacing.s8 }}>
+        {/* Ekranın tek siyah CTA'sı: dönüş anı. Arabamı Bul bir sheet fazıdır (§7.6). */}
+        <PrimaryCta label={t('findMyCar')} onPress={startFinding} />
+        <View style={{ flexDirection: 'row', gap: spacing.s8 }}>
+          <GhostButton
+            label={t('shareLocation')}
+            onPress={() => void shareParkedLocation(session, t('shareMessage'))}
+            disabled={!hasLocation}
+            style={{ flex: 1 }}
           />
-          <GhostButton label={t('keep')} onPress={keep} />
-        </Animated.View>
-      ) : (
-        <View style={{ gap: spacing.s8 }}>
-          {/* Ekranın tek siyah CTA'sı: dönüş anı. Arabamı Bul bir sheet fazıdır (§7.6). */}
-          <PrimaryCta label={t('findMyCar')} onPress={startFinding} />
-          <View style={{ flexDirection: 'row', gap: spacing.s8 }}>
-            <GhostButton
-              label={t('shareLocation')}
-              onPress={() => void shareParkedLocation(session, t('shareMessage'))}
-              disabled={!hasLocation}
-              style={{ flex: 1 }}
-            />
-            <GhostButton label={t('endSession')} onPress={requestEnd} style={{ flex: 1 }} />
-          </View>
+          {/* Tek dokunuşla biter; emniyet kemeri kutlama kapağındaki "Undo" (§7.8). Onay ekranı yok. */}
+          <GhostButton label={t('endSession')} onPress={endSession} style={{ flex: 1 }} />
         </View>
-      )}
+      </View>
     </Animated.View>
   );
 }

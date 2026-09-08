@@ -264,17 +264,27 @@ foto seçici). Aynı anda tek aktif oturum. Cold start aktif oturum varsa doğru
   an = ilk açılışta harita zaten konumlanmış, konum puck'ı 0→1 spring, sheet alttan `SPRING` (≤800 ms,
   spinner yok) · sabit = cam kareler · sessiz = arama, chip, liste · idle sıfır (harita memoize).
 
-### 7.3 Park anı (`parking`): 2 saniye kuralı
+### 7.3 Park anı (`parking`): 2 saniye kuralı, sonra üç hızlı soru
 
-- "I Parked" → `impactMedium` → oturum ≤2 sn'de persist, ağ beklenmez.
-- Sheet morph: `PARKED.` damgası (yeşil nokta, ekranın tek odağı) → "Undo" text (10 sn) → tek satır
-  **"+ Add details"** → dokununca satırlar `LinearTransition` ile aynı sheet içinde açılır: Location,
-  Level, Photo, Note, Parked when, Remind me, Tariff. Hiçbiri ayrı modal açmaz; metin girişi satırın
-  altında inline input, tarife editörü `BottomSheetModal`.
-- Zorunlu alan sıfır. "Done" siyah hap; sheet'i aşağı çekmek de geçerli.
+- "I Parked" → `impactMedium` → oturum ≤2 sn'de persist, ağ beklenmez. Bütün iş, ekstra detay
+  eklenmezse, **10–15 saniyede** biter: I Parked + en fazla üç çip dokunuşu.
+- Sheet morph: `PARKED.` damgası (yeşil nokta, ekranın tek odağı) → "Undo" text (10 sn) → **form
+  değil, sırayla üç soru**. Her soru bir overline + 17/600 soru cümlesi + çip satırı; sağ üstte
+  "Skip". Çip = cevap (seçili durum yok); dokunuş seçimi 180 ms gösterir, sonra sıradaki soru
+  `CROSSFADE` ile gelir, yükseklik `LinearTransition`. Sorular bitince oturum aktife geçer.
+  1. **Kat** — "Which level?": Street · −3 · −2 · −1 · Ground · 1 · 2 · 3 · Other · Photo. Aynı yerde
+     daha önce kat girildiyse o kat ilk çiptir (yeşil ton, kat hafızası). "Other" inline input açar
+     (tek metin girişi bu); "Photo" kamerayı açar ve soruda kalır.
+  2. **Tarife** — "What does it cost?": hafızadan gelen "Last time · 0–1h ₺50" yeşil çip (varsa) ·
+     Enter · Scan (premium). Enter/Scan tarife editörünü (`BottomSheetModal`, §7.4) açar; kapanınca
+     tarife girildiyse soru cevaplanmış sayılır.
+  3. **Hatırlat** — yalnız tarife girilmediyse: 1 h · 2 h · 3 h · 4 h · Off. Tarife varsa dilim
+     uyarıları zaten kurulur, soru düşer.
+- Zorunlu alan sıfır. "Done" siyah hap her an bitirir; sheet'i aşağı çekmek geri almadır.
+- Not, "aslında … önce park ettim", hatırlatıcı ayrıntıları, foto yeniden çekme: park anında
+  sorulmaz, aktif sheet'in **Details** satırında yaşar (§7.5).
 - Araba pini haritaya damgayla aynı anda iner (§3 park anı sekansı).
-- Zayıf GPS → durum satırı "Weak signal · add level or photo". Tarife hafızası varsa yeşil kutu
-  "Last time: 0–1h ₺50 · Use".
+- Zayıf GPS → durum satırı "Weak signal · add level or photo"; konum yoksa "Mark it on the map".
 - Oto-algılama (premium) `idle → active` geçer, damga oynamaz; sheet üstünde "Auto-detected · Not
   parked? Undo" satırı 10 dk.
 
@@ -296,7 +306,8 @@ foto seçici). Aynı anda tek aktif oturum. Cold start aktif oturum varsa doğru
   `text-secondary`; kendi 1 Hz bileşeni) → tarife çubuğu (tarifesizde "Add tariff to see cost →") →
   koşullu para kutusu → foto thumbnail + not (dokununca yerinde büyür) → siyah **"Find My Car"** →
   yan yana ghost "Share" + "End".
-- "Fix location" ve "Tariff" düzenleme satırları liste satırı olarak (inset kutu değil).
+- "Fix location", "Tariff" ve "Details" düzenleme satırları liste satırı olarak (inset kutu değil).
+  Details satırı yerinde açılır: Level, Note, Photo, Parked when, Remind me (§7.3'te sorulmayanlar).
 - >24 sa: "Still parked at X? · End / Keep" satırı. Offline satırı. Bildirim izni satırı.
 - Idle maliyeti: sayaç 1 Hz yalnız görünürken; LA tazeleme dakikada bir; başka iş yok.
 
@@ -366,10 +377,10 @@ açılmaz; foto/kat kartı oradaki doğru araçtır.
 - Verimlilik: AR oturumu arka planda ve overlay kapanınca `pause()`; RN'e olay ≤6 Hz; billboard ve
   ölçek native karede.
 
-### 7.8 Bitirme (`ending`) + Kutlama (`ended`)
+### 7.8 Bitirme + Kutlama (`ended`)
 
-- **Ending:** sheet morph: "END SESSION." (ink nokta) + varyant satırı (tabular; tasarruf `accent-text`)
-  + siyah "End & Save ₺50" / "End Session" + ghost "Keep Parking". Sistem alert yok.
+- **Bitirme tek dokunuştur:** "End" (aktif sheet), "Found it" (Arabamı Bul) ve AR "Found it" oturumu
+  doğrudan bitirir; onay ekranı, sistem alert, ara faz yok. Emniyet kemeri kutlama kapağındaki "Undo".
 - **Kutlama:** tam yüzeyli kapak `surface/bg`, Reanimated ile alttan `SPRING` + fade gelir (RN Modal
   değil). Konfeti, glow, partikül, pulse: sıfır.
   - Varyant c (`saved > 0`): overline "SESSION ENDED · 14:49" → "YOU SAVED" display-S ink → **"₺50."**
@@ -381,7 +392,7 @@ açılmaz; foto/kat kartı oradaki doğru araçtır.
   - Varyant a (tarifesiz/flat): "PARKED 1H 45M." ink nokta; ghost "Share Location".
 - **Paywall zamanlaması (bağlayıcı):** paywall kutlamanın ÜSTÜNE açılmaz. Yalnız "Done"dan sonra ve
   yalnız 1./3./7. tasarruf anında. Yorum isteği paywall çıkmayan tasarruf anlarında, kapaktan sonra.
-- Scene sheet: hero = ₺ rakamı · driver = "End" onayı · an = §3 kutlama sekansı (≤1.8 s) · sabit =
+- Scene sheet: hero = ₺ rakamı · driver = "End" dokunuşu · an = §3 kutlama sekansı (≤1.8 s) · sabit =
   alt buton bloğu (min 128pt rezerv) · sessiz = özet satırları (stagger dışında) · idle sıfır.
 
 ### 7.9 Geçmiş + istatistik (kök sheet sahnesi)

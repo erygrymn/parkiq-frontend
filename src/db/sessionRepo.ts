@@ -309,6 +309,21 @@ export function findRememberedTariff(latitude: number, longitude: number): Tarif
   return row ? rowToSession(row).tariff : null;
 }
 
+/** Aynı yere tekrar park edince önceki kat çip olarak önerilir (§7.3 kat sorusu). */
+export function findRememberedFloor(latitude: number, longitude: number): string | null {
+  const deltaLat = 0.0011; // ~120m
+  const deltaLng = 0.0011 / Math.max(0.2, Math.cos((latitude * Math.PI) / 180));
+  const row = getDb().getFirstSync<{ floor: string }>(
+    `SELECT floor FROM sessions
+      WHERE floor != ''
+        AND latitude BETWEEN ? AND ?
+        AND longitude BETWEEN ? AND ?
+      ORDER BY startedAtMs DESC LIMIT 1`,
+    [latitude - deltaLat, latitude + deltaLat, longitude - deltaLng, longitude + deltaLng],
+  );
+  return row?.floor || null;
+}
+
 /** Harita kartından girilen yer tarifesi — park etmeden kaydedilir. */
 export function savePlaceTariff(latitude: number, longitude: number, tariff: Tariff): void {
   getDb().runSync(

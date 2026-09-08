@@ -13,7 +13,7 @@ export function ArOverlay() {
   const session = useSessionStore((s) => s.session);
   const userFix = useUiStore((s) => s.userFix);
   const closeAr = useUiStore((s) => s.closeAr);
-  const { requestEnd } = useSessionStore.getState();
+  const { endSession } = useSessionStore.getState();
 
   if (!session || session.latitude == null || session.longitude == null) return null;
   const car = { latitude: session.latitude, longitude: session.longitude };
@@ -34,7 +34,7 @@ export function ArOverlay() {
         onClose={closeAr}
         onFound={() => {
           closeAr();
-          requestEnd();
+          endSession();
         }}
       />
     </Animated.View>

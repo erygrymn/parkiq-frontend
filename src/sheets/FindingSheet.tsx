@@ -148,7 +148,7 @@ export function FindingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   const locale = getLocale();
   const isPremium = useIsPremium();
   const session = useSessionStore((s) => s.session);
-  const { stopFinding, requestEnd } = useSessionStore.getState();
+  const { stopFinding, endSession } = useSessionStore.getState();
   const userFix = useUiStore((s) => s.userFix);
   const openAr = useUiStore((s) => s.openAr);
   const { denied } = useUserFix(true);
@@ -266,8 +266,8 @@ export function FindingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
       )}
 
       <View style={{ gap: spacing.s8 }}>
-        {/* Aramanın bittiği an: sheet `ending`e morph eder, sayaç durdurulsun mu diye sorulur. */}
-        <PrimaryCta label={t('foundIt')} onPress={requestEnd} />
+        {/* Aramanın bittiği an oturum biter; kutlama kapağındaki Undo emniyet kemeridir (§7.8). */}
+        <PrimaryCta label={t('foundIt')} onPress={endSession} />
         <View style={{ flexDirection: 'row', gap: spacing.s8 }}>
           {isPremium && !indoor && carCoords !== null && isArAvailable && (
             <GhostButton label={t('arMode')} onPress={openAr} style={{ flex: 1 }} />

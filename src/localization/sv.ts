@@ -23,7 +23,6 @@ export const sv: Record<CopyKey, string> = {
   shareLocation: 'Dela plats',
   endSession: 'Avsluta',
   done: 'Klar',
-  keep: 'Fortsätt',
   undo: 'Ångra',
   shareCard: 'Dela kort',
   // Keşif
@@ -71,7 +70,6 @@ export const sv: Record<CopyKey, string> = {
   perHour: '{amount} / timme',
   lastTimeTariff: 'Förra gången: {summary} — använda den?',
   // Park sheet'i + tarife formu (§7.3–7.4)
-  detailsOptional: 'Detaljer är valfria',
   pickOnMap: 'Välj på kartan',
   pickOnMapHint: 'Flytta kartan tills nålen står på bilen',
   pickAreaHint: 'Flytta kartan för att välja var du söker',
@@ -111,10 +109,7 @@ export const sv: Record<CopyKey, string> = {
   scanUnavailable: 'Skanning kräver den fullständiga appversionen',
   amountPerHour: 'Belopp per timme',
   flatAmount: 'Totalbelopp',
-  endQuestion: 'Avsluta parkeringen?',
   addDetails: 'Lägg till detaljer',
-  endSessionStamp: 'Avsluta session',
-  endAndSave: 'Avsluta och spara {amount}',
   savedWord: 'SPARAT',
   parkedWord: 'PARKERAD',
   duration: 'Tid',
@@ -281,4 +276,15 @@ export const sv: Record<CopyKey, string> = {
   today: 'I dag',
   yesterday: 'I går',
   stillParkedShort: 'Står bilen kvar? Parkeringen började i går.',
+  // Park anı hızlı soruları (§7.3) + aktif sheet Detaylar satırı (§7.5)
+  qLevel: 'Vilket plan?',
+  qTariff: 'Vad kostar det?',
+  qRemind: 'Påminna senare?',
+  street: 'Gata',
+  ground: 'Markplan',
+  otherLevel: 'Annat',
+  enterTariff: 'Ange',
+  scanShort: 'Skanna',
+  lastTimeChip: 'Förra gången · {summary}',
+  details: 'Detaljer',
 };
