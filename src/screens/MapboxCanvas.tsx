@@ -2,7 +2,7 @@ import Mapbox, { Camera, CircleLayer, LineLayer, LocationPuck, MapView, MarkerVi
 import * as Location from 'expo-location';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useMemo, useRef } from 'react';
-import { AppState, Pressable, StyleSheet, Text, useWindowDimensions } from 'react-native';
+import { AppState, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { SPRING } from '../theme/motion';
@@ -106,9 +106,8 @@ export function MapboxCanvas() {
   useEffect(() => {
     activeScrim.value = withTiming(active ? 1 : 0, { duration: CROSSFADE_MS });
   }, [active, activeScrim]);
-  const mapStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: interpolate(sheetIndex.value, [0, 1], [1, 0.97], 'clamp') }],
-  }));
+  // Sheet yükselirken harita ÖLÇEKLENMEZ: küçültme kenarları açıp "app zoom-out" gibi görünüyordu.
+  // Derinlik yalnız scrim'den gelir (§4).
   const scrimStyle = useAnimatedStyle(() => ({
     opacity: Math.max(activeScrim.value, interpolate(sheetIndex.value, [0.4, 1], [0, 1], 'clamp')),
   }));
@@ -320,7 +319,7 @@ export function MapboxCanvas() {
   const styleJSON = useMemo(() => (customStyleURL ? undefined : buildMapStyle(scheme)), [customStyleURL, scheme]);
 
   return (
-    <Animated.View style={[StyleSheet.absoluteFill, mapStyle]}>
+    <View style={StyleSheet.absoluteFill}>
       <MapView
         style={StyleSheet.absoluteFill}
         styleURL={customStyleURL ?? undefined}
@@ -416,6 +415,6 @@ export function MapboxCanvas() {
 
       {/* §7.5 uniform scrim: aktif oturumda sabit, keşifte sheet ile gelir — dikey vignette YASAK */}
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: colors.scrim }, scrimStyle]} />
-    </Animated.View>
+    </View>
   );
 }

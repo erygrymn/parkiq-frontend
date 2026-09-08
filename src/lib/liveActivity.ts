@@ -1,4 +1,5 @@
 import {
+  consumePendingEnd,
   endLiveActivity,
   isLiveActivityAvailable,
   setWidgetData,
@@ -22,7 +23,7 @@ import type { ParkSession } from '../state/sessionStore';
 //
 // §4.10: Live Activity/widget işletim sistemi yetenekleridir — premium kapısı YOK.
 
-export { isLiveActivityAvailable };
+export { consumePendingEnd, isLiveActivityAvailable };
 
 /** Widget'ın statik etiketleri; App Group kutusuna yazılır. */
 function widgetStrings(): Record<string, string> {
@@ -31,6 +32,7 @@ function widgetStrings(): Record<string, string> {
     wSavedLabel: t('wSavedLabel'),
     wParkTitle: t('wParkTitle'),
     wParkHint: t('wParkHint'),
+    laEnd: t('endSession'),
   };
 }
 

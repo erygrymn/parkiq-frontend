@@ -22,7 +22,7 @@ import { ArOverlay } from './src/screens/ArOverlay';
 import { FindingSheet } from './src/sheets/FindingSheet';
 import { HistoryScene } from './src/sheets/HistoryScene';
 import { useUiStore } from './src/state/uiStore';
-import { refreshSessionActivity } from './src/lib/liveActivity';
+import { consumePendingEnd, refreshSessionActivity } from './src/lib/liveActivity';
 import { CROSSFADE_MS, SPRING } from './src/theme/motion';
 import { sheetIndex } from './src/theme/sheetMotion';
 import { PressScale } from './src/components/motion/PressScale';
@@ -266,6 +266,22 @@ function Root() {
 
   // §5.11 offline satırı için ağ durumu dinlenir.
   useEffect(() => useNetworkStore.getState().subscribe(), []);
+
+  // Kilit ekranı "Bitir" (Live Activity düğmesi): niyet App Group'a bitiş anını yazar,
+  // oturum burada o anla kapanır; kutlama kapağı app açılınca görülür. Niyet app'i arka
+  // planda başlatabildiği için hydrate önce garanti edilir (idempotent).
+  useEffect(() => {
+    const consume = () => {
+      useSessionStore.getState().hydrate();
+      const at = consumePendingEnd();
+      if (at !== null) useSessionStore.getState().endSession(at);
+    };
+    consume();
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') consume();
+    });
+    return () => sub.remove();
+  }, []);
 
   // Widget kısayolu: parkiq://park app'i açar ve kaydı başlatır. Oturum zaten
   // varsa `park()` kendi içinde yok sayar — tek aktif oturum kuralı korunur.

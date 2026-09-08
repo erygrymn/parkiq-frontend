@@ -152,7 +152,7 @@ harflerden kurulmaz.
 | Park anı | tap `impactMedium` → CTA pressed 0.97 → sheet morph (`SPRING`) → damga → araba pini haritaya `SPRING` ile iner (y −24→0, scale 0.6→1) → nokta ile `notificationSuccess` · toplam ≤ 800 ms |
 | Kutlama (yalnız varyant c) | overline 200 ms fade → "YOU SAVED" 150 ms → ₺ count-up 0→X, 800 ms `Easing.out(cubic)` benzeri spring-less (tek istisna: count-up sayısal), tabular, 3 detent → nokta `DOT_SPRING` EN SON + `notificationSuccess` → özet satırları 50 ms stagger · toplam ≤ 1.8 s |
 | Sheet morph (faz değişimi) | yükseklik `SPRING` (gorhom `animationConfigs`) + içerik 200 ms crossfade (`FadeIn/FadeOut`) |
-| Harita ↔ sheet | `animatedIndex` → harita scale 1→0.97, scrim 0→1, yüzen kareler opacity 1→0 (yalnız full detent) |
+| Harita ↔ sheet | `animatedIndex` → scrim 0→1, yüzen kareler opacity 1→0 (yalnız full detent). Harita ölçeklenmez: küçültme kenarları açıp app zoom-out gibi görünüyordu |
 | CTA morph (Navigate → End) | 200 ms crossfade |
 | Pin seçimi | scale 1→1.25 `SPRING` + `selection` |
 | Pusula | heading shared value, kısa yay üzerinden `SPRING`; ibre React re-render'sız |
@@ -167,8 +167,9 @@ harflerden kurulmaz.
 `r-24`, light'ta `shadow/3`, dark'ta gölgesiz + yüzey basamağı + 0.5px `hairline-dark` + kenar ışığı
 `inset 0 1px 0 rgba(255,255,255,.06)`) · **L2 yüzen kontroller** (cam).
 
-- **Derinlik davranıştan gelir, gölgeden değil.** Sheet full detent'e giderken harita 0.97'ye küçülür
-  ve `scrim` gelir; aktif oturumda harita `calm` + uniform scrim. Dikey vignette yok.
+- **Derinlik davranıştan gelir, gölgeden değil.** Sheet full detent'e giderken harita yerinde kalır ve
+  `scrim` gelir (ölçek küçültme yok — kenarlar açılıp çerçeve görünüyordu); aktif oturumda harita
+  `calm` + uniform scrim. Dikey vignette yok.
 - **Cam** (`glass` token'ı): `expo-blur` BlurView intensity 75 + tint katmanı + iç/dış hairline.
   Yalnız harita ya da kamera üstünde yüzen öğelerde: kare ikon butonlar, chip'ler, arama çubuğu, AR
   HUD kartı. Sheet ve kartlar asla cam. Fallback düz dolgu `%92`.
@@ -456,7 +457,12 @@ gelir. Marka glyph'i sol üstte 22pt; overline noktasız.
 - Tarifesiz: hero = geçen süre; çubuk gizli.
 - Dynamic Island: compact glyph + sayaç; minimal glyph; expanded mini kart.
 - Widget small/medium: hero rakam + yer adı; oturumsuz "₺340 saved this month". Quick Park widget'ı
-  `parkiq://park`.
+  `parkiq://park` → app park kaydıyla açılır ve hızlı sorular (§7.3) hemen başlar.
+- **Kilit ekranı widget'ları** (circular / rectangular / inline): oturum yokken marka glyph'i / "Park"
+  → `parkiq://park`; oturum varken sayaç → `parkiq://session`. Sistem tek renk çizer, renk seçilmez.
+- **Live Activity "End" düğmesi** (kart sağ üst + expanded ada altı): `LiveActivityIntent` app'i
+  AÇMADAN bitiş anını App Group'a yazar ve kartı söndürür; app bir sonraki açılışta oturumu o anla
+  kapatır ve kutlama kapağını gösterir. Karta dokunmak `parkiq://session`.
 - **Bitiş karesi:** zemin `#2FE07A`, tüm tipografi ink, "SAVED ₺50." (ink nokta), 3 sn, tek kare,
   animasyonsuz.
 - Bildirim: "Tier 2 in 15 min. Now ₺50, after ₺100." local, eşikten önce zamanlanır; ünlem yok.

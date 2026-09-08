@@ -1,4 +1,5 @@
 import ActivityKit
+import AppIntents
 import SwiftUI
 import WidgetKit
 
@@ -131,6 +132,25 @@ private struct TariffBar: View {
   }
 }
 
+// MARK: - Kilit ekranı "Bitir" düğmesi
+
+/// Tek dokunuşla biter, app açılmaz (ParkIQEndSessionIntent). Etiket RN'den gelir.
+private struct EndButton: View {
+  var body: some View {
+    if #available(iOS 17.0, *) {
+      Button(intent: ParkIQEndSessionIntent()) {
+        Text(Shared.text("laEnd", "End"))
+          .font(.system(size: 13, weight: .heavy))
+          .foregroundStyle(.white)
+          .padding(.horizontal, 12)
+          .frame(height: 28)
+          .background(Palette.track, in: Capsule())
+      }
+      .buttonStyle(.plain)
+    }
+  }
+}
+
 // MARK: - Live Activity gövdesi
 
 private struct LiveActivityView: View {
@@ -165,6 +185,7 @@ private struct LiveActivityView: View {
           BrandGlyph()
           Overline(text: overline)
           Spacer(minLength: 0)
+          EndButton()
         }
 
         // §8.1 hero: sonraki fiyat artışına KALAN SÜRE.
@@ -208,6 +229,8 @@ private struct LiveActivityView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
       .padding(16)
       .background(Palette.card)
+      // Karta dokunmak app'i aktif oturumda açar; "Bitir" düğmesi ayrı yaşar.
+      .widgetURL(URL(string: "parkiq://session"))
     }
   }
 }
@@ -240,13 +263,17 @@ struct ParkIQLiveActivity: Widget {
             if !context.state.segments.isEmpty {
               TariffBar(state: context.state)
             }
-            if let footer = context.state.footerText {
-              Text(footer)
-                .font(.system(size: 13, weight: .heavy))
-                .monospacedDigit()
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+            HStack(spacing: 8) {
+              if let footer = context.state.footerText {
+                Text(footer)
+                  .font(.system(size: 13, weight: .heavy))
+                  .monospacedDigit()
+                  .foregroundStyle(.white)
+                  .lineLimit(1)
+                  .minimumScaleFactor(0.7)
+              }
+              Spacer(minLength: 0)
+              EndButton()
             }
           }
           .padding(.horizontal, 4)
@@ -376,6 +403,85 @@ struct ParkIQQuickParkView: View {
   }
 }
 
+// MARK: - Kilit ekranı widget'ları (§8)
+
+/// Kilit ekranı: oturum yokken tek dokunuşla park kaydı (`parkiq://park` → hızlı sorular),
+/// oturum varken sayaç (dokununca aktif oturum). Sistem tek renk çizer; renk seçilmez.
+struct ParkIQLockView: View {
+  @Environment(\.widgetFamily) private var family
+  var entry: ParkIQWidgetEntry
+
+  var body: some View {
+    Group {
+      switch family {
+      case .accessoryCircular:
+        ZStack {
+          AccessoryWidgetBackground()
+          if let started = entry.startedAt {
+            Text(started, style: .timer)
+              .font(.system(size: 13, weight: .heavy))
+              .monospacedDigit()
+              .lineLimit(1)
+              .minimumScaleFactor(0.5)
+              .padding(.horizontal, 4)
+          } else {
+            Image("BrandMark")
+              .resizable()
+              .aspectRatio(contentMode: .fit)
+              .frame(width: 30, height: 30)
+          }
+        }
+      case .accessoryRectangular:
+        VStack(alignment: .leading, spacing: 2) {
+          if let started = entry.startedAt {
+            if let place = entry.placeName, !place.isEmpty {
+              Text(place.uppercased())
+                .font(.system(size: 11, weight: .heavy))
+                .tracking(1.2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            }
+            Text(started, style: .timer)
+              .font(.system(size: 24, weight: .black))
+              .monospacedDigit()
+              .lineLimit(1)
+              .minimumScaleFactor(0.6)
+          } else {
+            Text(entry.parkTitle)
+              .font(.system(size: 20, weight: .black))
+              .lineLimit(1)
+            Text(entry.parkHint)
+              .font(.system(size: 12))
+              .foregroundStyle(.secondary)
+              .lineLimit(2)
+          }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+      default:
+        if let started = entry.startedAt {
+          Text(started, style: .timer)
+        } else {
+          Text(entry.parkTitle)
+        }
+      }
+    }
+    .widgetAccentable()
+    .containerBackground(for: .widget) { Color.clear }
+    .widgetURL(URL(string: entry.startedAt == nil ? "parkiq://park" : "parkiq://session"))
+  }
+}
+
+struct ParkIQLockWidget: Widget {
+  var body: some WidgetConfiguration {
+    StaticConfiguration(kind: "ParkIQLock", provider: ParkIQWidgetProvider()) { entry in
+      ParkIQLockView(entry: entry)
+    }
+    .configurationDisplayName(Gallery.parkName)
+    .description(Gallery.parkDescription)
+    .supportedFamilies([.accessoryCircular, .accessoryRectangular, .accessoryInline])
+  }
+}
+
 struct ParkIQQuickParkWidget: Widget {
   var body: some WidgetConfiguration {
     StaticConfiguration(kind: "ParkIQQuickPark", provider: ParkIQWidgetProvider()) { entry in
@@ -403,6 +509,7 @@ struct ParkIQWidgetBundle: WidgetBundle {
   var body: some Widget {
     ParkIQWidget()
     ParkIQQuickParkWidget()
+    ParkIQLockWidget()
     ParkIQLiveActivity()
   }
 }

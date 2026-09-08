@@ -177,8 +177,11 @@ interface SessionStore {
   /** §7.6 Arabamı Bul bir sheet fazıdır: active ↔ finding. */
   startFinding: () => void;
   stopFinding: () => void;
-  /** Tek dokunuşla biter (active|finding → ended); geri alma kutlama kapağındaki Undo (§7.8). */
-  endSession: () => void;
+  /**
+   * Tek dokunuşla biter (active|finding → ended); geri alma kutlama kapağındaki Undo (§7.8).
+   * `endedAtMs`: kilit ekranı düğmesinden gelen bitiş anı — app sonradan açılsa da süre doğru kalır.
+   */
+  endSession: (endedAtMs?: number) => void;
   undoEnd: () => void;
   /** Ön plana dönüşte kilit ekranı kartını yaşayan duruma getirir. */
   resumeLiveActivity: () => void;
@@ -711,10 +714,10 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     if (get().phase === 'finding') set({ phase: 'active' });
   },
 
-  endSession: () => {
+  endSession: (endedAtMs) => {
     const { phase, session } = get();
     if ((phase !== 'active' && phase !== 'finding') || !session) return;
-    const next = { ...session, endedAtMs: Date.now() };
+    const next = { ...session, endedAtMs: Math.max(session.startedAtMs, endedAtMs ?? Date.now()) };
     persist(next);
     set({ phase: 'ended', session: next });
     void cancelSessionAlerts(); // §8.4: oturum bitince zamanlanmış uyarılar iptal
