@@ -223,7 +223,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
     void Location.requestForegroundPermissionsAsync().finally(onDone);
   };
 
-  const ready = slots[0] !== undefined && slots[1] !== undefined && slots[2] !== undefined;
+  const ready = slots[0] !== undefined;
   const inlineDot = reduced || (slotTimeout && !ready);
   const stops = [0, width, width * 2];
 
@@ -236,23 +236,33 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
     transform: [{ translateY: (1 - titleProgress.value) * 12 }],
   }));
 
-  // Gezen nokta: konumu, rengi ve boyu üç yuva arasında scroll offset'iyle interpolasyon.
-  const baseFont = slots[0]?.fontSize ?? sizes[0];
-  const dotStyle = useAnimatedStyle(() => {
-    if (!ready) return { opacity: 0 };
-    const xs = [slots[0].x, slots[1].x, slots[2].x];
-    const ys = [slots[0].y, slots[1].y, slots[2].y];
-    const scales = [slots[0].fontSize / baseFont, slots[1].fontSize / baseFont, slots[2].fontSize / baseFont];
+  // Gezen nokta: konum ve boy yuvalar arasında scroll offset'iyle interpolasyon. Sayfa ölçeği
+  // SOL ÜST köşe etrafında (yuva = glyph kutusunun sol üstü), iniş zıplaması ayrı katmanda glyph
+  // merkezinde: iki farklı origin tek transformda ifade edilemez, o yüzden iç içe iki view.
+  // (Tek katmanda merkez origin, 2. ve 3. sayfada noktayı sağa-aşağı kaydırıyordu.)
+  // Henüz ölçülmemiş yuva 0. sayfanınkine düşer; nokta ilk yuva gelir gelmez görünür.
+  const first = slots[0];
+  const baseFont = first?.fontSize ?? sizes[0];
+  const dotFrame = useAnimatedStyle(() => {
+    if (!first) return { opacity: 0 };
+    const s1 = slots[1] ?? first;
+    const s2 = slots[2] ?? first;
     return {
       opacity: 1,
-      color: interpolateColor(scrollX.value, stops, dotColors),
       transform: [
-        { translateX: interpolate(scrollX.value, stops, xs, 'clamp') },
-        { translateY: interpolate(scrollX.value, stops, ys, 'clamp') },
-        { scale: interpolate(scrollX.value, stops, scales, 'clamp') * dotScale.value },
+        { translateX: interpolate(scrollX.value, stops, [first.x, s1.x, s2.x], 'clamp') },
+        { translateY: interpolate(scrollX.value, stops, [first.y, s1.y, s2.y], 'clamp') },
+        { scale: interpolate(scrollX.value, stops, [1, s1.fontSize / baseFont, s2.fontSize / baseFont], 'clamp') },
       ],
     };
-  }, [ready, slots, baseFont]);
+  }, [first, slots, baseFont]);
+  const dotGlyph = useAnimatedStyle(
+    () => ({
+      color: interpolateColor(scrollX.value, stops, dotColors),
+      transform: [{ scale: dotScale.value }],
+    }),
+    [dotColors],
+  );
 
   const bottomInsetShort = insets.bottom + 72;
   const bottomInsetTall = insets.bottom + 160;
@@ -314,28 +324,29 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
       </Animated.ScrollView>
 
       {/* Gezen imza noktası (İlke 8): pager'ın üstünde, jestle yürür. */}
-      {!inlineDot && ready && (
-        <Animated.Text
+      {!inlineDot && first && (
+        <Animated.View
           pointerEvents="none"
-          allowFontScaling={false}
-          accessibilityElementsHidden
-          importantForAccessibility="no"
-          style={[
-            {
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              fontSize: baseFont,
-              lineHeight: slots[0].lineHeight,
-              fontWeight: '900',
-              letterSpacing: sizes[0] * -0.03,
-              transformOrigin: '50% 78%',
-            },
-            dotStyle,
-          ]}
+          style={[{ position: 'absolute', left: 0, top: 0, transformOrigin: 'top left' }, dotFrame]}
         >
-          .
-        </Animated.Text>
+          <Animated.Text
+            allowFontScaling={false}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+            style={[
+              {
+                fontSize: baseFont,
+                lineHeight: first.lineHeight,
+                fontWeight: '900',
+                letterSpacing: sizes[0] * -0.03,
+                transformOrigin: '50% 78%',
+              },
+              dotGlyph,
+            ]}
+          >
+            .
+          </Animated.Text>
+        </Animated.View>
       )}
 
       {/* Skip — sağ üst text buton */}

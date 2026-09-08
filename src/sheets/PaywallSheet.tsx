@@ -3,7 +3,9 @@ import { useEffect, useMemo } from 'react';
 import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PrimaryCta } from '../components/Buttons';
-import { Body, Caption, Overline } from '../components/Typography';
+import { PressScale } from '../components/motion/PressScale';
+import { Caption, Overline } from '../components/Typography';
+import { hapticSelect } from '../lib/haptics';
 import { formatMoney } from '../lib/format';
 import type { PlanPeriod, PurchasePlan } from '../lib/purchases';
 import { getLocale, t, upper } from '../localization';
@@ -16,16 +18,11 @@ import { radius, spacing, typeScale } from '../theme/tokens';
 const TERMS_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
 const PRIVACY_URL = 'https://www.twiceapps.co/privacy';
 
-// design.md §7.10. Zemin card (krem yasak), başlıkta nokta imzası YOK.
+// design.md §7.11 Paywall. Poster gibi okunur: bir başlık, dört kısa satır, üç plan karosu, tek CTA.
+// Cümle yok, kart yığını yok. Zemin card (krem yasak), başlıkta nokta imzası YOK.
 //
-// Kendi tam ekran kabuğunu kurar, PageSheet'i kullanmaz: karar ekranının
-// güvenli alanı ve DEĞİŞMEYEN alt bloğu (CTA + yasal satır) olmalı. PageSheet
-// tek kaydırma alanı verdiği için başlık durum çubuğuna giriyor, CTA da uzun
-// içerikte ekrandan kaçıyordu.
-//
-// §4.10 dikkat: paywall işletim sistemi yeteneğini (Live Activity/widget) DEĞİL,
-// ParkIQ'nun kendi işlevlerini satar. LA, Dynamic Island, widget ve bildirim
-// uyarıları herkese ÜCRETSİZDİR.
+// §4.10: paywall işletim sistemi yeteneğini (Live Activity/widget) DEĞİL, ParkIQ'nun kendi
+// işlevlerini satar. LA, Dynamic Island, widget ve bildirim uyarıları herkese ÜCRETSİZDİR.
 const FEATURES: Array<{
   symbol: SFSymbol;
   key: 'proFeatureAuto' | 'proFeatureScan' | 'proFeatureFind' | 'proFeatureFilter';
@@ -48,6 +45,9 @@ const CTA_TEMPLATE: Record<PlanPeriod, 'continueYearly' | 'continueMonthly' | 'c
   lifetime: 'continueLifetime',
 };
 
+/** Karo sırası: aylık çapa, yıllık ortada ve varsayılan, ömür boyu sağda. */
+const PLAN_ORDER: Record<PlanPeriod, number> = { monthly: 0, yearly: 1, lifetime: 2 };
+
 /**
  * Yıllık planın aylığa göre kaç tasarruf ettirdiği. Pazarlama cümlesi değil,
  * iki gerçek fiyattan çıkan oran — hesaplanamıyorsa hiç gösterilmez.
@@ -62,17 +62,27 @@ function savingPercent(plans: PurchasePlan[]): number | null {
   return percent >= 5 ? percent : null;
 }
 
-function FeatureRow({ symbol, label }: { symbol: SFSymbol; label: string }) {
+function FeatureRow({ symbol, label, last }: { symbol: SFSymbol; label: string; last: boolean }) {
   const { colors } = useTheme();
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s12 }}>
-      <SymbolView name={symbol} size={19} tintColor={colors.ink} weight="regular" />
-      <Body style={{ flex: 1 }}>{label}</Body>
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.s12,
+        height: 48,
+        borderBottomWidth: last ? 0 : 1,
+        borderBottomColor: colors.gridline,
+      }}
+    >
+      <SymbolView name={symbol} size={20} tintColor={colors.ink} weight="regular" />
+      <Text style={{ flex: 1, fontSize: 15, fontWeight: '600', color: colors.ink }}>{label}</Text>
     </View>
   );
 }
 
-function PlanCard({
+/** Plan karosu: dönem + fiyat + tek satır alt bilgi. Seçili 2pt ink; diğerleri hairline. */
+function PlanTile({
   plan,
   selected,
   badge,
@@ -85,73 +95,74 @@ function PlanCard({
 }) {
   const { colors } = useTheme();
   const locale = getLocale();
-
-  // Yıllık planın aylık karşılığı: karşılaştırmayı kullanıcıya yaptırmayalım.
-  const perMonth =
+  const sub =
     plan.period === 'yearly' && plan.price > 0
       ? t('planPerMonth', { price: formatMoney(plan.price / 12, plan.currency, locale) })
-      : null;
+      : plan.period === 'lifetime'
+        ? t('lifetimeNote')
+        : null;
 
   return (
-    <Pressable
+    <PressScale
       accessibilityRole="button"
       accessibilityState={{ selected }}
+      accessibilityLabel={`${t(PLAN_LABEL[plan.period])} ${plan.priceLabel}`}
       onPress={onPress}
+      containerStyle={{ flex: 1 }}
       style={{
-        minHeight: 68,
+        minHeight: 96,
         borderRadius: radius.r16,
         borderCurve: 'continuous',
         backgroundColor: colors.card,
         borderWidth: 2,
-        // §7.11 plan kartı: hairline; seçili 2pt ink. Kalınlık sabit ki seçim değişince zıplamasın.
+        // Kalınlık sabit: seçim değişince karolar zıplamasın.
         borderColor: selected ? colors.ink : colors.gridline,
-        paddingHorizontal: spacing.s16,
-        paddingVertical: spacing.s12,
-        justifyContent: 'center',
+        paddingHorizontal: spacing.s12,
+        paddingTop: spacing.s16,
+        paddingBottom: spacing.s12,
+        justifyContent: 'space-between',
         gap: spacing.s4,
       }}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s8 }}>
-        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.ink }}>
-          {t(PLAN_LABEL[plan.period])}
-        </Text>
-        {badge && (
-          <View
-            style={{
-              paddingHorizontal: spacing.s8,
-              paddingVertical: 2,
-              borderRadius: radius.r8,
-              backgroundColor: colors.ink,
-            }}
-          >
-            <Text style={{ fontSize: 10, fontWeight: '800', letterSpacing: 0.6, color: colors.card }}>
-              {badge}
-            </Text>
-          </View>
-        )}
-        <View style={{ flex: 1 }} />
-        <Text style={{ fontSize: 17, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'] }}>
-          {plan.priceLabel}
-        </Text>
-      </View>
-
-      {(plan.introLabel || perMonth || plan.period === 'lifetime') && (
-        <Caption>
-          {plan.introLabel
-            ? t('freeThen', { intro: plan.introLabel, price: plan.priceLabel })
-            : (perMonth ?? t('lifetimeNote'))}
-        </Caption>
+      {badge && (
+        <View
+          style={{
+            position: 'absolute',
+            top: -10,
+            alignSelf: 'center',
+            paddingHorizontal: spacing.s8,
+            paddingVertical: 2,
+            borderRadius: radius.rFull,
+            backgroundColor: colors.ink,
+          }}
+        >
+          <Text style={{ fontSize: 10, fontWeight: '800', letterSpacing: 0.6, color: colors.card }}>{badge}</Text>
+        </View>
       )}
-    </Pressable>
+      <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: '600', color: selected ? colors.ink : colors.textSecondary }}>
+        {t(PLAN_LABEL[plan.period])}
+      </Text>
+      <Text
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.7}
+        style={{ fontSize: 17, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'] }}
+      >
+        {plan.priceLabel}
+      </Text>
+      <Text numberOfLines={1} style={{ fontSize: 11, color: colors.textSecondary, minHeight: 14 }}>
+        {sub ?? ''}
+      </Text>
+    </PressScale>
   );
 }
 
 function SkeletonPlans() {
   const { colors } = useTheme();
   return (
-    <View style={{ gap: spacing.s8 }}>
+    <View style={{ flexDirection: 'row', gap: spacing.s8 }}>
       {[0, 1, 2].map((i) => (
-        <View key={i} style={{ height: 68, borderRadius: radius.r16, backgroundColor: colors.inset }} />
+        <View key={i} style={{ flex: 1, height: 96, borderRadius: radius.r16, backgroundColor: colors.inset }} />
       ))}
     </View>
   );
@@ -189,7 +200,8 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
     return () => clearTimeout(id);
   }, [notice, clearNotice, onClose]);
 
-  // Geçmişten gelen toplam tasarruf; paywall her açıldığında taze okunur.
+  // Geçmişten gelen toplam tasarruf; paywall her açıldığında taze okunur. Uydurma ortalama değil,
+  // bu telefonun kendi rakamı — yoksa satır hiç çıkmaz.
   const savedSoFar = useMemo(() => {
     if (!visible) return null;
     try {
@@ -197,8 +209,7 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
       const repo = require('../db/sessionRepo') as typeof import('../db/sessionRepo');
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const stats = require('../lib/stats') as typeof import('../lib/stats');
-      const sessions = repo.listEndedSessions();
-      const total = stats.computeStats(sessions);
+      const total = stats.computeStats(repo.listEndedSessions());
       if (total.totalSaved === null || total.totalSaved <= 0 || !total.savedCurrency) return null;
       return formatMoney(total.totalSaved, total.savedCurrency, getLocale());
     } catch {
@@ -206,6 +217,10 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
     }
   }, [visible]);
 
+  const ordered = useMemo(
+    () => [...plans].sort((a, b) => PLAN_ORDER[a.period] - PLAN_ORDER[b.period]),
+    [plans],
+  );
   const selected = plans.find((p) => p.id === selectedPlanId) ?? null;
   const selectedIsSubscription = selected !== null && selected.period !== 'lifetime';
   const busy = purchaseState !== 'idle';
@@ -216,7 +231,7 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
       visible={visible}
       animationType="slide"
       presentationStyle="fullScreen"
-      // §7.10.3: satın alma sürerken ekran kapanmaz.
+      // §7.11.3: satın alma sürerken ekran kapanmaz.
       onRequestClose={busy ? () => undefined : onClose}
     >
       <View style={{ flex: 1, backgroundColor: colors.card }}>
@@ -228,7 +243,6 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
             gap: spacing.s24,
           }}
         >
-          {/* Kapatma sağ üstte, güvenli alanın İÇİNDE — durum çubuğuna girmez. */}
           <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
             <Pressable
               accessibilityRole="button"
@@ -250,33 +264,36 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
             </Pressable>
           </View>
 
+          {/* Poster başlığı: display-M, noktasız (§7.11). Altında yalnız kullanıcının kendi rakamı. */}
           <View style={{ gap: spacing.s8 }}>
             <Overline>{t('goPro')}</Overline>
-            {/* Başlıkta nokta YOK (§7.10) */}
             <Text
               style={{
-                fontSize: typeScale.displayS.fontSize,
-                fontWeight: typeScale.displayS.fontWeight,
-                letterSpacing: typeScale.displayS.letterSpacing,
+                fontSize: typeScale.displayM.fontSize,
+                fontWeight: typeScale.displayM.fontWeight,
+                letterSpacing: typeScale.displayM.letterSpacing,
+                lineHeight: Math.round(typeScale.displayM.fontSize * 1.1),
                 color: colors.ink,
               }}
               maxFontSizeMultiplier={1.3}
             >
               {upper(t('proHeadline'))}
             </Text>
-            <Body color={colors.textSecondary}>{t('proBody')}</Body>
+            {savedSoFar !== null && (
+              <Text style={{ fontSize: 15, fontWeight: '600', color: colors.accentText }}>
+                {t('savedSoFar', { amount: savedSoFar })}
+              </Text>
+            )}
           </View>
 
-          {/* Para dili, kullanıcının KENDİ rakamıyla konuşur. Uydurma bir ortalama
-              değil, bu telefonun geçmişinden gelen toplam — §6.2'de ödüllendirilen
-              tek argüman bu. Hiç tasarruf yoksa satır hiç çıkmaz. */}
-          {savedSoFar !== null && (
-            <Caption color={colors.accentText}>{t('savedSoFar', { amount: savedSoFar })}</Caption>
-          )}
-
-          <View style={{ gap: spacing.s12 }}>
-            {FEATURES.map((feature) => (
-              <FeatureRow key={feature.key} symbol={feature.symbol} label={t(feature.key)} />
+          <View style={{ borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.gridline }}>
+            {FEATURES.map((feature, index) => (
+              <FeatureRow
+                key={feature.key}
+                symbol={feature.symbol}
+                label={t(feature.key)}
+                last={index === FEATURES.length - 1}
+              />
             ))}
           </View>
 
@@ -284,7 +301,7 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
 
           {plansState === 'error' && (
             <View style={{ gap: spacing.s12 }}>
-              <Body>{t('plansError')}</Body>
+              <Caption color={colors.ink}>{t('plansError')}</Caption>
               <Pressable accessibilityRole="button" onPress={openPlans} hitSlop={8}>
                 <Text style={{ fontSize: 15, fontWeight: '600', color: colors.ink }}>{t('retry')}</Text>
               </Pressable>
@@ -292,27 +309,35 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
           )}
 
           {plansState === 'ready' && (
-            <View style={{ gap: spacing.s8 }}>
-              {plans.map((plan) => (
-                <PlanCard
-                  key={plan.id}
-                  plan={plan}
-                  selected={plan.id === selectedPlanId}
-                  badge={plan.period === 'yearly' && saving ? t('planSave', { percent: saving }) : null}
-                  onPress={() => selectPlan(plan.id)}
-                />
-              ))}
+            <View style={{ gap: spacing.s12 }}>
+              <View style={{ flexDirection: 'row', gap: spacing.s8, paddingTop: spacing.s8 }}>
+                {ordered.map((plan) => (
+                  <PlanTile
+                    key={plan.id}
+                    plan={plan}
+                    selected={plan.id === selectedPlanId}
+                    badge={plan.period === 'yearly' && saving ? t('planSave', { percent: saving }) : null}
+                    onPress={() => {
+                      if (plan.id === selectedPlanId) return;
+                      hapticSelect();
+                      selectPlan(plan.id);
+                    }}
+                  />
+                ))}
+              </View>
+              {selected?.introLabel && (
+                <Caption>{t('freeThen', { intro: selected.introLabel, price: selected.priceLabel })}</Caption>
+              )}
               {plansAreDemo && <Caption color={colors.warnText}>{t('demoPlans')}</Caption>}
             </View>
           )}
-
         </ScrollView>
 
-        {/* Sabit alt blok: CTA ve yasal satır içerik ne kadar uzarsa uzasın kaçmaz. */}
+        {/* Sabit alt blok: durum satırı, yasal satır, CTA, bağlantılar. İçerik ne kadar uzarsa uzasın kaçmaz. */}
         <View
           style={{
             paddingHorizontal: spacing.s20,
-            paddingTop: spacing.s16,
+            paddingTop: spacing.s12,
             paddingBottom: insets.bottom + spacing.s16,
             gap: spacing.s12,
             borderTopWidth: 1,
@@ -329,8 +354,10 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
             </View>
           )}
 
-          {/* §3.1.2(a)(c): otomatik yenileme + ücretlendirme beyanı zorunlu */}
-          {selectedIsSubscription && <Caption>{t('autoRenewNotice')}</Caption>}
+          {/* §3.1.2(a)(c): otomatik yenileme beyanı zorunlu; tek satır, text-tertiary. */}
+          {selectedIsSubscription && (
+            <Text style={{ fontSize: 11, lineHeight: 15, color: colors.textTertiary }}>{t('autoRenewNotice')}</Text>
+          )}
 
           {purchaseState === 'purchasing' ? (
             <View
@@ -346,9 +373,7 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
             </View>
           ) : (
             <PrimaryCta
-              label={
-                selected ? t(CTA_TEMPLATE[selected.period], { price: selected.priceLabel }) : t('goPro')
-              }
+              label={selected ? t(CTA_TEMPLATE[selected.period], { price: selected.priceLabel }) : t('goPro')}
               onPress={buy}
               disabled={!selected || busy}
             />
@@ -356,22 +381,12 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
 
           <View style={{ flexDirection: 'row', justifyContent: 'center', gap: spacing.s16 }}>
             <Pressable accessibilityRole="button" onPress={restore} disabled={busy} hitSlop={8}>
-              <Caption color={colors.ink}>
-                {purchaseState === 'restoring' ? t('restoring') : t('restore')}
-              </Caption>
+              <Caption color={colors.ink}>{purchaseState === 'restoring' ? t('restoring') : t('restore')}</Caption>
             </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => void Linking.openURL(TERMS_URL)}
-              hitSlop={8}
-            >
+            <Pressable accessibilityRole="button" onPress={() => void Linking.openURL(TERMS_URL)} hitSlop={8}>
               <Caption>{t('terms')}</Caption>
             </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => void Linking.openURL(PRIVACY_URL)}
-              hitSlop={8}
-            >
+            <Pressable accessibilityRole="button" onPress={() => void Linking.openURL(PRIVACY_URL)} hitSlop={8}>
               <Caption>{t('privacy')}</Caption>
             </Pressable>
           </View>

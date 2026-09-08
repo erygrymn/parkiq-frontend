@@ -405,10 +405,14 @@ noktasız. Geliştirici bölümü yalnız `__DEV__`.
 
 ### 7.11 Paywall (tam ekran)
 
-- Zemin `surface/card`. Overline "PARKIQ PRO" → display-S noktasız "PRO DETECTS PARKING" → body →
-  kullanıcının kendi rakamı (varsa) "You kept ₺340 so far" `accent-text` → 4 özellik satırı (SF
-  Symbol Regular + 15) → plan kartları (`r-16`, hairline; seçili 2pt ink border; fiyat 17/800 tabular;
-  yıllık varsayılan) → sabit alt blok: CTA "Continue — ₺X/year" + "Restore · Terms · Privacy".
+- Poster gibi okunur, cümle yok. Zemin `surface/card`. Overline "PARKIQ PRO" → display-M noktasız
+  "PRO DETECTS PARKING" → yalnız kullanıcının kendi rakamı (varsa) "ParkIQ has saved you ₺340 so far"
+  `accent-text` 15/600 → 4 hairline satır: SF Symbol Regular 20 + 2–3 kelimelik etiket 15/600
+  ("Auto-detect parking", "Scan tariff boards", "Compass and AR", "Parking filters") → **üç plan
+  karosu yan yana** (Monthly · Yearly · Lifetime; `r-16`, hairline, seçili 2pt ink; dönem 13/600,
+  fiyat 17/800 tabular, tek satır alt bilgi; yıllık varsayılan ve "SAVE 56%" rozeti) → sabit alt blok:
+  tek satır otomatik yenileme beyanı 11pt `text-tertiary` + CTA "Continue — ₺X/year" +
+  "Restore · Terms · Privacy". Uzun özellik cümlesi, body paragrafı, kart yığını yok.
 - Durumlar in-surface, **sistem alert yok:** yükleniyor 3 iskelet; hata "Couldn't load plans." + ghost
   Retry; satın alma CTA'da spinner + ekran kilitli; **başarı → sheet kapanır, geldiği ekranda `PRO.`
   damgası (ink nokta) + `notificationSuccess`**; restore → 13pt satır "Restored." / "No purchases

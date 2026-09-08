@@ -170,6 +170,18 @@ export function MapboxCanvas() {
     void (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted' || cancelled) return;
+      // Açılışta dünya görünümü kalmasın: son bilinen konum varsa harita anında oraya oturur.
+      try {
+        const last = await Location.getLastKnownPositionAsync();
+        if (last && !cancelled && userCoordsRef.current === null) {
+          const c: [number, number] = [last.coords.longitude, last.coords.latitude];
+          userCoordsRef.current = c;
+          cameraRef.current?.setCamera({ centerCoordinate: c, zoomLevel: DEFAULT_ZOOM, animationDuration: 0 });
+          load({ latitude: c[1], longitude: c[0] });
+        }
+      } catch {
+        /* son konum yoksa canlı düzeltme bekler */
+      }
       sub = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.Balanced, distanceInterval: 8, timeInterval: 4000 },
         (pos) => {
@@ -179,7 +191,12 @@ export function MapboxCanvas() {
           // Takip modundayken (ve araba sahnede değilken) kamera kullanıcıyla gider.
           // İlk konumda her hâlükârda ortala — açılışta harita boş okyanusta kalmasın.
           if ((followingRef.current || first) && !hasCarRef.current) {
-            cameraRef.current?.setCamera({ centerCoordinate: c, animationDuration: 500 });
+            // İlk düzeltmede zoom da verilir; yoksa kamera dünya ölçeğinde kalıyordu.
+            cameraRef.current?.setCamera(
+              first
+                ? { centerCoordinate: c, zoomLevel: DEFAULT_ZOOM, animationDuration: 0 }
+                : { centerCoordinate: c, animationDuration: 500 },
+            );
             load({ latitude: c[1], longitude: c[0] });
           }
         },

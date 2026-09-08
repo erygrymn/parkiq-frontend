@@ -296,20 +296,14 @@ export function SettingsSheet({
         )}
       </Section>
 
-      <Section title={t('permissions')}>
-        {/* Sorulmamış izin de "kapalı" tarafında gösterilir: park kaydı konum
-            olmadan, dilim uyarısı bildirim olmadan çalışmaz. */}
-        {permissions.location === true ? (
-          <Caption>{t('locationGranted')}</Caption>
-        ) : (
-          <StatusLine label={t('locationOff')} onPress={openAppSettings} />
-        )}
-        {permissions.notifications === true ? (
-          <Caption>{t('notificationsGranted')}</Caption>
-        ) : (
-          <StatusLine label={t('notificationsOff')} onPress={openAppSettings} />
-        )}
-      </Section>
+      {/* Verilmiş izin satır üretmez; bölüm yalnız eksik izin varsa görünür. Sorulmamış izin de
+          "kapalı" tarafındadır: park kaydı konum olmadan, dilim uyarısı bildirim olmadan çalışmaz. */}
+      {(permissions.location !== true || permissions.notifications !== true) && (
+        <Section title={t('permissions')}>
+          {permissions.location !== true && <StatusLine label={t('locationOff')} onPress={openAppSettings} />}
+          {permissions.notifications !== true && <StatusLine label={t('notificationsOff')} onPress={openAppSettings} />}
+        </Section>
+      )}
 
       <ConfirmSheet
         visible={confirmDeleteOpen}

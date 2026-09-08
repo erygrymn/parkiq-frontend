@@ -17,7 +17,7 @@ import { CARD_HEIGHT, CARD_WIDTH, SavingsCard, type SavingsCardData } from '../c
 import { SearchBar } from '../components/SearchBar';
 import { ShareCardRenderer } from '../components/ShareCardRenderer';
 import { trackPaywallShown, trackShareCard } from '../lib/analytics';
-import { hapticCommit, hapticStamp } from '../lib/haptics';
+import { hapticCommit, hapticSelect, hapticStamp } from '../lib/haptics';
 import { shouldAskForReview, shouldShowCelebrationPaywall } from '../lib/review';
 import { useIsPremium } from '../state/premiumStore';
 import { openAppSettings, StatusLine } from '../components/StatusLine';
@@ -198,8 +198,19 @@ export function IdleSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
           <Animated.View
             key={poi.id}
             entering={FadeInDown.delay(index * 50).duration(CROSSFADE_MS)}
-            style={{ gap: spacing.s4, paddingBottom: spacing.s12, borderBottomWidth: 1, borderBottomColor: colors.gridline }}
+            style={{ borderBottomWidth: 1, borderBottomColor: colors.gridline }}
           >
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={poi.name ?? undefined}
+              onPress={() => {
+                // Satıra dokunmak pine dokunmakla aynı iş: kart morph'u + kamera o otoparka uçar.
+                hapticSelect();
+                useDiscoveryStore.getState().selectPoi(poi.id);
+                pinTo({ latitude: poi.latitude, longitude: poi.longitude });
+              }}
+              style={({ pressed }) => ({ gap: spacing.s4, paddingVertical: spacing.s12, opacity: pressed ? 0.6 : 1 })}
+            >
             <Overline>
               {[
                 t('minWalk', { minutes: walkMinutes(poi.distanceM) }),
@@ -233,6 +244,7 @@ export function IdleSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
               </Pressable>
             </View>
             {remembered && <Caption color={colors.accentText}>{formatTariffSummary(remembered, locale)}</Caption>}
+            </Pressable>
           </Animated.View>
         );
       })}
@@ -832,20 +844,19 @@ export function ActiveSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   );
 }
 
-function SummaryRow({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
+/** §7.8 özet: satır satır metin değil, üç sütun (§7.9 KPI kalıbı). Duran rakam: proportional. */
+function SummaryColumn({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
   const { colors } = useTheme();
   return (
-    <View
-      style={{
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingVertical: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.gridline,
-      }}
-    >
-      <Caption>{label}</Caption>
-      <Text style={{ fontSize: 13, fontWeight: '800', color: valueColor ?? colors.ink, fontVariant: ['tabular-nums'] }}>
+    <View style={{ flex: 1, gap: spacing.s4 }}>
+      <Overline numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+        {label}
+      </Overline>
+      <Text
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        style={{ fontSize: 22, fontWeight: '900', letterSpacing: 22 * -0.02, color: valueColor ?? colors.ink }}
+      >
         {value}
       </Text>
     </View>
@@ -992,11 +1003,19 @@ export function EndedSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
           </View>
         )}
 
-        <View>
-          <SummaryRow label={t('duration')} value={formatDurationStamp(session.endedAtMs - session.startedAtMs).toLowerCase()} />
-          {exit.paid !== null && currency && <SummaryRow label={t('paid')} value={formatMoney(exit.paid, currency, locale)} />}
+        <View
+          style={{
+            flexDirection: 'row',
+            gap: spacing.s12,
+            paddingBottom: spacing.s16,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.gridline,
+          }}
+        >
+          <SummaryColumn label={t('duration')} value={formatDurationStamp(session.endedAtMs - session.startedAtMs).toLowerCase()} />
+          {exit.paid !== null && currency && <SummaryColumn label={t('paid')} value={formatMoney(exit.paid, currency, locale)} />}
           {exit.saved !== null && exit.saved > 0 && currency && (
-            <SummaryRow label={t('avoided')} value={`−${formatMoney(exit.saved, currency, locale)}`} valueColor={colors.accentText} />
+            <SummaryColumn label={t('avoided')} value={`−${formatMoney(exit.saved, currency, locale)}`} valueColor={colors.accentText} />
           )}
         </View>
 

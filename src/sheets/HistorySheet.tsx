@@ -238,10 +238,7 @@ export function HistorySheet({
           })}
         >
           <SymbolView name="sparkle" size={17} tintColor={colors.ink} weight="regular" />
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={{ fontSize: 15, fontWeight: '600', color: colors.ink }}>{t('goPro')}</Text>
-            <Caption>{t('goProUpsell')}</Caption>
-          </View>
+          <Text style={{ flex: 1, fontSize: 15, fontWeight: '600', color: colors.ink }}>{t('goPro')}</Text>
           <SymbolView name="chevron.right" size={13} tintColor={colors.disabled} weight="semibold" />
         </Pressable>
       )}
