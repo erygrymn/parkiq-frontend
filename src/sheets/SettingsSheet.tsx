@@ -7,15 +7,16 @@ import * as Sharing from 'expo-sharing';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useState } from 'react';
 import { Linking, Pressable, Switch, Text, View } from 'react-native';
-import { useIsPremium, usePremiumStore } from '../state/premiumStore';
-import { ChipGroup } from '../components/ChipGroup';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { PageSheet, Section } from '../components/PageSheet';
 import { SelectRow } from '../components/SelectRow';
 import { openAppSettings, StatusLine } from '../components/StatusLine';
 import { Caption } from '../components/Typography';
+import { trackPaywallShown } from '../lib/analytics';
+import { deleteSpotPhoto } from '../lib/photo';
 import { LOCALES, LOCALE_NAMES, t } from '../localization';
 import type { Locale } from '../localization';
+import { useIsPremium, usePremiumStore } from '../state/premiumStore';
 import { useSessionStore } from '../state/sessionStore';
 import {
   CURRENCIES,
@@ -24,30 +25,18 @@ import {
   type Currency,
   type ThemeMode,
 } from '../state/settingsStore';
-import { trackPaywallShown } from '../lib/analytics';
-import { deleteSpotPhoto } from '../lib/photo';
 import { useTheme } from '../theme';
 import { spacing } from '../theme/tokens';
 
-// screens.md §10 / design.md §7.9. Premium satırları (oto-algılama,
-// abonelik) RevenueCat tuğlasıyla gelecek — burada henüz yok.
+// design.md §7.10 Ayarlar: beş grup, hairline satırlar, açıklama cümlesi yok. Her satır 44pt;
+// değer sağda, eylem chevron ile. Bölüm başlığı satır adını tekrarlamaz (eski "PARKIQ PRO / ParkIQ
+// Pro" ikilemesi kaldırıldı). İzinler yalnız eksik izin varsa görünür.
 
 const TERMS_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
 const PRIVACY_URL = 'https://www.twiceapps.co/privacy';
 const SUPPORT_EMAIL = 'info@twiceapps.co';
 /** Doğrudan yorum yazma sayfası — sistem penceresi kotaya takılabilir. */
 const REVIEW_URL = 'https://apps.apple.com/app/id6756688254?action=write-review';
-
-/** Bölüm içi alt alan: küçük etiket + kontrol. Başlık gürültüsü yaratmaz. */
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  const { colors } = useTheme();
-  return (
-    <View style={{ gap: spacing.s8, marginBottom: spacing.s16 }}>
-      <Text style={{ fontSize: 13, color: colors.textSecondary }}>{label}</Text>
-      {children}
-    </View>
-  );
-}
 
 /** iOS abonelik yönetimi sistem sayfası — iptal/değiştirme oradan yapılır. */
 function openSubscriptionSettings(): void {
@@ -74,41 +63,70 @@ function exportData(): void {
   })();
 }
 
-function LinkRow({ label, onPress }: { label: string; onPress: () => void }) {
+/** Hairline ayraçlı 44pt satır: etiket + sağda değer / chevron / kontrol. */
+function SettingRow({
+  label,
+  value,
+  onPress,
+  trailing,
+  locked,
+  tone = 'ink',
+}: {
+  label: string;
+  value?: string;
+  onPress?: () => void;
+  /** Sağdaki kontrol (switch gibi). Verilirse chevron çizilmez. */
+  trailing?: ReactNode;
+  /** Premium kilidi: sol kilit ikonu + ikincil metin; dokununca paywall. */
+  locked?: boolean;
+  tone?: 'ink' | 'warn';
+}) {
   const { colors } = useTheme();
-  return (
-    <Pressable accessibilityRole="button" onPress={onPress} hitSlop={4}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', height: 44 }}>
-        <Text style={{ fontSize: 15, color: colors.ink }}>{label}</Text>
+  const content = (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.s8,
+        height: 44,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.gridline,
+      }}
+    >
+      {locked && <SymbolView name="lock.fill" size={13} tintColor={colors.disabled} weight="regular" />}
+      <Text
+        style={{
+          flex: 1,
+          fontSize: 15,
+          color: tone === 'warn' ? colors.warnText : locked ? colors.textSecondary : colors.ink,
+        }}
+      >
+        {label}
+      </Text>
+      {value !== undefined && (
+        <Text style={{ fontSize: 15, color: colors.textSecondary, fontVariant: ['tabular-nums'] }}>{value}</Text>
+      )}
+      {trailing}
+      {onPress && !trailing && (
         <SymbolView name="chevron.right" size={13} tintColor={colors.disabled} weight="semibold" />
-      </View>
+      )}
+    </View>
+  );
+  if (!onPress) return content;
+  return (
+    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+      {content}
     </Pressable>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
-  const { colors } = useTheme();
-  return (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
-      <Text style={{ fontSize: 15, color: colors.ink }}>{label}</Text>
-      <Text style={{ fontSize: 15, color: colors.textSecondary, fontVariant: ['tabular-nums'] }}>{value}</Text>
-    </View>
-  );
-}
-
-
 /**
- * İzinlerin GERÇEK durumu.
- *
- * Panel eskiden oturum store'undaki `locationState`/`notificationState`e
- * bakıyordu; ikisi de 'idle' başlıyor ve hiç izin istenmemişken "açık" diye
- * okunuyordu. Sıkışan kullanıcının sorununu teşhis etmek için baktığı tek yer
- * ona tam tersini söylüyor ve iOS Ayarlar'a giden köprüyü gizliyordu.
+ * İzinlerin GERÇEK durumu. Store'daki 'idle' başlangıç değeri hiç sorulmamış izni "açık" gibi
+ * okutuyordu; burada sistemden okunur.
  */
 function usePermissions(visible: boolean): { location: boolean | null; notifications: boolean | null } {
   const [location, setLocation] = useState<boolean | null>(null);
   const [notifications, setNotifications] = useState<boolean | null>(null);
-
   useEffect(() => {
     if (!visible) return;
     let cancelled = false;
@@ -130,7 +148,6 @@ function usePermissions(visible: boolean): { location: boolean | null; notificat
       cancelled = true;
     };
   }, [visible]);
-
   return { location, notifications };
 }
 
@@ -159,9 +176,8 @@ export function SettingsSheet({
     setUnits,
   } = useSettingsStore.getState();
   const permissions = usePermissions(visible);
-
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const confirmDeleteAll = () => setConfirmDeleteOpen(true);
+
   const deleteAll = () => {
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -183,117 +199,91 @@ export function SettingsSheet({
     }
   };
 
+  const openPaywall = () => {
+    trackPaywallShown('settings');
+    onOpenPaywall();
+  };
+
+  const switchControl = (value: boolean, onValueChange: (next: boolean) => void) => (
+    <Switch
+      value={value}
+      onValueChange={onValueChange}
+      trackColor={{ true: colors.accentFill, false: colors.insetPressed }}
+      thumbColor={colors.card}
+    />
+  );
+
   return (
     <PageSheet visible={visible} title={t('settings')} onClose={onClose}>
-      {/* Dört ayrı başlık yerine tek "Tercihler" bloğu: hepsi aynı cinsten
-          seçim; ayrı ayrı başlıklandırınca sayfa başlık çorbasına dönüyordu. */}
       <Section title={t('preferences')}>
-        <Field label={t('appearance')}>
-          <ChipGroup<ThemeMode>
+        <View style={{ borderTopWidth: 1, borderTopColor: colors.gridline }}>
+          <SelectRow<ThemeMode>
+            label={t('appearance')}
             options={[
+              { key: 'system', label: t('themeSystem') },
               { key: 'light', label: t('themeLight') },
               { key: 'dark', label: t('themeDark') },
-              { key: 'system', label: t('themeSystem') },
             ]}
             value={themeMode}
             onChange={setThemeMode}
           />
-        </Field>
-
-        {/* Bunlar liste seçimi, iki durumlu geçiş değil: çip grubu satırı taşırıyor
-            ve seçili değeri bir bakışta okutmuyordu. */}
-        <SelectRow<Locale>
-          label={t('language')}
-          options={LOCALES.map((key) => ({ key, label: LOCALE_NAMES[key] }))}
-          value={locale}
-          onChange={setLocalePref}
-        />
-
-        <SelectRow<Currency>
-          label={t('currency')}
-          options={CURRENCIES.map((c) => ({ key: c, label: c }))}
-          value={currency}
-          onChange={setCurrency}
-        />
-
-        <SelectRow<'device' | '12' | '24'>
-          label={t('clockFormat')}
-          options={[
-            { key: 'device', label: t('followDevice') },
-            { key: '24', label: t('clock24') },
-            { key: '12', label: t('clock12') },
-          ]}
-          value={clockFormat}
-          onChange={setClockFormatPref}
-        />
-
-        <SelectRow<'device' | 'metric' | 'imperial'>
-          label={t('units')}
-          options={[
-            { key: 'device', label: t('followDevice') },
-            { key: 'metric', label: t('unitsMetric') },
-            { key: 'imperial', label: t('unitsImperial') },
-          ]}
-          value={units}
-          onChange={setUnits}
-        />
-
-        <SelectRow<number>
-          label={t('alertThreshold')}
-          options={WARN_THRESHOLDS.map((m) => ({ key: m, label: t('minutesShort', { minutes: m }) }))}
-          value={warnThresholdMin}
-          onChange={setWarnThreshold}
-        />
+          <SelectRow<Locale>
+            label={t('language')}
+            options={LOCALES.map((key) => ({ key, label: LOCALE_NAMES[key] }))}
+            value={locale}
+            onChange={setLocalePref}
+          />
+          <SelectRow<Currency>
+            label={t('currency')}
+            options={CURRENCIES.map((c) => ({ key: c, label: c }))}
+            value={currency}
+            onChange={setCurrency}
+          />
+          <SelectRow<'device' | '12' | '24'>
+            label={t('clockFormat')}
+            options={[
+              { key: 'device', label: t('followDevice') },
+              { key: '24', label: t('clock24') },
+              { key: '12', label: t('clock12') },
+            ]}
+            value={clockFormat}
+            onChange={setClockFormatPref}
+          />
+          <SelectRow<'device' | 'metric' | 'imperial'>
+            label={t('units')}
+            options={[
+              { key: 'device', label: t('followDevice') },
+              { key: 'metric', label: t('unitsMetric') },
+              { key: 'imperial', label: t('unitsImperial') },
+            ]}
+            value={units}
+            onChange={setUnits}
+          />
+          <SelectRow<number>
+            label={t('alertThreshold')}
+            options={WARN_THRESHOLDS.map((m) => ({ key: m, label: t('minutesShort', { minutes: m }) }))}
+            value={warnThresholdMin}
+            onChange={setWarnThreshold}
+          />
+        </View>
       </Section>
 
-      <Section title={t('goPro')}>
-        {isPremium ? (
-          <>
-            <Row label={t('goPro')} value={t('proActive')} />
-            <LinkRow label={t('manageSubscription')} onPress={openSubscriptionSettings} />
-          </>
-        ) : (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => {
-              trackPaywallShown('settings');
-              onOpenPaywall();
-            }}
-            hitSlop={8}
-          >
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', height: 44 }}>
-              <Text style={{ fontSize: 15, color: colors.ink }}>{t('goPro')}</Text>
-              <SymbolView name="chevron.right" size={13} tintColor={colors.disabled} weight="semibold" />
-            </View>
-          </Pressable>
-        )}
-      </Section>
-
-      <Section title={t('autoDetect')}>
-        {isPremium ? (
-          <>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', height: 44 }}>
-              <Text style={{ fontSize: 15, color: colors.ink, flex: 1 }}>{t('autoDetect')}</Text>
-              <Switch
-                value={autoDetectEnabled}
-                onValueChange={setAutoDetect}
-                trackColor={{ true: colors.accentFill, false: colors.insetPressed }}
-                thumbColor={colors.card}
-              />
-            </View>
-            <Caption>{t('autoDetectHint')}</Caption>
-          </>
-        ) : (
-          <Pressable accessibilityRole="button" onPress={onOpenPaywall} hitSlop={4}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s8, height: 44 }}>
-              <SymbolView name="lock.fill" size={15} tintColor={colors.disabled} weight="regular" />
-              <Caption color={colors.textSecondary} style={{ flex: 1 }}>
-                {t('autoDetectPro')}
-              </Caption>
-              <SymbolView name="chevron.right" size={13} tintColor={colors.disabled} weight="semibold" />
-            </View>
-          </Pressable>
-        )}
+      {/* Pro ve oto-algılama tek grupta: ikisi de aynı satın almanın yüzü. */}
+      <Section title="Pro">
+        <View style={{ borderTopWidth: 1, borderTopColor: colors.gridline }}>
+          {isPremium ? (
+            <>
+              <SettingRow label={t('goPro')} value={t('proActive')} />
+              <SettingRow label={t('manageSubscription')} onPress={openSubscriptionSettings} />
+              <SettingRow label={t('autoDetect')} trailing={switchControl(autoDetectEnabled, setAutoDetect)} />
+            </>
+          ) : (
+            <>
+              <SettingRow label={t('goPro')} onPress={openPaywall} />
+              <SettingRow label={t('autoDetectPro')} locked onPress={openPaywall} />
+            </>
+          )}
+        </View>
       </Section>
 
       {/* Verilmiş izin satır üretmez; bölüm yalnız eksik izin varsa görünür. Sorulmamış izin de
@@ -305,6 +295,13 @@ export function SettingsSheet({
         </Section>
       )}
 
+      <Section title={t('data')}>
+        <View style={{ borderTopWidth: 1, borderTopColor: colors.gridline }}>
+          <SettingRow label={t('exportData')} onPress={exportData} />
+          <SettingRow label={t('deleteAllData')} tone="warn" onPress={() => setConfirmDeleteOpen(true)} />
+        </View>
+      </Section>
+
       <ConfirmSheet
         visible={confirmDeleteOpen}
         title={t('deleteAllData')}
@@ -315,53 +312,34 @@ export function SettingsSheet({
         onConfirm={deleteAll}
       />
 
-      <Section title={t('data')}>
-        <LinkRow label={t('exportData')} onPress={exportData} />
-        <Text
-          onPress={confirmDeleteAll}
-          accessibilityRole="button"
-          style={{ fontSize: 15, color: colors.warnText, paddingVertical: spacing.s8 }}
-        >
-          {t('deleteAllData')}
-        </Text>
-      </Section>
-
       <Section title={t('about')}>
-        <Row label={t('version')} value={Constants.expoConfig?.version ?? '—'} />
-        <LinkRow label={t('privacy')} onPress={() => void Linking.openURL(PRIVACY_URL)} />
-        <LinkRow label={t('terms')} onPress={() => void Linking.openURL(TERMS_URL)} />
-        <LinkRow label={t('support')} onPress={() => void Linking.openURL(`mailto:${SUPPORT_EMAIL}`)} />
-        <LinkRow label={t('rateUs')} onPress={() => void Linking.openURL(REVIEW_URL)} />
-        {/* ODbL: OpenStreetMap verisi kullanıldığı için atıf zorunlu */}
-        <Caption style={{ paddingTop: spacing.s8 }}>{t('osmAttribution')}</Caption>
+        <View style={{ borderTopWidth: 1, borderTopColor: colors.gridline }}>
+          <SettingRow label={t('privacy')} onPress={() => void Linking.openURL(PRIVACY_URL)} />
+          <SettingRow label={t('terms')} onPress={() => void Linking.openURL(TERMS_URL)} />
+          <SettingRow label={t('support')} onPress={() => void Linking.openURL(`mailto:${SUPPORT_EMAIL}`)} />
+          <SettingRow label={t('rateUs')} onPress={() => void Linking.openURL(REVIEW_URL)} />
+        </View>
+        {/* Sürüm ve ODbL atfı (OpenStreetMap verisi kullanıldığı için zorunlu) tek dipnotta. */}
+        <Caption style={{ paddingTop: spacing.s8 }}>
+          {`ParkIQ ${Constants.expoConfig?.version ?? ''} · ${t('osmAttribution')}`.trim()}
+        </Caption>
       </Section>
 
       {/* Yalnız geliştirme derlemesinde: __DEV__ production bundle'ında false olduğu
           için bu bölüm shipping'e giremez (premium.ts de anahtarı yok sayar). */}
       {__DEV__ && (
         <Section title={t('developer')}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', height: 44 }}>
-            <Text style={{ fontSize: 15, color: colors.ink, flex: 1 }}>{t('devPremium')}</Text>
-            <Switch
-              value={devUnlock}
-              onValueChange={setDevUnlock}
-              trackColor={{ true: colors.accentFill, false: colors.insetPressed }}
-              thumbColor={colors.card}
+          <View style={{ borderTopWidth: 1, borderTopColor: colors.gridline }}>
+            <SettingRow label={t('devPremium')} trailing={switchControl(devUnlock, setDevUnlock)} />
+            <SettingRow
+              label={t('devResetOnboarding')}
+              onPress={() => {
+                useSettingsStore.getState().resetOnboarding();
+                onClose();
+              }}
             />
           </View>
-          <Caption>{t('devPremiumHint')}</Caption>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => {
-              useSettingsStore.getState().resetOnboarding();
-              onClose();
-            }}
-            hitSlop={8}
-          >
-            <Text style={{ fontSize: 15, color: colors.ink, paddingVertical: spacing.s8 }}>
-              {t('devResetOnboarding')}
-            </Text>
-          </Pressable>
+          <Caption style={{ paddingTop: spacing.s8 }}>{t('devPremiumHint')}</Caption>
         </Section>
       )}
     </PageSheet>

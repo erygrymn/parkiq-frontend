@@ -27,7 +27,8 @@ export function SelectRow<T extends string | number>({
   const selected = options.find((option) => option.key === value);
 
   return (
-    <View style={{ marginBottom: spacing.s8 }}>
+    // design.md §7.10: hairline ayraçlı satır; açılır liste satırın altında kalır.
+    <View style={{ borderBottomWidth: 1, borderBottomColor: colors.gridline }}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={label}
@@ -66,7 +67,7 @@ export function SelectRow<T extends string | number>({
             borderRadius: radius.r12,
             backgroundColor: colors.inset,
             overflow: 'hidden',
-            marginBottom: spacing.s8,
+            marginBottom: spacing.s12,
           }}
         >
           {options.map((option, index) => {
