@@ -4,6 +4,7 @@ import * as Location from 'expo-location';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useMemo, useRef } from 'react';
 import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { SPRING } from '../theme/motion';
 import { MAPBOX_PUBLIC_TOKEN, MAPBOX_STYLE_URL_DARK, MAPBOX_STYLE_URL_LIGHT } from '../config';
@@ -131,6 +132,7 @@ export function MapboxCanvas() {
   const radiusM = useDiscoveryStore((s) => s.radiusM);
   const visiblePois = applyFilter(pois, filter, radiusM);
   const cameraRef = useRef<Camera>(null);
+  const insets = useSafeAreaInsets();
 
   const carCoords =
     session?.latitude != null && session.longitude != null
@@ -303,6 +305,9 @@ export function MapboxCanvas() {
         // Mapbox kullanım şartları: wordmark + attribution ZORUNLU (kapatılamaz)
         logoEnabled
         attributionEnabled
+        // Sheet haritanın altını kapatıyor: Mapbox logosu ve atıf üst solda görünür kalır (ToS).
+        logoPosition={{ top: insets.top + 8, left: 12 }}
+        attributionPosition={{ top: insets.top + 8, left: 108 }}
         scaleBarEnabled={false}
         compassEnabled={false}
         // Pin bırakma modunda konumu haritanın MERKEZİ belirler: kullanıcı
@@ -330,6 +335,8 @@ export function MapboxCanvas() {
             coordinate={[poi.longitude, poi.latitude]}
             anchor={{ x: 0.5, y: 0.5 }}
             allowOverlap={false}
+            // Kullanıcının dibindeki otopark da görünsün; varsayılan puck ile çakışınca gizliyor.
+            allowOverlapWithPuck
           >
             {/* Pine dokunmak keşif panelini o otoparkın kartıyla değiştirir */}
             <Pressable
@@ -354,7 +361,9 @@ export function MapboxCanvas() {
       )}
 
       {carCoords && !pickingLocation && (
-        <MarkerView coordinate={carCoords} anchor={{ x: 0.5, y: 1 }}>
+        {/* allowOverlapWithPuck şart: araba çoğu zaman tam kullanıcının altında ve varsayılan
+            davranış puck ile çakışan işareti GİZLİYOR — pin videoda bu yüzden yoktu. */}
+        <MarkerView coordinate={carCoords} anchor={{ x: 0.5, y: 1 }} allowOverlap allowOverlapWithPuck>
           <CarPin />
         </MarkerView>
       )}

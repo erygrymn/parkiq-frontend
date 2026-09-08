@@ -89,7 +89,7 @@ export function buildMapStyle(scheme: 'light' | 'dark'): string {
         type: 'symbol',
         source: 'composite',
         'source-layer': 'road',
-        minzoom: 15,
+        minzoom: 16,
         filter: ['match', ['get', 'class'], ['primary', 'secondary', 'tertiary', 'street', 'trunk'], true, false],
         layout: {
           'symbol-placement': 'line',
