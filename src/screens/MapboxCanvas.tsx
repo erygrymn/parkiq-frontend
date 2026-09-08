@@ -361,8 +361,8 @@ export function MapboxCanvas() {
       )}
 
       {carCoords && !pickingLocation && (
-        {/* allowOverlapWithPuck şart: araba çoğu zaman tam kullanıcının altında ve varsayılan
-            davranış puck ile çakışan işareti GİZLİYOR — pin videoda bu yüzden yoktu. */}
+        // allowOverlapWithPuck şart: araba çoğu zaman tam kullanıcının altında ve varsayılan
+        // davranış puck ile çakışan işareti GİZLİYOR — pin videoda bu yüzden yoktu.
         <MarkerView coordinate={carCoords} anchor={{ x: 0.5, y: 1 }} allowOverlap allowOverlapWithPuck>
           <CarPin />
         </MarkerView>
