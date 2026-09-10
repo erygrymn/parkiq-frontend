@@ -95,6 +95,7 @@ Bağlayıcı olduğunda claude.ai bağlayıcı ayarlarından yetkilendirilmesi g
 - [x] Onboarding: Reanimated; gezen nokta (üç yuva scroll offset'inden interpolasyon: konum, renk, boy);
       zemin `interpolateColor`; giriş 200 ms + `DOT_SPRING`; Reduce Motion'da inline nokta + crossfade; RN `Animated` kalmadı.
 - [x] Geçmiş: kutusuz KPI (`StatTiles`), hairline satırlar, ilk 8 satır stagger, silme onayı `ConfirmSheet`.
+- [x] Cihaz turu düzeltmeleri (2026-09-10): bitiş anı NaN (`onPress={endSession}` olay nesnesini argüman geçiriyordu) → oturum kapanmıyor, sayaç yeniden açılışta devam ediyordu; Mapbox imzası panelin üstüne alındı; kat çipleri tek satır + fotoğraf ayrı eylem; tarife formu panelin içinde açılıyor; hatırlatıcı süreleri neye göre sayıldığını yazıyor.
 - [x] Harita sheet yükselirken artık ölçeklenmiyor (kenar çerçevesi görünüyordu); derinlik yalnız scrim.
 - [x] Kilit ekranı widget'ları (accessory circular/rectangular/inline) + Live Activity "Bitir" düğmesi (`ParkIQEndSessionIntent`, ikiz dosya) + `consumePendingEnd` köprüsü. **Cihazda doğrulanacak:** niyet arka planda app'i açıp kutuya yazıyor mu, kart anında sönüyor mu, kilit ekranı widget'ı galeride çıkıyor mu.
 - [x] Park anı hızlı sorular (2026-09-08): form yerine Kat → Tarife → Hatırlat çip soruları, her biri atlanabilir; not/backdate/hatırlatıcı ayrıntıları aktif sheet "Details" satırına taşındı. Bitirme tek dokunuş (`endSession`), `ending` fazı silindi; Undo kutlama kapağında.

@@ -396,6 +396,9 @@ function Root() {
         // Park formu aşağı çekilerek de terk edilebilir (kayıt silinir, keşfe döner).
         // Diğer fazlarda panel kapanamaz: harita tek başına çıkışsız bir ekran olurdu.
         enablePanDownToClose={phase === 'parking' && !historyOpen}
+        // Panel durunca üst kenarının ekran koordinatı yayınlanır: Mapbox imzası (kaldırılamaz)
+        // bunun hemen üstünde, sol altta yaşar — üst köşede sayfanın kendi başlığı gibi duruyordu.
+        onChange={(_, position) => useUiStore.getState().setSheetTop(position)}
         onClose={() => useSessionStore.getState().cancelPark()}
         keyboardBehavior="interactive"
         keyboardBlurBehavior="restore"

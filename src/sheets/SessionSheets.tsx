@@ -12,7 +12,7 @@ import { CelebrationHero } from '../components/motion/CelebrationHero';
 import { PhotoThumb } from '../components/motion/PhotoViewer';
 import { PhotoField } from '../components/PhotoField';
 import { RatePrompt } from '../components/RatePrompt';
-import { DetailRow, PopupSheet } from '../components/PopupSheet';
+import { DetailRow } from '../components/PopupSheet';
 import { CARD_HEIGHT, CARD_WIDTH, SavingsCard, type SavingsCardData } from '../components/SavingsCard';
 import { SearchBar } from '../components/SearchBar';
 import { ShareCardRenderer } from '../components/ShareCardRenderer';
@@ -72,6 +72,28 @@ function TextButton({ label, onPress }: { label: string; onPress: () => void }) 
       {({ pressed }) => (
         <Text style={{ fontSize: 17, fontWeight: '600', color: pressed ? colors.ink : colors.textSecondary }}>{label}</Text>
       )}
+    </Pressable>
+  );
+}
+
+/** İkonlu metin eylemi (fotoğraf çek gibi): dolgu yok, 44pt hedef, ikon 17pt. */
+function IconAction({ symbol, label, onPress }: { symbol: 'camera.viewfinder'; label: string; onPress: () => void }) {
+  const { colors } = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      hitSlop={8}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.s8,
+        height: 44,
+        opacity: pressed ? 0.6 : 1,
+      })}
+    >
+      <SymbolView name={symbol} size={17} tintColor={colors.ink} weight="regular" />
+      <Text style={{ fontSize: 15, color: colors.ink }}>{label}</Text>
     </Pressable>
   );
 }
@@ -251,7 +273,7 @@ export function IdleSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
 type ParkField = 'floor' | 'note' | 'photo' | 'backdate' | 'reminder';
 
 /** Tarife formu + tarama satırı + OCR durumları — park ve aktif sheet'lerde aynı. */
-function TariffEditor({ onOpenPaywall, onClose }: { onOpenPaywall: () => void; onClose: () => void }) {
+function TariffEditor({ onOpenPaywall, onClose }: { onOpenPaywall: () => void; onClose?: () => void }) {
   const { colors } = useTheme();
   const session = useSessionStore((s) => s.session);
   const externalTariffVersion = useSessionStore((s) => s.externalTariffVersion);
@@ -310,7 +332,7 @@ function TariffEditor({ onOpenPaywall, onClose }: { onOpenPaywall: () => void; o
         <StatusLine
           label={t('scanPro')}
           onPress={() => {
-            onClose();
+            onClose?.();
             trackPaywallShown('feature');
             onOpenPaywall();
           }}
@@ -412,7 +434,7 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
 
   const steps = parkSteps(session.tariff != null);
   const step = steps[Math.min(stepIndex, steps.length - 1)];
-  const levelKeys = ['−3', '−2', '−1', 'G', '1', '2', '3'];
+  const levelKeys = ['G', '−1', '−2'];
 
   // Yer adı META'dır: nokta hakkı duygu damgasınındır (§2 tie-breaker).
   const overline = [
@@ -456,30 +478,24 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
         {step === 'level' && (
           <>
             <StepHeader label={t('floor')} question={t('qLevel')} onSkip={advance} />
+            {/* Tek satır: en sık üç kat + "Başka". Uzun kat listesi tarama işi çıkarıyordu —
+                −4, C2, P3 gibi her şey "Başka"nın klavyesinden girilir. */}
             <ChipGroup<string>
               options={[
                 // Aynı yerdeki son kat: bir dokunuş, yeşil tonda; listedeki kopyası gizlenir.
                 ...(suggestedFloor ? [{ key: 'last', label: suggestedFloor, tone: 'accent' as const }] : []),
-                { key: 'street', label: t('street') },
                 ...levelKeys
                   .filter((k) => (k === 'G' ? t('ground') : k) !== suggestedFloor)
                   .map((k) => ({ key: k, label: k === 'G' ? t('ground') : k })),
                 { key: 'other', label: t('otherLevel') },
-                { key: 'photo', label: t('photo') },
               ]}
-              value={answered ?? (customLevel ? 'other' : session.photoUri ? 'photo' : null)}
+              value={answered ?? (customLevel ? 'other' : null)}
               onChange={(key) => {
-                if (key === 'photo') {
-                  capturePhoto();
-                  return;
-                }
                 if (key === 'other') {
                   setCustomLevel(true);
                   return;
                 }
-                answer(key, () =>
-                  setFloor(key === 'street' ? '' : key === 'last' ? (suggestedFloor ?? '') : key === 'G' ? t('ground') : key),
-                );
+                answer(key, () => setFloor(key === 'last' ? (suggestedFloor ?? '') : key === 'G' ? t('ground') : key));
               }}
             />
             {customLevel && (
@@ -494,6 +510,12 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
                 style={inputStyle(colors.inset, colors.ink)}
               />
             )}
+            {/* Fotoğraf kat değildir: soruyu cevaplamaz, kata ek olarak alınır. */}
+            <IconAction
+              symbol="camera.viewfinder"
+              label={session.photoUri ? t('photoAdded') : t('addPhoto')}
+              onPress={capturePhoto}
+            />
             {cameraState === 'denied' && <StatusLine label={t('cameraOff')} onPress={openAppSettings} />}
           </>
         )}
@@ -515,11 +537,17 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
                   answer(key, acceptSuggestedTariff);
                   return;
                 }
-                // Editör tek gerçek popup (§7.4); kapanınca tarife girildiyse soru cevaplanmış sayılır.
+                // Form aynı panelin içinde açılır: üst üste binen ikinci bir sheet yok (İlke 9).
+                setAnswered(key);
                 setTariffOpen(true);
                 if (key === 'scan') scanTariff();
               }}
             />
+            {tariffOpen && (
+              <Animated.View entering={FadeIn.duration(CROSSFADE_MS)} layout={layoutSpring} style={{ gap: spacing.s12 }}>
+                <TariffEditor onOpenPaywall={onOpenPaywall} />
+              </Animated.View>
+            )}
           </>
         )}
 
@@ -528,7 +556,8 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
             <StepHeader label={t('remindMe')} question={t('qRemind')} onSkip={advance} />
             <ChipGroup<number>
               options={[
-                ...[1, 2, 3, 4].map((h) => ({ key: h * 60, label: t('hoursShort', { hours: h }) })),
+                // "1 sa" tek başına belirsizdi: park anından mı, fiyat artışından mı sayılıyor?
+                ...[1, 2, 3, 4].map((h) => ({ key: h * 60, label: t('inHoursAfter', { hours: h }) })),
                 { key: 0, label: t('reminderOff') },
               ]}
               value={answered === null ? null : Number(answered)}
@@ -544,16 +573,6 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
         <PrimaryCta label={t('done')} onPress={confirmDetails} />
       </Animated.View>
 
-      <PopupSheet
-        visible={tariffOpen}
-        title={t('tariff')}
-        onClose={() => {
-          setTariffOpen(false);
-          if (useSessionStore.getState().session?.tariff) advance();
-        }}
-      >
-        <TariffEditor onOpenPaywall={onOpenPaywall} onClose={() => setTariffOpen(false)} />
-      </PopupSheet>
     </Animated.View>
   );
 }
@@ -599,6 +618,7 @@ function ReminderEditor({ session, onOpenTariff }: { session: ParkSession; onOpe
   const reminder = session.reminder;
   return (
     <>
+      <Caption>{t('reminderAnchor')}</Caption>
       <ChipGroup<'off' | 'afterPark' | 'beforeEveryTier'>
         options={[
           { key: 'off', label: t('reminderOff') },
@@ -623,6 +643,8 @@ function ReminderEditor({ session, onOpenTariff }: { session: ParkSession; onOpe
       )}
       {reminder && (
         <>
+          {/* Sürenin neye göre sayıldığı çipin üstünde yazar; "30 dk" tek başına iki anlamlıydı. */}
+          <Caption>{t(reminder.anchor === 'afterPark' ? 'reminderAfterHow' : 'reminderBeforeHow')}</Caption>
           <ChipGroup<number>
             options={[
               ...(reminder.anchor === 'afterPark'
@@ -674,21 +696,22 @@ function ReminderEditor({ session, onOpenTariff }: { session: ParkSession; onOpe
   );
 }
 
+/** "Park’tan 1 sa sonra" / "Her artıştan 15 dk önce" — çipler kapalıyken de tek bakışta okunur. */
 function reminderSummaryOf(session: ParkSession): string | null {
   const reminder = session.reminder;
   if (!reminder) return null;
-  return [
+  const duration =
     reminder.minutes < 60
       ? t('minutesShort', { minutes: reminder.minutes })
-      : t('hoursShort', { hours: Math.round((reminder.minutes / 60) * 10) / 10 }),
-    t(
-      reminder.anchor === 'afterPark'
-        ? 'anchorAfterPark'
-        : reminder.anchor === 'beforeFirstTier'
-          ? 'anchorFirstTier'
-          : 'anchorEveryTier',
-    ).toLocaleLowerCase(),
-  ].join(' · ');
+      : t('hoursShort', { hours: Math.round((reminder.minutes / 60) * 10) / 10 });
+  return t(
+    reminder.anchor === 'afterPark'
+      ? 'remindAfterSummary'
+      : reminder.anchor === 'beforeFirstTier'
+        ? 'remindBeforeFirstSummary'
+        : 'remindBeforeSummary',
+    { duration },
+  );
 }
 
 export function ActiveSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
@@ -786,9 +809,11 @@ export function ActiveSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
           label={t('tariff')}
           value={session.tariff ? formatTariffSummary(session.tariff, locale) : null}
           placeholder={t('addTariff')}
-          open={false}
-          onToggle={() => setTariffOpen(true)}
-        />
+          open={tariffOpen}
+          onToggle={() => setTariffOpen((open) => !open)}
+        >
+          <TariffEditor onOpenPaywall={onOpenPaywall} />
+        </Field>
         <Field
           label={t('details')}
           value={detailsSummary}
@@ -870,10 +895,6 @@ export function ActiveSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
         </Field>
       </View>
 
-      <PopupSheet visible={tariffOpen} title={t('tariff')} onClose={() => setTariffOpen(false)}>
-        <TariffEditor onOpenPaywall={onOpenPaywall} onClose={() => setTariffOpen(false)} />
-      </PopupSheet>
-
       <View style={{ gap: spacing.s8 }}>
         {/* Ekranın tek siyah CTA'sı: dönüş anı. Arabamı Bul bir sheet fazıdır (§7.6). */}
         <PrimaryCta label={t('findMyCar')} onPress={startFinding} />
@@ -885,7 +906,7 @@ export function ActiveSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
             style={{ flex: 1 }}
           />
           {/* Tek dokunuşla biter; emniyet kemeri kutlama kapağındaki "Undo" (§7.8). Onay ekranı yok. */}
-          <GhostButton label={t('endSession')} onPress={endSession} style={{ flex: 1 }} />
+          <GhostButton label={t('endSession')} onPress={() => endSession()} style={{ flex: 1 }} />
         </View>
       </View>
     </Animated.View>
@@ -1061,7 +1082,11 @@ export function EndedSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
               </PhotoThumb>
             )}
             <View style={{ flex: 1, gap: 2 }}>
-              {!!session.floor && <Text style={{ fontSize: 15, fontWeight: '600', color: colors.ink }}>{session.floor}</Text>}
+              {!!session.floor && (
+                <Text style={{ fontSize: 15, fontWeight: '600', color: colors.ink }}>
+                  {t('floor')} {session.floor}
+                </Text>
+              )}
               {!!session.note && <Caption>{session.note}</Caption>}
             </View>
           </View>

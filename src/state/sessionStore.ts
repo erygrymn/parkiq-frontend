@@ -717,7 +717,12 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   endSession: (endedAtMs) => {
     const { phase, session } = get();
     if ((phase !== 'active' && phase !== 'finding') || !session) return;
-    const next = { ...session, endedAtMs: Math.max(session.startedAtMs, endedAtMs ?? Date.now()) };
+    // Doğrudan `onPress={endSession}` yazılırsa React basma olayını argüman olarak geçer ve
+    // bitiş anı NaN olurdu: SQLite yazımı patlar, kayıt açık kalır, sayaç yeniden açılışta
+    // devam ederdi. Sayı olmayan her şey "şimdi" sayılır.
+    const at =
+      typeof endedAtMs === 'number' && Number.isFinite(endedAtMs) ? Math.max(session.startedAtMs, endedAtMs) : Date.now();
+    const next = { ...session, endedAtMs: at };
     persist(next);
     set({ phase: 'ended', session: next });
     void cancelSessionAlerts(); // §8.4: oturum bitince zamanlanmış uyarılar iptal

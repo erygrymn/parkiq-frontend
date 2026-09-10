@@ -35,6 +35,9 @@ interface UiStore {
   /** `finding` fazında kullanıcının son GPS düzeltmesi. FindingSheet yazar; harita çizgisi ve AR okur. */
   userFix: UserFix | null;
   setUserFix: (fix: UserFix | null) => void;
+  /** Panelin ekrandaki üst kenarı (px). Mapbox imzası bunun hemen üstüne oturur. */
+  sheetTop: number;
+  setSheetTop: (top: number) => void;
   /** §7.9 Geçmiş: kök sheet sahnesi. Noktalar haritada; seçili oturuma kamera uçar. */
   historyOpen: boolean;
   historySelectedId: string | null;
@@ -58,6 +61,8 @@ export const useUiStore = create<UiStore>((set) => ({
   closeAr: () => set({ arOpen: false }),
   userFix: null,
   setUserFix: (fix) => set({ userFix: fix }),
+  sheetTop: 0,
+  setSheetTop: (top) => set({ sheetTop: top }),
   historyOpen: false,
   historySelectedId: null,
   historySpots: [],

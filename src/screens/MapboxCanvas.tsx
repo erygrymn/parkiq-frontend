@@ -98,7 +98,13 @@ export function MapboxCanvas() {
   const historyOpen = useUiStore((s) => s.historyOpen);
   const historySpots = useUiStore((s) => s.historySpots);
   const historySelectedId = useUiStore((s) => s.historySelectedId);
+  const sheetTop = useUiStore((s) => s.sheetTop);
   const { height: windowHeight } = useWindowDimensions();
+  // Mapbox şartları: logo + attribution görünür kalmak zorunda. Panelin hemen üstü doğru yer —
+  // harita hep aşağıdan okunur, üst kenar sahnenin kendisi. Panel ölçülene dek kaba bir tahmin.
+  const signatureBottom = Math.round(
+    Math.min(Math.max((sheetTop > 0 ? windowHeight - sheetTop : 200) + 8, insets.bottom + 8), windowHeight * 0.72),
+  );
 
   // §4 derinlik davranıştan: sheet büyürken harita 0.97'ye küçülür ve scrim gelir; aktif
   // oturumda scrim sabit kalır. Yalnız transform/opacity — Mapbox view'ı yeniden boyutlanmaz.
@@ -328,8 +334,8 @@ export function MapboxCanvas() {
         logoEnabled
         attributionEnabled
         // Sheet haritanın altını kapatıyor: Mapbox logosu ve atıf üst solda görünür kalır (ToS).
-        logoPosition={{ top: insets.top + 8, left: 12 }}
-        attributionPosition={{ top: insets.top + 8, left: 108 }}
+        logoPosition={{ bottom: signatureBottom, left: 12 }}
+        attributionPosition={{ bottom: signatureBottom, left: 96 }}
         scaleBarEnabled={false}
         compassEnabled={false}
         // Pin bırakma modunda konumu haritanın MERKEZİ belirler: kullanıcı

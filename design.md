@@ -212,6 +212,9 @@ harflerden kurulmaz.
 
 ## 6. Harita stili
 
+Mapbox logosu + attribution **panelin hemen üstünde, sol altta** durur; panel her durduğunda konum
+yeniden hesaplanır. Üst köşede sayfanın kendi başlığı gibi okunuyordu.
+
 Custom stil JSON (`styleJSON`, Faz 4): `parkiq-light` / `parkiq-dark` + aktif oturumda `calm`
 varyantı (POI etiket opaklığı %50, yol kontrastı bir kademe düşük).
 
@@ -273,14 +276,17 @@ foto seçici). Aynı anda tek aktif oturum. Cold start aktif oturum varsa doğru
   değil, sırayla üç soru**. Her soru bir overline + 17/600 soru cümlesi + çip satırı; sağ üstte
   "Skip". Çip = cevap (seçili durum yok); dokunuş seçimi 180 ms gösterir, sonra sıradaki soru
   `CROSSFADE` ile gelir, yükseklik `LinearTransition`. Sorular bitince oturum aktife geçer.
-  1. **Kat** — "Which level?": Street · −3 · −2 · −1 · Ground · 1 · 2 · 3 · Other · Photo. Aynı yerde
-     daha önce kat girildiyse o kat ilk çiptir (yeşil ton, kat hafızası). "Other" inline input açar
-     (tek metin girişi bu); "Photo" kamerayı açar ve soruda kalır.
+  1. **Kat** — "Which level?": Ground · −1 · −2 · Other, TEK satır. Aynı yerde daha önce kat
+     girildiyse o kat ilk çiptir (yeşil ton, kat hafızası). "Other" inline input açar (tek metin
+     girişi bu) ve −4, C2, P3 gibi her şeyi karşılar; uzun kat listesi tarama işi çıkarıyordu.
+     Çiplerin altında ayrı bir "Fotoğraf çek" eylemi durur: fotoğraf bir kat değildir, soruyu
+     cevaplamaz, kata ek olarak alınır.
   2. **Tarife** — "What does it cost?": hafızadan gelen "Last time · 0–1h ₺50" yeşil çip (varsa) ·
-     Enter · Scan (premium). Enter/Scan tarife editörünü (`BottomSheetModal`, §7.4) açar; kapanınca
-     tarife girildiyse soru cevaplanmış sayılır.
-  3. **Hatırlat** — yalnız tarife girilmediyse: 1 h · 2 h · 3 h · 4 h · Off. Tarife varsa dilim
-     uyarıları zaten kurulur, soru düşer.
+     Enter · Scan (premium). Enter/Scan tarife formunu **aynı panelin içinde** açar (üst üste binen
+     ikinci sheet yok, İlke 9); alttaki tek "Done" hem formu hem oturumu kapatır.
+  3. **Hatırlat** — yalnız tarife girilmediyse: "1 h later" · … · Off. Süre neye göre sayılıyorsa
+     çipin kendisi onu söyler ("1 sa sonra"), soru da öyle sorar ("Park'tan ne kadar sonra?").
+     Tarife varsa dilim uyarıları zaten kurulur, soru düşer.
 - Zorunlu alan sıfır. "Done" siyah hap her an bitirir; sheet'i aşağı çekmek geri almadır.
 - Not, "aslında … önce park ettim", hatırlatıcı ayrıntıları, foto yeniden çekme: park anında
   sorulmaz, aktif sheet'in **Details** satırında yaşar (§7.5).
@@ -380,6 +386,9 @@ açılmaz; foto/kat kartı oradaki doğru araçtır.
 
 ### 7.8 Bitirme + Kutlama (`ended`)
 
+- **Bitiş anı her zaman gerçek bir sayıdır:** `endSession` argümansız çağrılır; sayı olmayan her
+  giriş "şimdi"ye düşer. Aksi hâlde kayıt yazılamıyor, oturum kapanmıyor ve sayaç yeniden açılışta
+  devam ediyordu.
 - **Bitirme tek dokunuştur:** "End" (aktif sheet), "Found it" (Arabamı Bul) ve AR "Found it" oturumu
   doğrudan bitirir; onay ekranı, sistem alert, ara faz yok. Emniyet kemeri kutlama kapağındaki "Undo".
 - **Kutlama:** tam yüzeyli kapak `surface/bg`, Reanimated ile alttan `SPRING` + fade gelir (RN Modal

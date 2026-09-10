@@ -135,7 +135,6 @@ export const en = {
   remindMe: 'Remind me',
   reminderAnchor: 'Count from',
   anchorAfterPark: 'After parking',
-  anchorFirstTier: 'Before the first price rise',
   anchorEveryTier: 'Before every price rise',
   reminderAfterHow: 'How long after',
   reminderBeforeHow: 'How long before',
@@ -278,13 +277,16 @@ export const en = {
   // Park anı hızlı soruları (§7.3) + aktif sheet Detaylar satırı (§7.5)
   qLevel: 'Which level?',
   qTariff: 'What does it cost?',
-  qRemind: 'Remind you later?',
-  street: 'Street',
+  qRemind: 'Remind you how long after parking?',
   ground: 'Ground',
   otherLevel: 'Other',
   enterTariff: 'Enter',
   scanShort: 'Scan',
   lastTimeChip: 'Last time · {summary}',
   details: 'Details',
+  inHoursAfter: '{hours} h later',
+  remindAfterSummary: '{duration} after parking',
+  remindBeforeSummary: '{duration} before every price rise',
+  remindBeforeFirstSummary: '{duration} before the first price rise',
 } as const;
 export type CopyKey = keyof typeof en;

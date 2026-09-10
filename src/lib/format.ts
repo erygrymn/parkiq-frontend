@@ -27,6 +27,7 @@ export function setClockFormat(format: ClockFormat): void {
 
 /** Yerel saat: "14:04" ya da "2:04 PM". */
 export function formatClock(ms: number, format: ClockFormat = currentClock): string {
+  if (!Number.isFinite(ms)) return '--:--';
   const d = new Date(ms);
   const minutes = String(d.getMinutes()).padStart(2, '0');
   if (format === '24') return `${String(d.getHours()).padStart(2, '0')}:${minutes}`;
@@ -38,7 +39,7 @@ export function formatClock(ms: number, format: ClockFormat = currentClock): str
 
 /** Sayaç: ana blok "1:23" + saniye bloğu ":47" (§7.5 — saniye görsel olarak küçülür). */
 export function formatElapsed(elapsedMs: number): { main: string; seconds: string } {
-  const totalSec = Math.max(0, Math.floor(elapsedMs / 1000));
+  const totalSec = Number.isFinite(elapsedMs) ? Math.max(0, Math.floor(elapsedMs / 1000)) : 0;
   const h = Math.floor(totalSec / 3600);
   const m = Math.floor((totalSec % 3600) / 60);
   const s = totalSec % 60;
@@ -51,7 +52,7 @@ export function formatElapsed(elapsedMs: number): { main: string; seconds: strin
  * Küçük harfli satırlar çağıran tarafta `.toLowerCase()` ile üretilir.
  */
 export function formatDurationStamp(elapsedMs: number, locale: string = getLocale()): string {
-  const totalMin = Math.max(0, Math.round(elapsedMs / 60_000));
+  const totalMin = Number.isFinite(elapsedMs) ? Math.max(0, Math.round(elapsedMs / 60_000)) : 0;
   const h = Math.floor(totalMin / 60);
   const m = totalMin % 60;
   const [hourUnit, minuteUnit] = locale === 'tr' ? ['S', 'DK'] : ['H', 'M'];

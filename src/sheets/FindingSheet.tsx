@@ -267,7 +267,7 @@ export function FindingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
 
       <View style={{ gap: spacing.s8 }}>
         {/* Aramanın bittiği an oturum biter; kutlama kapağındaki Undo emniyet kemeridir (§7.8). */}
-        <PrimaryCta label={t('foundIt')} onPress={endSession} />
+        <PrimaryCta label={t('foundIt')} onPress={() => endSession()} />
         <View style={{ flexDirection: 'row', gap: spacing.s8 }}>
           {isPremium && !indoor && carCoords !== null && isArAvailable && (
             <GhostButton label={t('arMode')} onPress={openAr} style={{ flex: 1 }} />
