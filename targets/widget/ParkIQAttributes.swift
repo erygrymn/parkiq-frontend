@@ -1,39 +1,41 @@
-import ActivityKit
-import Foundation
-
+// ⚠️ İKİZ DOSYA — targets/widget/ParkIQAttributes.swift ile BİREBİR AYNI kalmalı.
+//
+// Live Activity'de app ve widget extension ayrı ikililerdir; ActivityKit tipleri
+// isim + Codable gösterimi üzerinden eşleştirir, o yüzden tanımın iki hedefte de
+// derlenmesi gerekir (Apple'ın kendi örnekleri de dosyayı iki hedefe ekler).
+// Bu kopya olmadan modülün Swift'i `ParkIQAttributes`'ı göremez.
+// Biri değişirse diğeri de değişecek.
+//
 // design.md §8 — Live Activity veri sözleşmesi.
 //
-// BAĞLAYICI: Bu extension KENDİ MATEMATİĞİNİ ASLA TÜRETMEZ. Segment yüzdeleri,
-// knob konumu, amber durumu ve sınır zamanları RN tarafındaki paylaşılan saf
-// modülden (tariffMath) gelir ve ContentState'e yazılır. Burada yalnız render var.
-// Aynı token + aynı formül + tek veri kaynağı (§5.9).
+// BAĞLAYICI: Extension KENDİ MATEMATİĞİNİ ASLA TÜRETMEZ ve SÖZLÜK TAŞIMAZ. Fiyatlar
+// `tariffMath`ten, metinler dile çevrilmiş olarak RN'den gelir; burada yalnız render var.
 //
-// Aynı kural METİN için de geçerli: görünen her etiket dile çevrilmiş halde
-// RN'den gelir; extension'ın kendi sözlüğü yoktur.
+// Değişmez alan YOKTUR: yer adı ve kat da ContentState'tedir. ActivityAttributes alanları
+// oturum boyunca sabittir; park anından SONRA girilen kat/konum kilit ekranında hiç
+// görünmüyordu.
 //
-// ⚠️ İKİZ DOSYA — modules/parkiq-live-activity/ios/ParkIQAttributes.swift ile
-// BİREBİR AYNI kalmalı. Sebebi için oradaki nota bak.
+// Zaman alanları (`startedAt`, `tierStartedAt`, `nextBoundaryAt`) sözleşmenin canlı
+// tarafıdır: SwiftUI bunları `Text(timerInterval:)` ve `ProgressView(timerInterval:)` ile
+// KENDİ KENDİNE akıtır. App arka planda hiç çalışmasa da sayaç ve çubuk ilerler; RN'den
+// gelen güncelleme yalnız para metinleri ve dilim değişimi için gerekir.
 
-struct TariffSegmentState: Codable, Hashable {
-  let widthPct: Double
-  let cumulativePriceText: String
-  let passed: Bool
-  let active: Bool
-}
+import ActivityKit
+import Foundation
 
 struct ParkIQAttributes: ActivityAttributes {
   public struct ContentState: Codable, Hashable {
     /// Etkin başlangıç (backdate uygulanmış) — geçen süre sayacı bundan akar.
     let startedAt: Date
+    /// Yer adı ve kat: oturum sürerken düzenlenebilir, o yüzden değişken tarafta.
+    let placeName: String?
+    let floor: String?
+    /// İçinde bulunulan dilimin başlangıcı — çubuk bu aralıkta kendi kendine dolar.
+    let tierStartedAt: Date?
     /// Sonraki FİYAT ARTIŞI sınırı; yoksa nil (tarifesiz/son dilim).
-    /// Yalnız bayatlama (staleDate) ve ton için; ekranda geri sayım GÖSTERİLMEZ.
     let nextBoundaryAt: Date?
     /// "green" | "amber-approaching" | "amber-exceeded" — §5.9 durum makinesi.
     let barTone: String
-    /// Çubuk segmentleri; boşsa çubuk gizlenir (tarifesiz/flat mod).
-    let segments: [TariffSegmentState]
-    /// Knob konumu 0–100; nil ise knob çizilmez.
-    let knobPct: Double?
     /// Biçimlenmiş para metinleri — extension formatlama yapmaz.
     let nowPriceText: String?
     let nextPriceText: String?
@@ -45,8 +47,4 @@ struct ParkIQAttributes: ActivityAttributes {
     /// Alt satır, dile çevrilmiş ("Şimdi ₺150 · Sonra ₺300").
     let footerText: String?
   }
-
-  /// Oturum boyunca değişmeyen bilgi.
-  let placeName: String?
-  let floor: String?
 }

@@ -461,20 +461,33 @@ Kart `#101012`, `r-24`, kenar ışığı, yeşil piksel ≤%10. SwiftUI extensio
 sözlük taşımaz**: segment/knob/ton `tariffMath`'ten `ContentState`'e yazılır, metinler dile çevrilmiş
 gelir. Marka glyph'i sol üstte 22pt; overline noktasız.
 
+**Canlılık sözleşmesi (bağlayıcı):** app arka planda ÇALIŞMAZ ve push sunucusu YOKTUR. Bu yüzden
+kartın hareket eden her parçası bir TARİH ARALIĞINDAN türer — `Text(timerInterval:)` ve
+`ProgressView(timerInterval:)`. Sayaç, geri sayım ve dilim dolumu app kapalıyken de doğru akar;
+RN'den gelen güncelleme yalnız para metinleri ve dilim değişimi içindir. Donmuş yüzde, donmuş
+"kalan süre" metni ve kendi kendine ilerlemeyen çubuk yasaktır. ContentState'te değişmez alan
+yoktur (yer adı ve kat da orada): park anından sonra girilen kat kilit ekranında da görünür.
+
 - Tarifeli: hero = sonraki fiyat artışına geri sayım 44/900 tabular (sistem timer); son 15 dk amber.
-  İkincil geçen süre. Çubuk 8pt, solid yeşil, knob 14pt. Footer "Now ₺50 · Next ₺100" 13/800.
+  Başlıkta ikincil geçen süre 13/heavy muted. Çubuk = içinde bulunulan dilimin kendi kendine dolan
+  ilerlemesi. Footer "Now ₺50 · Next ₺100" 13/800. Sağ üstte "End" düğmesi (§8 aşağıda).
 - Tarifesiz: hero = geçen süre; çubuk gizli.
 - Dynamic Island: compact glyph + sayaç; minimal glyph; expanded mini kart.
 - Widget small/medium: hero rakam + yer adı; oturumsuz "₺340 saved this month". Quick Park widget'ı
   `parkiq://park` → app park kaydıyla açılır ve hızlı sorular (§7.3) hemen başlar.
 - **Kilit ekranı widget'ları** (circular / rectangular / inline): oturum yokken marka glyph'i / "Park"
-  → `parkiq://park`; oturum varken sayaç → `parkiq://session`. Sistem tek renk çizer, renk seçilmez.
+  → `parkiq://park`; oturum varken sayaç → `parkiq://session`. Circular tarife varken geri sayım
+  HALKASI (kendi kendine boşalır, ortasında glyph); rectangular: etiket + büyük sayaç + para satırı.
+  Sistem tek renk çizer, renk seçilmez — sayaç kendi rengini dayatmaz.
 - **Live Activity "End" düğmesi** (kart sağ üst + expanded ada altı): `LiveActivityIntent` app'i
   AÇMADAN bitiş anını App Group'a yazar ve kartı söndürür; app bir sonraki açılışta oturumu o anla
   kapatır ve kutlama kapağını gösterir. Karta dokunmak `parkiq://session`.
 - **Bitiş karesi:** zemin `#2FE07A`, tüm tipografi ink, "SAVED ₺50." (ink nokta), 3 sn, tek kare,
   animasyonsuz.
 - Bildirim: "Tier 2 in 15 min. Now ₺50, after ₺100." local, eşikten önce zamanlanır; ünlem yok.
+  Dilim uyarısı **zaman duyarlıdır** (Odak modunu deler) ama sessizdir; ses kullanıcının hatırlatıcı
+  türü seçimidir ("Sesli"/"Her ikisi" → `sound: default`, app açıkken de duyulur). Sessiz moda
+  rağmen çalan gerçek alarm AlarmKit ister (iOS 26); kopya bunu dürüstçe söyler.
 
 ## 9. Paylaşım kartları
 

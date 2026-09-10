@@ -13,6 +13,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     entitlements: {
       ...((config.ios?.entitlements as Record<string, unknown>) ?? {}),
       'com.apple.security.application-groups': ['group.parkiq.shared'],
+      // Fiyat artışı uyarısı ve sesli hatırlatıcı Odak modlarını delebilsin (§8.4).
+      // Xcode otomatik imzalamada "Time Sensitive Notifications" yeteneğini kendisi ekler.
+      'com.apple.developer.usernotifications.time-sensitive': true,
     },
     infoPlist: {
       ...((config.ios?.infoPlist as Record<string, unknown>) ?? {}),

@@ -45,20 +45,18 @@ function buildPayload(session: ParkSession, warnThresholdMin: number): LiveActiv
 
   const nowPriceText = money(state.nowPrice);
   const nextPriceText = money(state.nextPrice);
+  // Çubuk artık donmuş bir yüzde değil, bir ZAMAN ARALIĞI: SwiftUI içinde bulunulan
+  // dilimin başından sınırına kadar kendi kendine doldurur. App arka planda hiç
+  // çalışmasa bile kilit ekranındaki dolum doğru kalır (§8 kural 3).
+  const activeSegment = state.segments.find((segment) => segment.active) ?? null;
 
   return {
     startedAtMs: session.startedAtMs,
     placeName: session.placeName,
     floor: session.floor || null,
+    tierStartedAtMs: activeSegment ? session.startedAtMs + activeSegment.startMin * 60_000 : null,
     nextBoundaryAtMs: state.nextBoundaryAtMs,
     barTone: state.barTone,
-    knobPct: state.knobPct,
-    segments: state.segments.map((segment) => ({
-      widthPct: segment.widthPct,
-      cumulativePriceText: currency ? formatMoney(segment.cumulativePrice, currency, locale) : '',
-      passed: segment.passed,
-      active: segment.active,
-    })),
     nowPriceText,
     nextPriceText,
     // Sayacın üstündeki etiket: bir sonraki dilim biliniyorsa onun fiyatı,
@@ -92,10 +90,16 @@ function monthlySavedText(): string | null {
  * ve yerine aylık tasarruf yazılır. Dil metinleri her yazımda tazelenir —
  * kullanıcı dili değiştirdiğinde widget da değişsin diye.
  */
-export function syncWidget(session: ParkSession | null): void {
+export function syncWidget(session: ParkSession | null, warnThresholdMin = 15): void {
+  const view = session ? buildPayload(session, warnThresholdMin) : null;
   setWidgetData({
-    startedAtMs: session?.startedAtMs ?? null,
-    placeName: session?.placeName ?? null,
+    startedAtMs: view?.startedAtMs ?? null,
+    placeName: view?.placeName ?? null,
+    // Widget de geri sayımı kendi çizer; kutu yalnız metinleri taşır.
+    nextBoundaryAtMs: view?.nextBoundaryAtMs ?? null,
+    barTone: view?.barTone ?? null,
+    heroLabel: view?.heroLabel ?? null,
+    footerText: view?.footerText ?? null,
     monthlySavedText: session ? null : monthlySavedText(),
     strings: widgetStrings(),
   });
@@ -103,13 +107,16 @@ export function syncWidget(session: ParkSession | null): void {
 
 export function startSessionActivity(session: ParkSession, warnThresholdMin: number): void {
   void startLiveActivity(buildPayload(session, warnThresholdMin));
-  syncWidget(session);
+  syncWidget(session, warnThresholdMin);
 }
 
 export { isLiveActivityRunning } from '../../modules/parkiq-live-activity';
 
 export function refreshSessionActivity(session: ParkSession, warnThresholdMin: number): void {
+  // Kilit ekranı ve widget aynı anda tazelenir: ikisi de aynı payload'dan beslenir,
+  // yoksa yer adı geç geldiğinde widget'ta boş kalıyordu.
   void updateLiveActivity(buildPayload(session, warnThresholdMin));
+  syncWidget(session, warnThresholdMin);
 }
 
 /** §8.5 bitiş karesi: 3 sn yeşil flip, sonra kalkar. */
@@ -123,6 +130,11 @@ export function endSessionActivity(session: ParkSession): void {
       ? t('savedStamp', { amount: formatMoney(exit.saved, currency, getLocale()) })
       : t('parkedDurationStamp', { duration: formatDurationStamp(durationMs) });
 
-  void endLiveActivity({ startedAtMs: session.startedAtMs, finalStampText: stamp });
+  void endLiveActivity({
+    startedAtMs: session.startedAtMs,
+    placeName: session.placeName,
+    floor: session.floor || null,
+    finalStampText: stamp,
+  });
   syncWidget(null);
 }

@@ -3,21 +3,14 @@ import { requireNativeModule } from 'expo-modules-core';
 // Live Activity köprüsü. Native modül yalnız `expo run:ios` build'inde var;
 // Expo Go'da hepsi no-op olur ve app çalışmaya devam eder.
 
-export interface LiveActivitySegment {
-  widthPct: number;
-  cumulativePriceText: string;
-  passed: boolean;
-  active: boolean;
-}
-
 export interface LiveActivityPayload {
   startedAtMs: number;
   placeName?: string | null;
   floor?: string | null;
+  /** İçinde bulunulan dilimin başlangıcı: çubuk bu aralıkta kendi kendine dolar. */
+  tierStartedAtMs?: number | null;
   nextBoundaryAtMs?: number | null;
   barTone?: string;
-  segments?: LiveActivitySegment[];
-  knobPct?: number | null;
   nowPriceText?: string | null;
   nextPriceText?: string | null;
   /** §8.5 bitiş karesi damgası; yalnız end() çağrısında doldurulur. */
@@ -31,6 +24,11 @@ export interface LiveActivityPayload {
 export interface WidgetPayload {
   startedAtMs?: number | null;
   placeName?: string | null;
+  /** Widget da geri sayımı kendi çizer; metinler yalnız sınır anında tazelenir. */
+  nextBoundaryAtMs?: number | null;
+  barTone?: string | null;
+  heroLabel?: string | null;
+  footerText?: string | null;
   monthlySavedText?: string | null;
   /** Widget'ın gösterdiği dile çevrilmiş etiketler (extension'ın sözlüğü yok). */
   strings?: Record<string, string>;

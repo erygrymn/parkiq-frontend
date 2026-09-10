@@ -36,10 +36,8 @@ public class ParkiqLiveActivityModule: Module {
       for existing in Activity<ParkIQAttributes>.activities {
         await existing.end(nil, dismissalPolicy: .immediate)
       }
-      let attributes = ParkIQAttributes(
-        placeName: payload["placeName"] as? String,
-        floor: payload["floor"] as? String
-      )
+      // Değişmez alan yok: yer/kat da ContentState'te (park sonrası düzenlenebiliyor).
+      let attributes = ParkIQAttributes()
       guard let state = Self.contentState(from: payload) else { return nil }
       do {
         let activity = try Activity.request(
@@ -96,7 +94,15 @@ public class ParkiqLiveActivityModule: Module {
       } else {
         defaults.removeObject(forKey: "startedAtMs")
       }
+      if let boundaryMs = payload["nextBoundaryAtMs"] as? Double {
+        defaults.set(boundaryMs, forKey: "nextBoundaryAtMs")
+      } else {
+        defaults.removeObject(forKey: "nextBoundaryAtMs")
+      }
       defaults.set(payload["placeName"] as? String, forKey: "placeName")
+      defaults.set(payload["barTone"] as? String, forKey: "barTone")
+      defaults.set(payload["heroLabel"] as? String, forKey: "heroLabel")
+      defaults.set(payload["footerText"] as? String, forKey: "footerText")
       defaults.set(payload["monthlySavedText"] as? String, forKey: "monthlySavedText")
 
       // Widget'ın sözlüğü yoktur: gördüğü her etiket dile çevrilmiş halde
@@ -116,24 +122,17 @@ public class ParkiqLiveActivityModule: Module {
   private static func contentState(from payload: [String: Any]) -> ParkIQAttributes.ContentState? {
     guard let startedAtMs = payload["startedAtMs"] as? Double else { return nil }
 
-    let rawSegments = payload["segments"] as? [[String: Any]] ?? []
-    let segments = rawSegments.map { segment in
-      TariffSegmentState(
-        widthPct: segment["widthPct"] as? Double ?? 0,
-        cumulativePriceText: segment["cumulativePriceText"] as? String ?? "",
-        passed: segment["passed"] as? Bool ?? false,
-        active: segment["active"] as? Bool ?? false
-      )
-    }
-
     return ParkIQAttributes.ContentState(
       startedAt: Date(timeIntervalSince1970: startedAtMs / 1000),
+      placeName: payload["placeName"] as? String,
+      floor: payload["floor"] as? String,
+      tierStartedAt: (payload["tierStartedAtMs"] as? Double).map {
+        Date(timeIntervalSince1970: $0 / 1000)
+      },
       nextBoundaryAt: (payload["nextBoundaryAtMs"] as? Double).map {
         Date(timeIntervalSince1970: $0 / 1000)
       },
       barTone: payload["barTone"] as? String ?? "green",
-      segments: segments,
-      knobPct: payload["knobPct"] as? Double,
       nowPriceText: payload["nowPriceText"] as? String,
       nextPriceText: payload["nextPriceText"] as? String,
       finalStampText: payload["finalStampText"] as? String,

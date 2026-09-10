@@ -224,6 +224,16 @@ function syncLiveActivity(action: 'start' | 'refresh' | 'end'): void {
 }
 
 /**
+ * Oturum yaşarken yapılan her düzenleme (kat, not, tarife, geri tarihleme, konum)
+ * kilit ekranı kartına ve widget'a anında yansır. Eskiden yalnız 60 sn'lik ön plan
+ * turunda güncelleniyordu; kullanıcı katı girip telefonu kilitleyince kart boş kalıyordu.
+ */
+function refreshActivityIfLive(): void {
+  const phase = useSessionStore.getState().phase;
+  if (phase === 'active' || phase === 'finding') syncLiveActivity('refresh');
+}
+
+/**
  * Dilim uyarılarını oturumun güncel haline göre yeniden kurar.
  * Tarife yoksa uyarı da yoktur — bu yüzden izin de İSTENMEZ (bağlamsal izin kuralı).
  */
@@ -390,6 +400,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const next = { ...session, floor };
     persist(next);
     set({ session: next });
+    refreshActivityIfLive();
   },
 
   setNote: (note) => {
@@ -398,6 +409,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const next = { ...session, note };
     persist(next);
     set({ session: next });
+    refreshActivityIfLive();
   },
 
   setTariff: (tariff) => {
@@ -406,6 +418,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const next = { ...session, tariff };
     persist(next);
     set({ session: next, suggestedTariff: null });
+    refreshActivityIfLive();
     syncAlerts(next, false, set); // izin, kullanıcı Done'a basınca istenir
   },
 
@@ -418,6 +431,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const next = { ...session, startedAtMs };
     persist(next);
     set({ session: next });
+    refreshActivityIfLive();
     syncAlerts(next, false, set); // sınırlar kaydı → uyarılar yeniden kurulur
   },
 
@@ -608,6 +622,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       locationPinnedByUser: true,
       locationEditSeq: get().locationEditSeq + 1,
     });
+    refreshActivityIfLive();
   },
 
   useMyLocationForPark: () => {

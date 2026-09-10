@@ -14,12 +14,17 @@ const FORGOTTEN_SESSION_MS = 24 * 60 * 60 * 1000;
 const MAX_TIER_ALERTS = 8;
 
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
+  // App açıkken de sesli uyarı SESLİ gelir: kullanıcı "alarm" seçtiyse sessiz banner
+  // sözün tutulmaması demek. Sessiz uyarılar eskisi gibi ses çıkarmaz.
+  handleNotification: async (notification) => {
+    const loud = (notification.request.content.data as { loud?: boolean } | undefined)?.loud === true;
+    return {
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: loud,
+      shouldSetBadge: false,
+    };
+  },
 });
 
 export type NotificationPermission = 'granted' | 'denied';
@@ -81,8 +86,11 @@ export async function cancelSessionAlerts(): Promise<void> {
 }
 
 /**
- * `loud` uyarıyı sesli ve ZAMAN DUYARLI yapar: Odak modlarını deler ve sessiz
- * banner yerine duyulur. Gerçek bir alarm (sessiz moda rağmen çalan, tam ekran)
+ * `sound` uyarıyı duyulur, `timeSensitive` Odak modlarını delen bir uyarı yapar.
+ *
+ * Bu iki bayrak ÖNCEDEN HİÇ KULLANILMIYORDU: fonksiyon `loud` alıyor ama içeriği
+ * her zaman `sound: false` ile kuruyordu, yani "Sesli"/"Her ikisi" seçenekleri
+ * sessiz banner üretiyordu. Gerçek bir alarm (sessiz moda rağmen çalan, tam ekran)
  * AlarmKit ister ve o iOS 26'dan itibaren var — bu yüzden şimdilik en yüksek
  * dikkat seviyesi budur.
  */
@@ -90,12 +98,20 @@ async function scheduleAt(
   atMs: number,
   title: string | undefined,
   body: string,
-  loud = false,
+  options: { sound?: boolean; timeSensitive?: boolean } = {},
 ): Promise<void> {
+  const sound = options.sound === true;
   const seconds = Math.round((atMs - Date.now()) / 1000);
   if (seconds <= 0) return;
   await Notifications.scheduleNotificationAsync({
-    content: { title, body, sound: false },
+    content: {
+      title,
+      body,
+      sound: sound ? 'default' : false,
+      interruptionLevel: options.timeSensitive ? 'timeSensitive' : 'active',
+      // Ön plan sunumu bu bayrağı okur: app açıkken de sesli uyarı sesli gelir.
+      data: { loud: sound },
+    },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
       seconds,
@@ -138,7 +154,9 @@ export async function scheduleSessionAlerts(
         now: formatMoney(boundary.currentPrice, currency, locale),
         next: formatMoney(boundary.nextPrice, currency, locale),
       });
-      await scheduleAt(boundary.atMs - warnThresholdMin * 60_000, title, body);
+      // Fiyat artışı uyarısı ürünün asıl sözü: Odak modunda yutulursa para kaybı olur.
+      // Ses kullanıcının seçimidir (hatırlatıcı türü), zaman duyarlılık değildir.
+      await scheduleAt(boundary.atMs - warnThresholdMin * 60_000, title, body, { timeSensitive: true });
     }
 
     // Kullanıcının kurduğu hatırlatıcı. Süre neye göre sayılıyorsa zamanlar
@@ -153,7 +171,7 @@ export async function scheduleSessionAlerts(
           t('simpleReminder', {
             duration: formatDurationStamp(reminder.minutes * 60_000).toLowerCase(),
           }),
-          loud,
+          { sound: loud, timeSensitive: true },
         );
       } else {
         const wanted = reminder.anchor === 'beforeFirstTier' ? 1 : MAX_TIER_ALERTS;
@@ -169,7 +187,7 @@ export async function scheduleSessionAlerts(
               now: formatMoney(boundary.currentPrice, currency, locale),
               next: formatMoney(boundary.nextPrice, currency, locale),
             }),
-            loud,
+            { sound: loud, timeSensitive: true },
           );
         }
       }

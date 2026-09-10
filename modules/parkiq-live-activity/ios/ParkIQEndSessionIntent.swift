@@ -12,6 +12,7 @@
 import ActivityKit
 import AppIntents
 import Foundation
+import WidgetKit
 
 @available(iOS 17.0, *)
 struct ParkIQEndSessionIntent: LiveActivityIntent {
@@ -23,7 +24,11 @@ struct ParkIQEndSessionIntent: LiveActivityIntent {
       defaults.set(Date().timeIntervalSince1970 * 1000, forKey: "pendingEndAtMs")
       // Ana ekran widget'ı bir sonraki tazelemede "oturum yok" durumuna döner.
       defaults.removeObject(forKey: "startedAtMs")
+      defaults.removeObject(forKey: "nextBoundaryAtMs")
+      defaults.removeObject(forKey: "heroLabel")
+      defaults.removeObject(forKey: "footerText")
     }
+    WidgetCenter.shared.reloadAllTimelines()
     for activity in Activity<ParkIQAttributes>.activities {
       await activity.end(nil, dismissalPolicy: .immediate)
     }

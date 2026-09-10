@@ -3,15 +3,18 @@ import AppIntents
 import SwiftUI
 import WidgetKit
 
-// design.md §8 — Live Activity + Dynamic Island + widget.
+// design.md §8 — Live Activity + Dynamic Island + ana ekran/kilit ekranı widget'ları.
 // Kart: #101012, r-24, kenar ışığı, yeşil piksel ≤%10 (tek istisna: §8.5 bitiş karesi).
 // Marka katmanı: sol üst marka işareti + NOKTASIZ overline. "PARKIQ" yazısı yok.
 //
-// İKİ BAĞLAYICI KURAL:
-// 1. Matematik yok — segment/knob/ton RN'deki tariffMath'ten gelir.
+// ÜÇ BAĞLAYICI KURAL:
+// 1. Matematik yok — fiyat/ton RN'deki tariffMath'ten gelir.
 // 2. Sözlük yok — görünen her etiket dile çevrilmiş halde RN'den gelir
 //    (Live Activity'de ContentState, widget'ta App Group kutusu üzerinden).
 //    Buradaki İngilizce dizgiler yalnız kutu boşken kullanılan son çare.
+// 3. Zaman KENDİ KENDİNE akar — süre, geri sayım ve dolum çubuğu tarih aralıklarından
+//    türer (`Text(timerInterval:)`, `ProgressView(timerInterval:)`). App arka planda hiç
+//    çalışmasa da kart canlı kalır; RN güncellemesi yalnız para metinleri içindir.
 
 private enum Palette {
   static let card = Color(red: 0x10 / 255, green: 0x10 / 255, blue: 0x12 / 255)
@@ -43,6 +46,10 @@ private enum Gallery {
   static var parkDescription: String {
     isTurkish ? "Tek dokunuşla yerini kaydet." : "Save where you parked in one tap."
   }
+  static var lockName: String { isTurkish ? "ParkIQ · Kilit Ekranı" : "ParkIQ · Lock Screen" }
+  static var lockDescription: String {
+    isTurkish ? "Süre ve sonraki fiyat artışı." : "Your timer and the next price rise."
+  }
 }
 
 /// App Group kutusundan dile çevrilmiş metinler. RN her oturum değişiminde ve
@@ -56,16 +63,24 @@ private enum Shared {
   }
 }
 
+/// Geçerli bir tarih aralığı: `ProgressView(timerInterval:)` boş/ters aralıkta çöker.
+private func liveRange(_ from: Date?, _ to: Date?) -> ClosedRange<Date>? {
+  guard let from, let to, to > from else { return nil }
+  return from...to
+}
+
 // MARK: - Marka glyph'i
 
 private struct BrandGlyph: View {
+  var size: CGFloat = 22
+
   var body: some View {
     // Marka işareti tek bir varlıktan gelir; harflerden kurulan eski "P." her
     // yüzeyde biraz farklı görünüyordu ve ikonla aynı şey değildi.
     Image("BrandMark")
       .resizable()
       .aspectRatio(contentMode: .fit)
-      .frame(width: 22, height: 22)
+      .frame(width: size, height: size)
       .accessibilityHidden(true)
   }
 }
@@ -86,17 +101,17 @@ private struct Overline: View {
   }
 }
 
-/// Geçen süre — HER ZAMAN ileri sayar (0'dan yukarı).
-/// `.timer` stili dar alanda "6:.." gibi kırpılabildiği için burada tek satır +
-/// küçülme payı verilir ve sıkıştırma direnci yükseltilir.
+/// Geçen süre — HER ZAMAN ileri sayar (0'dan yukarı), sistem tarafından akıtılır.
+/// `.timer` stili dar alanda "6:.." gibi kırpılabildiği için tek satır + küçülme payı.
 private struct ElapsedTimer: View {
   let startedAt: Date
   var size: CGFloat = 44
+  var weight: Font.Weight = .black
   var color: Color = .white
 
   var body: some View {
     Text(startedAt, style: .timer)
-      .font(.system(size: size, weight: .black))
+      .font(.system(size: size, weight: weight))
       .monospacedDigit()
       .foregroundStyle(color)
       .lineLimit(1)
@@ -105,30 +120,43 @@ private struct ElapsedTimer: View {
   }
 }
 
-// MARK: - Tarife çubuğu (yalnız render)
-
-private struct TariffBar: View {
-  let state: ParkIQAttributes.ContentState
+/// §8.1 hero: fiyat artışına kalan süre. Sınır yoksa geçen süreye düşer —
+/// iki sayaç aynı anda hero olmaz.
+private struct HeroTimer: View {
+  let startedAt: Date
+  let boundary: Date?
+  let tone: String
+  var size: CGFloat = 44
 
   var body: some View {
-    GeometryReader { geo in
-      let width = geo.size.width
-      ZStack(alignment: .leading) {
-        HStack(spacing: 2) {
-          ForEach(Array(state.segments.enumerated()), id: \.offset) { _, segment in
-            RoundedRectangle(cornerRadius: 4, style: .continuous)
-              .fill(Palette.track)
-              .frame(width: max(0, width * segment.widthPct / 100 - 2))
-          }
-        }
-        if let knob = state.knobPct {
-          RoundedRectangle(cornerRadius: 4, style: .continuous)
-            .fill(Palette.fill(for: state.barTone))
-            .frame(width: max(0, width * knob / 100))
-        }
-      }
+    let color: Color = tone == "green" ? .white : Palette.amber
+    if let range = liveRange(.now, boundary) {
+      Text(timerInterval: range, countsDown: true)
+        .font(.system(size: size, weight: .black))
+        .monospacedDigit()
+        .foregroundStyle(color)
+        .lineLimit(1)
+        .minimumScaleFactor(0.5)
+    } else {
+      ElapsedTimer(startedAt: startedAt, size: size, color: color)
     }
-    .frame(height: 8)
+  }
+}
+
+/// Dilim çubuğu: içinde bulunulan fiyat diliminin ne kadarının geçtiği.
+/// Zamanla KENDİ KENDİNE dolar — app kapalıyken de doğru kalan tek çubuk budur.
+private struct TariffProgress: View {
+  let range: ClosedRange<Date>
+  let tone: String
+
+  var body: some View {
+    ProgressView(timerInterval: range, countsDown: false) {
+      EmptyView()
+    } currentValueLabel: {
+      EmptyView()
+    }
+    .progressViewStyle(.linear)
+    .tint(Palette.fill(for: tone))
   }
 }
 
@@ -142,8 +170,8 @@ private struct EndButton: View {
         Text(Shared.text("laEnd", "End"))
           .font(.system(size: 13, weight: .heavy))
           .foregroundStyle(.white)
-          .padding(.horizontal, 12)
-          .frame(height: 28)
+          .padding(.horizontal, 14)
+          .frame(height: 30)
           .background(Palette.track, in: Capsule())
       }
       .buttonStyle(.plain)
@@ -154,11 +182,10 @@ private struct EndButton: View {
 // MARK: - Live Activity gövdesi
 
 private struct LiveActivityView: View {
-  let attributes: ParkIQAttributes
   let state: ParkIQAttributes.ContentState
 
   private var overline: String {
-    [attributes.placeName, attributes.floor]
+    [state.placeName, state.floor]
       .compactMap { $0 }
       .filter { !$0.isEmpty }
       .joined(separator: " · ")
@@ -181,40 +208,31 @@ private struct LiveActivityView: View {
       .background(Palette.green)
     } else {
       VStack(alignment: .leading, spacing: 10) {
+        // Marka + yer + ikincil geçen süre. Hero geri sayım olduğunda "ne kadardır
+        // parktayım" sorusunu cevaplayan tek yer burasıdır.
         HStack(spacing: 8) {
           BrandGlyph()
           Overline(text: overline)
           Spacer(minLength: 0)
+          ElapsedTimer(startedAt: state.startedAt, size: 13, weight: .heavy, color: Palette.muted)
+            .frame(maxWidth: 72)
+        }
+
+        // §8.1 hero: sonraki fiyat artışına kalan süre — sistemin kendi kendine doğru
+        // tutabildiği tek gösterge, o yüzden en büyük yeri o alır.
+        HStack(alignment: .bottom, spacing: 12) {
+          VStack(alignment: .leading, spacing: 2) {
+            if let label = state.heroLabel {
+              Overline(text: label)
+            }
+            HeroTimer(startedAt: state.startedAt, boundary: state.nextBoundaryAt, tone: state.barTone)
+          }
+          Spacer(minLength: 0)
           EndButton()
         }
 
-        // §8.1 hero: sonraki fiyat artışına KALAN SÜRE.
-        //
-        // App askıdayken hiçbir kodumuz çalışmaz — para rakamı son ön plan
-        // değerinde donar. Sistemin kendi kendine doğru tutabildiği tek gösterge
-        // budur, o yüzden en büyük yeri o alır. Sınır yoksa (son dilim, sabit
-        // tarife) geçen süreye düşülür; iki sayaç aynı anda gösterilmez.
-        VStack(alignment: .leading, spacing: 2) {
-          if let label = state.heroLabel {
-            Overline(text: label)
-          }
-          if let boundary = state.nextBoundaryAt, boundary > .now {
-            Text(timerInterval: Date.now...boundary, countsDown: true)
-              .font(.system(size: 44, weight: .black))
-              .monospacedDigit()
-              .foregroundStyle(state.barTone == "green" ? .white : Palette.amber)
-              .lineLimit(1)
-              .minimumScaleFactor(0.5)
-          } else {
-            ElapsedTimer(
-              startedAt: state.startedAt,
-              color: state.barTone == "green" ? .white : Palette.amber
-            )
-          }
-        }
-
-        if !state.segments.isEmpty {
-          TariffBar(state: state)
+        if let range = liveRange(state.tierStartedAt, state.nextBoundaryAt) {
+          TariffProgress(range: range, tone: state.barTone)
         }
 
         if let footer = state.footerText {
@@ -240,7 +258,7 @@ private struct LiveActivityView: View {
 struct ParkIQLiveActivity: Widget {
   var body: some WidgetConfiguration {
     ActivityConfiguration(for: ParkIQAttributes.self) { context in
-      LiveActivityView(attributes: context.attributes, state: context.state)
+      LiveActivityView(state: context.state)
         .activityBackgroundTint(Palette.card)
         .activitySystemActionForegroundColor(.white)
     } dynamicIsland: { context in
@@ -250,18 +268,23 @@ struct ParkIQLiveActivity: Widget {
         DynamicIslandExpandedRegion(.leading) {
           HStack(spacing: 6) {
             BrandGlyph()
-            Overline(text: (context.attributes.placeName ?? "").uppercased())
+            Overline(text: (context.state.placeName ?? "").uppercased())
           }
           .padding(.leading, 4)
         }
         DynamicIslandExpandedRegion(.trailing) {
-          ElapsedTimer(startedAt: context.state.startedAt, size: 20)
-            .padding(.trailing, 4)
+          HeroTimer(
+            startedAt: context.state.startedAt,
+            boundary: context.state.nextBoundaryAt,
+            tone: context.state.barTone,
+            size: 20
+          )
+          .padding(.trailing, 4)
         }
         DynamicIslandExpandedRegion(.bottom) {
           VStack(alignment: .leading, spacing: 8) {
-            if !context.state.segments.isEmpty {
-              TariffBar(state: context.state)
+            if let range = liveRange(context.state.tierStartedAt, context.state.nextBoundaryAt) {
+              TariffProgress(range: range, tone: context.state.barTone)
             }
             HStack(spacing: 8) {
               if let footer = context.state.footerText {
@@ -279,27 +302,33 @@ struct ParkIQLiveActivity: Widget {
           .padding(.horizontal, 4)
         }
       } compactLeading: {
-        BrandGlyph()
+        BrandGlyph(size: 18)
       } compactTrailing: {
-        ElapsedTimer(
+        HeroTimer(
           startedAt: context.state.startedAt,
-          size: 13,
-          color: context.state.barTone == "green" ? .white : Palette.amber
+          boundary: context.state.nextBoundaryAt,
+          tone: context.state.barTone,
+          size: 13
         )
         .frame(maxWidth: 56)
       } minimal: {
-        BrandGlyph()
+        BrandGlyph(size: 18)
       }
+      .widgetURL(URL(string: "parkiq://session"))
     }
   }
 }
 
-// MARK: - Ana ekran widget'ı
+// MARK: - Ana ekran + kilit ekranı widget'ları
 
 struct ParkIQWidgetEntry: TimelineEntry {
   let date: Date
   let startedAt: Date?
   let placeName: String?
+  let nextBoundaryAt: Date?
+  let barTone: String
+  let heroLabel: String?
+  let footerText: String?
   let monthlySavedText: String?
   /// Dile çevrilmiş etiketler (App Group kutusundan).
   let noSessionText: String
@@ -316,16 +345,26 @@ struct ParkIQWidgetProvider: TimelineProvider {
   }
 
   func getTimeline(in context: Context, completion: @escaping (Timeline<ParkIQWidgetEntry>) -> Void) {
-    completion(Timeline(entries: [entry()], policy: .after(Date().addingTimeInterval(900))))
+    let current = entry()
+    // Fiyat artışı biliniyorsa tam o anda tazelen: "Sonra ₺100" satırı bir dakika bile
+    // yanlış kalmasın. Sayaçlar zaten kendi kendine akar, bu yalnız metinler için.
+    let next = current.nextBoundaryAt.map { max($0, Date().addingTimeInterval(60)) }
+      ?? Date().addingTimeInterval(900)
+    completion(Timeline(entries: [current], policy: .after(next)))
   }
 
   private func entry() -> ParkIQWidgetEntry {
     let defaults = Shared.defaults
     let started = defaults?.object(forKey: "startedAtMs") as? Double
+    let boundary = defaults?.object(forKey: "nextBoundaryAtMs") as? Double
     return ParkIQWidgetEntry(
       date: Date(),
       startedAt: started.map { Date(timeIntervalSince1970: $0 / 1000) },
       placeName: defaults?.string(forKey: "placeName"),
+      nextBoundaryAt: boundary.map { Date(timeIntervalSince1970: $0 / 1000) },
+      barTone: defaults?.string(forKey: "barTone") ?? "green",
+      heroLabel: defaults?.string(forKey: "heroLabel"),
+      footerText: defaults?.string(forKey: "footerText"),
       monthlySavedText: defaults?.string(forKey: "monthlySavedText"),
       noSessionText: Shared.text("wNoSession", "No active session"),
       savedLabel: Shared.text("wSavedLabel", "SAVED THIS MONTH"),
@@ -351,7 +390,19 @@ struct ParkIQWidgetView: View {
       Spacer(minLength: 0)
 
       if let started = entry.startedAt {
-        ElapsedTimer(startedAt: started, size: 34)
+        // Aynı hiyerarşi kilit ekranı kartıyla: etiket → büyük sayaç → para satırı.
+        if let label = entry.heroLabel {
+          Overline(text: label)
+        }
+        HeroTimer(startedAt: started, boundary: entry.nextBoundaryAt, tone: entry.barTone, size: 34)
+        if let footer = entry.footerText {
+          Text(footer)
+            .font(.system(size: 12, weight: .heavy))
+            .monospacedDigit()
+            .foregroundStyle(Palette.muted)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+        }
       } else {
         // §8.3 oturumsuz durum: aylık tasarruf öne çıkar, "oturum yok" ikincil.
         if let saved = entry.monthlySavedText, !saved.isEmpty {
@@ -378,7 +429,7 @@ struct ParkIQWidgetView: View {
   }
 }
 
-/// Tek işi olan kısayol: dokunulunca app açılır ve park kaydı başlar.
+/// Tek işi olan kısayol: dokunulunca app açılır ve park kaydı başlar (§7.3 hızlı sorular).
 struct ParkIQQuickParkView: View {
   var entry: ParkIQWidgetEntry
 
@@ -403,85 +454,6 @@ struct ParkIQQuickParkView: View {
   }
 }
 
-// MARK: - Kilit ekranı widget'ları (§8)
-
-/// Kilit ekranı: oturum yokken tek dokunuşla park kaydı (`parkiq://park` → hızlı sorular),
-/// oturum varken sayaç (dokununca aktif oturum). Sistem tek renk çizer; renk seçilmez.
-struct ParkIQLockView: View {
-  @Environment(\.widgetFamily) private var family
-  var entry: ParkIQWidgetEntry
-
-  var body: some View {
-    Group {
-      switch family {
-      case .accessoryCircular:
-        ZStack {
-          AccessoryWidgetBackground()
-          if let started = entry.startedAt {
-            Text(started, style: .timer)
-              .font(.system(size: 13, weight: .heavy))
-              .monospacedDigit()
-              .lineLimit(1)
-              .minimumScaleFactor(0.5)
-              .padding(.horizontal, 4)
-          } else {
-            Image("BrandMark")
-              .resizable()
-              .aspectRatio(contentMode: .fit)
-              .frame(width: 30, height: 30)
-          }
-        }
-      case .accessoryRectangular:
-        VStack(alignment: .leading, spacing: 2) {
-          if let started = entry.startedAt {
-            if let place = entry.placeName, !place.isEmpty {
-              Text(place.uppercased())
-                .font(.system(size: 11, weight: .heavy))
-                .tracking(1.2)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-            }
-            Text(started, style: .timer)
-              .font(.system(size: 24, weight: .black))
-              .monospacedDigit()
-              .lineLimit(1)
-              .minimumScaleFactor(0.6)
-          } else {
-            Text(entry.parkTitle)
-              .font(.system(size: 20, weight: .black))
-              .lineLimit(1)
-            Text(entry.parkHint)
-              .font(.system(size: 12))
-              .foregroundStyle(.secondary)
-              .lineLimit(2)
-          }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-      default:
-        if let started = entry.startedAt {
-          Text(started, style: .timer)
-        } else {
-          Text(entry.parkTitle)
-        }
-      }
-    }
-    .widgetAccentable()
-    .containerBackground(for: .widget) { Color.clear }
-    .widgetURL(URL(string: entry.startedAt == nil ? "parkiq://park" : "parkiq://session"))
-  }
-}
-
-struct ParkIQLockWidget: Widget {
-  var body: some WidgetConfiguration {
-    StaticConfiguration(kind: "ParkIQLock", provider: ParkIQWidgetProvider()) { entry in
-      ParkIQLockView(entry: entry)
-    }
-    .configurationDisplayName(Gallery.parkName)
-    .description(Gallery.parkDescription)
-    .supportedFamilies([.accessoryCircular, .accessoryRectangular, .accessoryInline])
-  }
-}
-
 struct ParkIQQuickParkWidget: Widget {
   var body: some WidgetConfiguration {
     StaticConfiguration(kind: "ParkIQQuickPark", provider: ParkIQWidgetProvider()) { entry in
@@ -501,6 +473,103 @@ struct ParkIQWidget: Widget {
     .configurationDisplayName(Gallery.sessionName)
     .description(Gallery.sessionDescription)
     .supportedFamilies([.systemSmall, .systemMedium])
+  }
+}
+
+/// Kilit ekranı: oturum yokken tek dokunuşla park kaydı (`parkiq://park` → hızlı sorular),
+/// oturum varken canlı sayaç. Sistem tek renk çizer; renk seçilmez, hiyerarşi tipografiden.
+struct ParkIQLockView: View {
+  @Environment(\.widgetFamily) private var family
+  var entry: ParkIQWidgetEntry
+
+  var body: some View {
+    Group {
+      switch family {
+      case .accessoryCircular:
+        ZStack {
+          AccessoryWidgetBackground()
+          if let range = liveRange(.now, entry.nextBoundaryAt) {
+            // Fiyat artışına kalan süre halkası: kendi kendine boşalır. Ortası boş —
+            // kilit ekranı görselleri tek renge düzleştirilir, marka işareti orada
+            // dolu bir kareye dönüşürdü.
+            ProgressView(timerInterval: range, countsDown: true) {
+              EmptyView()
+            } currentValueLabel: {
+              EmptyView()
+            }
+            .progressViewStyle(.circular)
+          } else if let started = entry.startedAt {
+            Text(started, style: .timer)
+              .font(.system(size: 13, weight: .heavy))
+              .monospacedDigit()
+              .lineLimit(1)
+              .minimumScaleFactor(0.5)
+              .padding(.horizontal, 4)
+          } else {
+            BrandGlyph(size: 26)
+          }
+        }
+      case .accessoryRectangular:
+        VStack(alignment: .leading, spacing: 1) {
+          if entry.startedAt != nil {
+            Text((entry.heroLabel ?? entry.placeName ?? "").uppercased())
+              .font(.system(size: 11, weight: .heavy))
+              .tracking(1.2)
+              .lineLimit(1)
+              .widgetAccentable()
+            // Kilit ekranında renk sistemindir: sayaç kendi rengini dayatmaz.
+            if let range = liveRange(.now, entry.nextBoundaryAt) {
+              Text(timerInterval: range, countsDown: true)
+                .font(.system(size: 22, weight: .black))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+            } else if let started = entry.startedAt {
+              Text(started, style: .timer)
+                .font(.system(size: 22, weight: .black))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+            }
+            if let footer = entry.footerText {
+              Text(footer)
+                .font(.system(size: 12, weight: .semibold))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            }
+          } else {
+            Text(entry.parkTitle)
+              .font(.system(size: 20, weight: .black))
+              .lineLimit(1)
+              .widgetAccentable()
+            Text(entry.parkHint)
+              .font(.system(size: 12))
+              .lineLimit(2)
+          }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+      default:
+        if let started = entry.startedAt {
+          Text(started, style: .timer)
+        } else {
+          Text(entry.parkTitle)
+        }
+      }
+    }
+    .containerBackground(.clear, for: .widget)
+    .widgetURL(URL(string: entry.startedAt == nil ? "parkiq://park" : "parkiq://session"))
+  }
+}
+
+struct ParkIQLockWidget: Widget {
+  var body: some WidgetConfiguration {
+    StaticConfiguration(kind: "ParkIQLock", provider: ParkIQWidgetProvider()) { entry in
+      ParkIQLockView(entry: entry)
+    }
+    .configurationDisplayName(Gallery.lockName)
+    .description(Gallery.lockDescription)
+    .supportedFamilies([.accessoryCircular, .accessoryRectangular, .accessoryInline])
   }
 }
 

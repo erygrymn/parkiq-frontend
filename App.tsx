@@ -298,7 +298,18 @@ function Root() {
   // getirmenin tek yolu ön planda yeniden kurmak. Gece boyu ya da havaalanı
   // parkında kilit ekranı kartı bir daha hiç gelmiyordu.
   useEffect(() => {
+    // Soğuk açılışta AppState olayı GELMEZ (app zaten active): kilit ekranı kartı iOS onu
+    // kendi bitirdiyse (~8 sa) bir daha hiç geri gelmiyordu.
+    useSessionStore.getState().resumeLiveActivity();
     const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'background') {
+        // Son taze veri: para metinleri buradan sonra donar (sayaç ve çubuk kendi akar).
+        const live = useSessionStore.getState();
+        if (live.session && (live.phase === 'active' || live.phase === 'finding')) {
+          refreshSessionActivity(live.session, useSettingsStore.getState().warnThresholdMin);
+        }
+        return;
+      }
       if (next !== 'active') return;
       useSessionStore.getState().resumeLiveActivity();
       // Yetki app ömrü boyunca tek kez okunuyordu: iptal, yenileme ya da başka
