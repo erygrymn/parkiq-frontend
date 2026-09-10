@@ -839,6 +839,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       durationMin: ((next.endedAtMs ?? Date.now()) - next.startedAtMs) / 60_000,
       hadTariff: next.tariff !== null,
       savedAmount: exit.saved,
+      currency: next.tariff ? next.tariff.currency : null,
+      tariffSource: next.tariff ? get().tariffSource : 'none',
     });
   },
 

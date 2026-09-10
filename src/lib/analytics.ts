@@ -40,9 +40,28 @@ function twice(): TwiceSdk | null {
 
 export const isAnalyticsEnabled = TWICE_KEY.length > 0;
 
+/**
+ * Çalışan sürüm ve DERLEME numarası.
+ *
+ * Build numarası verilmeyince panelde tüm TestFlight derlemeleri "0.1.0" olarak tek
+ * satıra düşüyordu: bir hata hangi derlemede çıktı, düzeltme tuttu mu, ayırt
+ * edilemiyordu. `nativeBuildVersion` gerçekten kurulu olanı söyler; Expo Go'da yoktur,
+ * o zaman config'teki değere düşülür.
+ */
+function appBuild(): { version: string; build: string } {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const Constants = (require('expo-constants') as typeof import('expo-constants')).default;
+  const config = Constants.expoConfig;
+  return {
+    version: Constants.nativeAppVersion ?? config?.version ?? '',
+    build: Constants.nativeBuildVersion ?? String(config?.ios?.buildNumber ?? ''),
+  };
+}
+
 export function initAnalytics(): void {
   if (!isAnalyticsEnabled) return;
-  twice()?.Twice.init({ apiKey: TWICE_KEY, debug: __DEV__ });
+  const app = appBuild();
+  twice()?.Twice.init({ apiKey: TWICE_KEY, debug: __DEV__, appVersion: app.version, build: app.build });
 }
 
 /** Flat parametreler — SDK yalnız string/number/boolean kabul eder. */
@@ -72,11 +91,17 @@ export function trackParkEnded(input: {
   durationMin: number;
   hadTariff: boolean;
   savedAmount: number | null;
+  /** Para birimi OLMADAN tasarruf toplanamaz: ₺50 ile 50 € aynı kovaya düşerdi. */
+  currency: string | null;
+  /** Tarife nereden geldi — havuz önerisinin işe yarayıp yaramadığı buradan okunur. */
+  tariffSource: 'manual' | 'ocr' | 'pool' | 'none';
 }): void {
   log('park_ended', {
     duration_min: Math.round(input.durationMin),
     had_tariff: input.hadTariff,
     saved: input.savedAmount ?? 0,
+    currency: input.currency ?? '',
+    tariff_source: input.tariffSource,
   });
 }
 
