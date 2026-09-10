@@ -292,4 +292,6 @@ export const ko: Record<CopyKey, string> = {
   // Tarife havuzu (§ sürücülerden gelen fiyatlar)
   pooledChip: '추천 · {summary}',
   pooledFrom: '여기에 주차한 운전자 {count}명이 입력한 요금입니다. 요금표와 비교해 보세요.',
+  tariffPool: '요금 공유',
+  tariffPoolHint: '입력한 요금은 같은 주차장에 세우는 운전자에게, 그들의 요금은 당신에게 제안됩니다. 오가는 것은 장소의 요금이지 당신에 대한 정보가 아닙니다. 끄면 둘 다 하지 않습니다.',
 };

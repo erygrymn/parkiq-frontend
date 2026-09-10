@@ -292,4 +292,6 @@ export const nlNL: Record<CopyKey, string> = {
   // Tarife havuzu (§ sürücülerden gelen fiyatlar)
   pooledChip: 'Voorstel · {summary}',
   pooledFrom: 'Ingevoerd door {count} bestuurders die hier parkeerden. Vergelijk met het bord.',
+  tariffPool: 'Tarieven delen',
+  tariffPoolHint: 'Jouw tarief wordt voorgesteld aan bestuurders bij dezelfde parkeerplaats, en dat van hen aan jou. Het gaat om de prijs van een plek, niet om jou. Uit betekent geen van beide.',
 };

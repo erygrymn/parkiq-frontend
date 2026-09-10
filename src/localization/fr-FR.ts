@@ -292,4 +292,6 @@ export const frFR: Record<CopyKey, string> = {
   // Tarife havuzu (§ sürücülerden gelen fiyatlar)
   pooledChip: 'Suggéré · {summary}',
   pooledFrom: 'Saisi par {count} conducteurs qui se sont garés ici. Vérifiez sur le panneau.',
+  tariffPool: 'Partager les tarifs',
+  tariffPoolHint: 'Votre tarif est proposé aux conducteurs du même parking, et le leur à vous. C’est le prix d’un lieu qui circule, rien sur vous. Désactivé : ni l’un ni l’autre.',
 };

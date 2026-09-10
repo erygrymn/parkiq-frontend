@@ -164,7 +164,7 @@ export function SettingsSheet({
   const isPremium = useIsPremium();
   const devUnlock = usePremiumStore((s) => s.devUnlock);
   const setDevUnlock = usePremiumStore((s) => s.setDevUnlock);
-  const { themeMode, locale, currency, warnThresholdMin, autoDetectEnabled, clockFormat, units } =
+  const { themeMode, locale, currency, warnThresholdMin, autoDetectEnabled, tariffPoolEnabled, clockFormat, units } =
     useSettingsStore();
   const {
     setThemeMode,
@@ -172,6 +172,7 @@ export function SettingsSheet({
     setCurrency,
     setWarnThreshold,
     setAutoDetect,
+    setTariffPool,
     setClockFormatPref,
     setUnits,
   } = useSettingsStore.getState();
@@ -297,6 +298,9 @@ export function SettingsSheet({
 
       <Section title={t('data')}>
         <View style={{ borderTopWidth: 1, borderTopColor: colors.gridline }}>
+          {/* Havuz alışverişi çift yönlü: kapatan hem göndermez hem öneri görmez. */}
+          <SettingRow label={t('tariffPool')} trailing={switchControl(tariffPoolEnabled, setTariffPool)} />
+          <Caption style={{ paddingBottom: spacing.s12 }}>{t('tariffPoolHint')}</Caption>
           <SettingRow label={t('exportData')} onPress={exportData} />
           <SettingRow label={t('deleteAllData')} tone="warn" onPress={() => setConfirmDeleteOpen(true)} />
         </View>

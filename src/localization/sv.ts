@@ -292,4 +292,6 @@ export const sv: Record<CopyKey, string> = {
   // Tarife havuzu (§ sürücülerden gelen fiyatlar)
   pooledChip: 'Förslag · {summary}',
   pooledFrom: 'Angiven av {count} förare som parkerat här. Jämför med skylten.',
+  tariffPool: 'Dela taxor',
+  tariffPoolHint: 'Din taxa föreslås för förare som parkerar på samma ställe, och deras för dig. Det är en plats pris som skickas, inget om dig. Av betyder ingetdera.',
 };

@@ -292,4 +292,6 @@ export const ptBR: Record<CopyKey, string> = {
   // Tarife havuzu (§ sürücülerden gelen fiyatlar)
   pooledChip: 'Sugerida · {summary}',
   pooledFrom: 'Enviada por {count} motoristas que estacionaram aqui. Confira na placa.',
+  tariffPool: 'Compartilhar tarifas',
+  tariffPoolHint: 'Sua tarifa é sugerida a quem estaciona no mesmo lugar, e a deles a você. Viaja o preço de um local, nada sobre você. Desligado: nenhuma das duas.',
 };

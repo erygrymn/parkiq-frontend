@@ -292,4 +292,6 @@ export const deDE: Record<CopyKey, string> = {
   // Tarife havuzu (§ sürücülerden gelen fiyatlar)
   pooledChip: 'Vorschlag · {summary}',
   pooledFrom: 'Von {count} Fahrern eingetragen, die hier geparkt haben. Mit der Tafel abgleichen.',
+  tariffPool: 'Tarife teilen',
+  tariffPoolHint: 'Dein Tarif wird anderen Fahrern im selben Parkhaus vorgeschlagen, ihrer dir. Übertragen wird der Preis eines Ortes, nichts über dich. Aus heißt: beides nicht.',
 };

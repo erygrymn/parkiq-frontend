@@ -291,5 +291,7 @@ export const en = {
   // Tarife havuzu (§ sürücülerden gelen fiyatlar)
   pooledChip: 'Suggested · {summary}',
   pooledFrom: 'Suggested from {count} drivers who parked here. Check it against the board.',
+  tariffPool: 'Share tariffs',
+  tariffPoolHint: 'Your tariff is offered to other drivers who park at the same car park, and theirs to you. It carries the price of a place, not you. Off means neither.',
 } as const;
 export type CopyKey = keyof typeof en;

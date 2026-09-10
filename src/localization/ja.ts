@@ -292,4 +292,6 @@ export const ja: Record<CopyKey, string> = {
   // Tarife havuzu (§ sürücülerden gelen fiyatlar)
   pooledChip: 'おすすめ · {summary}',
   pooledFrom: 'ここに停めた{count}人のドライバーが入力した料金です。看板と見比べてください。',
+  tariffPool: '料金を共有',
+  tariffPoolHint: '入力した料金は同じ駐車場に停める人へ、相手の料金はあなたへ提案されます。送られるのは場所の料金で、あなたの情報ではありません。オフにすると両方とも行われません。',
 };

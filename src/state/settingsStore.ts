@@ -45,6 +45,16 @@ interface SettingsStore {
   /** §7.4b oto-algılama açık mı (premium; kullanıcı Ayarlar'dan açar). */
   autoDetectEnabled: boolean;
   setAutoDetect: (value: boolean) => void;
+  /**
+   * Tarife havuzu: girilen tarife diğer sürücülere önerilsin mi.
+   *
+   * Varsayılan AÇIK — havuz ancak veri girildiğinde işe yarar ve gönderilen şey bir
+   * YERİN fiyatı, kişiye ait bir şey değil. Kapatan kullanıcı alışverişin iki
+   * tarafından da çıkar: ne gönderir ne öneri görür. Tek yönlü kullanım (almak ama
+   * vermemek) havuzu bedavaya bindirilecek bir şeye çevirirdi.
+   */
+  tariffPoolEnabled: boolean;
+  setTariffPool: (value: boolean) => void;
   hydrated: boolean;
   hydrate: () => void;
   setThemeMode: (mode: ThemeMode) => void;
@@ -136,6 +146,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   // Premium kullanıcıda varsayılan AÇIK: satın alınan özelliğin çalışması için
   // ayrıca bir anahtar aramak zorunda kalmak "para verdim çalışmıyor" üretiyor.
   autoDetectEnabled: true,
+  tariffPoolEnabled: true,
   clockFormat: 'device',
   units: 'device',
   hydrated: false,
@@ -143,6 +154,11 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   setAutoDetect: (autoDetectEnabled) => {
     write('autoDetectEnabled', autoDetectEnabled ? '1' : '0');
     set({ autoDetectEnabled });
+  },
+
+  setTariffPool: (tariffPoolEnabled) => {
+    write('tariffPoolEnabled', tariffPoolEnabled ? '1' : '0');
+    set({ tariffPoolEnabled });
   },
 
   completeOnboarding: () => {
@@ -175,6 +191,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       currency: device.currency,
       warnThresholdMin: DEFAULT_WARN_THRESHOLD_MIN,
       autoDetectEnabled: true,
+      tariffPoolEnabled: true,
     });
   },
 
@@ -203,6 +220,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     if (read('onboardingSeen') === '1') next.onboardingSeen = true;
     // Varsayılan açık olduğu için yalnız KAPATMA kararı kalıcılaşır.
     if (read('autoDetectEnabled') === '0') next.autoDetectEnabled = false;
+    if (read('tariffPoolEnabled') === '0') next.tariffPoolEnabled = false;
 
     const clockPref = read('clockFormat');
     if (clockPref === '12' || clockPref === '24' || clockPref === 'device') {

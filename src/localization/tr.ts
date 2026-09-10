@@ -280,4 +280,6 @@ export const tr: Record<CopyKey, string> = {
   // Tarife havuzu (§ sürücülerden gelen fiyatlar)
   pooledChip: 'Önerilen · {summary}',
   pooledFrom: 'Buraya park eden {count} sürücünün girdiğinden geliyor. Panoyla karşılaştır.',
+  tariffPool: 'Tarifeleri paylaş',
+  tariffPoolHint: 'Girdiğin tarife aynı otoparka park eden sürücülere önerilir, onlarınki de sana. Giden şey bir yerin fiyatı, sana ait bir şey değil. Kapalıyken ikisi de olmaz.',
 };

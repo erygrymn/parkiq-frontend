@@ -293,4 +293,6 @@ export const it: Record<CopyKey, string> = {
   // Tarife havuzu (§ sürücülerden gelen fiyatlar)
   pooledChip: 'Suggerita · {summary}',
   pooledFrom: 'Inserita da {count} automobilisti che hanno sostato qui. Confrontala con il cartello.',
+  tariffPool: 'Condividi le tariffe',
+  tariffPoolHint: 'La tua tariffa viene suggerita a chi sosta nello stesso parcheggio, e la loro a te. Viaggia il prezzo di un luogo, non qualcosa di tuo. Spento: nessuna delle due.',
 };

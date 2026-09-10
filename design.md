@@ -426,6 +426,9 @@ açılmaz; foto/kat kartı oradaki doğru araçtır.
 
 ### 7.10 Ayarlar (pageSheet)
 
+Veri grubunda **"Tarifeleri paylaş"** anahtarı (varsayılan AÇIK): kapatan kullanıcı ne gönderir
+ne öneri görür — havuz çift yönlü bir alışveriştir, tek yönlü kullanım bedavaya binmektir.
+
 Tek pageSheet yüzeyi. Koyu temada kart zemini `surface/card` (arkadaki kararmış haritadan bir
 basamak açık); başlık ortalanmış 17/600, sistem nav bar hissi, çift kabuk yok. Liste grupları
 hairline satırlarla: hatırlatıcı eşiği, bildirimler, görünüm, dil, para birimi,

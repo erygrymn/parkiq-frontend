@@ -262,6 +262,7 @@ function refreshActivityIfLive(): void {
  * birbirine bağlamaya yetmez.
  */
 function submitToPool(session: ParkSession, spotId: string | null, source: TariffSource): void {
+  if (!useSettingsStore.getState().tariffPoolEnabled) return;
   if (!session.tariff || !spotId || session.latitude === null || session.longitude === null) return;
   let salt = '';
   try {
@@ -450,6 +451,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
       // Havuz: otoparkı OSM kimliğiyle eşle, o kimlik için en çok girilen tarifeyi sor.
       // Ağ beklenmez — cevap gelirse soru ekranında bir çip daha belirir, gelmezse hiçbir şey.
+      // Kapatan kullanıcıya hiç sorulmaz: ne gönderir ne öneri görür.
+      if (!useSettingsStore.getState().tariffPoolEnabled) return;
       const spot = resolveSpotId(outcome.place, useDiscoveryStore.getState().pois);
       set({ spotId: spot.id });
       const currency = useSettingsStore.getState().currency;

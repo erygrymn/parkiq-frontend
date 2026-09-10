@@ -292,4 +292,6 @@ export const zhHant: Record<CopyKey, string> = {
   // Tarife havuzu (§ sürücülerden gelen fiyatlar)
   pooledChip: '建議 · {summary}',
   pooledFrom: '由 {count} 位在這裡停過車的駕駛輸入。請對照收費牌確認。',
+  tariffPool: '分享費率',
+  tariffPoolHint: '你輸入的費率會建議給停在同一個停車場的駕駛，他們的也會給你。傳的是一個地點的價格，不是你的資料。關閉時兩者都不會發生。',
 };
