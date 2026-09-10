@@ -230,7 +230,7 @@ Bu üç IAP adı = **84 ekstra indekslenen karakter**, tamamen ücretsiz. `scan`
 You parked at 14:02. The rate goes up at 15:00.
 ParkIQ tells you: leave now and pay $5, or stay and pay $10.
 
-No ads. No account. No sign-up. No tracking.
+No ads. No account. No sign-up.
 
 THE PARKING TIMER
 Set the rate once, or point the camera at the price board and
@@ -273,19 +273,15 @@ and distance.
 ParkIQ is not a tracker. It does not follow your car around.
 It remembers where you left it and what it is costing you.
 
-PRIVACY
-No account. No login. Nothing about you is stored on our servers.
+NO ACCOUNT
+No login. No sign-up. Nothing to fill in before you park.
 Your sessions, photos and saved spots live on your iPhone.
-Reading the price board runs on the device — that photo never
-leaves it.
-A shared location travels inside the link itself, so our server
-never sees it.
-Showing nearby car parks means asking a map service where to look.
+Reading the price board runs on the device.
 
 No ads. Ever.
 ```
 
-**Neden bu gizlilik metni bu kadar kısaldı:** önceki hali (`No server`, `Nothing leaves your phone`, `we have no database`) bir proxy ile 30 saniyede çürütülebiliyordu. Kodda **dört canlı ağ kanalı** var:
+**Kural (2026-09-11): mağaza metni veri akışı iddiası KURMAZ.** İki sebep. Birincisi doğrulanabilirlik: `No server`, `Nothing leaves your phone`, `we have no database` gibi mutlak cümleler bir proxy ile 30 saniyede çürütülüyordu. İkincisi taahhüt: ileride tarife havuzu gibi paylaşımlı bir özellik açılırsa, o cümleyle indiren kullanıcı kandırılmış olur — ve o özellik açılırsa **açık rıza ile ve varsayılan kapalı** açılacak. Metin bu yüzden yalnız doğrulanabilir ve kalıcı olanı söyler: hesap yok, giriş yok, reklam yok, pano okuma cihazda, kullanıcının kendi kayıtları telefonunda. `No tracking` da kaldırıldı; App Privacy etiketinde "Data Used to Track You" boş kaldığı sürece savunulabilir ama aynı kategoride bir iddia. Kodda **dört canlı ağ kanalı** var:
 
 | Kanal | Ne gidiyor | Kod |
 |---|---|---|
@@ -294,7 +290,7 @@ No ads. Ever.
 | **Twice** | Olaylar + SDK oturumu + kalıcı cihaz tanımlayıcısı | [analytics.ts:22](src/lib/analytics.ts:22) |
 | **RevenueCat** | Satın alma + anonim kullanıcı kimliği | [purchases.ts](src/lib/purchases.ts) |
 
-Doğru kalan iddialar: oturum/foto/konum cihazda ([db/](src/db/) SQLite), OCR cihaz üstünde (Apple Vision), paylaşım linki **hash parçasında** taşınıyor ve sunucuya gitmiyor ([share.ts:66](src/lib/share.ts:66) — `/s#${payload}`).
+Bunlar hâlâ doğru ama pazarlama iddiası olarak KULLANILMIYOR: oturum/foto/konum cihazda ([db/](src/db/) SQLite), OCR cihaz üstünde (Apple Vision), paylaşım linki **hash parçasında** taşınıyor ve sunucuya gitmiyor ([share.ts:66](src/lib/share.ts:66) — `/s#${payload}`).
 
 🔴 **App Privacy beyanı (`asc` ile yapılamaz, ASC web arayüzünden girilecek):** "Data Not Collected" **işaretlenmeyecek** — Twice'ın kalıcı tanımlayıcısı ve RevenueCat ile yanlış beyan olur. Girilecekler:
 
@@ -315,7 +311,7 @@ Foto, park oturumu ve kayıtlı konum **beyan edilmez** — cihazdan çıkmıyor
 14:02'de park ettin. Tarife 15:00'te bir üst dilime geçiyor.
 ParkIQ söylüyor: şimdi çık ₺50, kalırsan ₺100.
 
-Reklam yok. Hesap yok. Kayıt yok. Takip yok.
+Reklam yok. Hesap yok. Kayıt yok.
 
 PARK SAYACI
 Tarifeyi bir kez gir ya da kamerayı panoya tut, ParkIQ okusun.
@@ -358,16 +354,12 @@ filtresi — şarj, kapalı, mesafe.
 ParkIQ bir takip uygulaması değil. Arabanın peşinden gitmez.
 Nereye bıraktığını ve sana kaça mal olduğunu hatırlar.
 
-GİZLİLİK
-Hesap yok. Giriş yok. Sunucularımızda sana dair hiçbir şey
-saklanmıyor.
+HESAP YOK
+Giriş yok. Kayıt yok. Park etmeden önce doldurulacak hiçbir
+şey yok.
 Oturumların, fotoğrafların ve kayıtlı yerlerin telefonunda
 durur.
-Pano okuma cihaz üstünde çalışır; o fotoğraf telefondan çıkmaz.
-Paylaşılan konum linkin kendi içinde taşınır, sunucumuz onu
-görmez.
-Yakındaki otoparkları göstermek için harita servisine nereye
-bakacağını sormak gerekir.
+Pano okuma cihaz üstünde çalışır.
 
 Reklam yok. Hiç.
 ```
@@ -386,11 +378,11 @@ Ayda bir değiştirilir — Apple güncellik sinyali olarak okuyor ve build gere
 ```
 en-US: First release. Set your parking rate, get warned before it
        goes up, and find your car when you come back.
-       No ads, no account, nothing leaves your phone.
+       No ads, no account, no sign-up.
 
 tr:    İlk sürüm. Tarifeni gir, ücret artmadan önce uyarıl,
        dönerken arabanı bul.
-       Reklam yok, hesap yok, hiçbir veri telefonundan çıkmıyor.
+       Reklam yok, hesap yok, kayıt yok.
 ```
 
 Bunu ayda bir değiştir — Apple güncellik sinyali olarak okuyor ve build gerektirmiyor.
@@ -410,12 +402,12 @@ Sıra, §2'deki ağırlığı takip eder: **1–2–3 sayaç ve para, 4 reklams�
 | 1 | Aktif oturum: tarife çubuğu amber, para kutusu görünür | **Leave now $5. Stay and it's $10.** | **Şimdi çık ₺50. Kalırsan ₺100.** |
 | 2 | Kilit ekranı + Dynamic Island geri sayım | The countdown, without opening the app | Geri sayım, uygulamayı açmadan |
 | 3 | Bitiş kutlaması "SAVED $5." + aylık toplam | $34 saved this month | Bu ay ₺340 tasarruf |
-| 4 | Sade tipografik kare (ürün ekranı değil) | **No ads. No account. Nothing leaves your phone.** | **Reklam yok. Hesap yok. Veri telefondan çıkmıyor.** |
+| 4 | Sade tipografik kare (ürün ekranı değil) | **No ads. No account. No sign-up.** | **Reklam yok. Hesap yok. Kayıt yok.** |
 | 5 | Find My Car — kapalı alan kartı (foto + kat) | Level 3, blue pillar — even with no GPS | Kat 3, mavi kolon — GPS olmasa da |
 | 6 | Tarife panosu okuma | Point the camera. Runs on device. | Kamerayı tut. Cihazda çalışır. |
 | 7 | Harita — otopark + ⚡ | Car parks and EV chargers nearby | Yakındaki otoparklar ve şarj |
 
-4. kare kasıtlı olarak ürün ekranı değil: bu pazarda reklam ve hesap zorunluluğu en sık şikayet ([market-research.md](market-research.md) §4.6–4.7), ve rakiplerin hiçbirinin ekran görüntülerinde böyle bir iddia yok.
+4. kare veri iddiası TAŞIMAZ (yukarıdaki kural); yalnız reklam/hesap/kayıt der. Kasıtlı olarak ürün ekranı değil: bu pazarda reklam ve hesap zorunluluğu en sık şikayet ([market-research.md](market-research.md) §4.6–4.7), ve rakiplerin hiçbirinin ekran görüntülerinde böyle bir iddia yok.
 
 **AR karesi yok** — AR yazılı ama kasıtlı olarak gösterilmiyor (§2.1). Açık alanda çekilmiş bir AR karesi eklenecekse 5. karenin yerine değil **8. kare** olarak eklenir; kapalı otopark karesi (5) her zaman önce gelir, çünkü güvenilirlik iddiası orada.
 
