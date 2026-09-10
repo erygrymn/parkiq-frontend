@@ -289,4 +289,7 @@ export const ptBR: Record<CopyKey, string> = {
   remindAfterSummary: '{duration} depois de estacionar',
   remindBeforeSummary: '{duration} antes de cada aumento',
   remindBeforeFirstSummary: '{duration} antes do primeiro aumento',
+  // Tarife havuzu (§ sürücülerden gelen fiyatlar)
+  pooledChip: 'Sugerida · {summary}',
+  pooledFrom: 'Enviada por {count} motoristas que estacionaram aqui. Confira na placa.',
 };

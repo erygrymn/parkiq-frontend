@@ -378,10 +378,12 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   const locationState = useSessionStore((s) => s.locationState);
   const suggestedTariff = useSessionStore((s) => s.suggestedTariff);
   const suggestedFloor = useSessionStore((s) => s.suggestedFloor);
+  const pooledTariff = useSessionStore((s) => s.pooledTariff);
   const cameraState = useSessionStore((s) => s.cameraState);
   const autoDetected = useSessionStore((s) => s.autoDetected);
   const dismissAutoPark = useSessionStore((s) => s.dismissAutoPark);
-  const { setFloor, acceptSuggestedTariff, confirmDetails, setReminder, capturePhoto, scanTariff } = useSessionStore.getState();
+  const { setFloor, acceptSuggestedTariff, acceptPooledTariff, confirmDetails, setReminder, capturePhoto, scanTariff } =
+    useSessionStore.getState();
   const cancelPark = useSessionStore((s) => s.cancelPark);
   const [stepIndex, setStepIndex] = useState(0);
   const [answered, setAnswered] = useState<string | null>(null);
@@ -528,6 +530,10 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
                 ...(suggestedTariff
                   ? [{ key: 'last', label: t('lastTimeChip', { summary: formatTariffSummary(suggestedTariff, getLocale()) }), tone: 'accent' as const }]
                   : []),
+                // Havuz önerisi: yalnız bu otopark için veri varsa çıkar (§ tarife havuzu).
+                ...(pooledTariff
+                  ? [{ key: 'pool', label: t('pooledChip', { summary: formatTariffSummary(pooledTariff.tariff, getLocale()) }) }]
+                  : []),
                 { key: 'enter', label: t('enterTariff') },
                 { key: 'scan', label: t('scanShort') },
               ]}
@@ -537,12 +543,18 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
                   answer(key, acceptSuggestedTariff);
                   return;
                 }
+                if (key === 'pool') {
+                  answer(key, acceptPooledTariff);
+                  return;
+                }
                 // Form aynı panelin içinde açılır: üst üste binen ikinci bir sheet yok (İlke 9).
                 setAnswered(key);
                 setTariffOpen(true);
                 if (key === 'scan') scanTariff();
               }}
             />
+            {/* Önerinin nereden geldiği SÖYLENİR: rakamı biz uydurmuyoruz, sürücüler girdi. */}
+            {pooledTariff && <Caption>{t('pooledFrom', { count: pooledTariff.count })}</Caption>}
             {tariffOpen && (
               <Animated.View entering={FadeIn.duration(CROSSFADE_MS)} layout={layoutSpring} style={{ gap: spacing.s12 }}>
                 <TariffEditor onOpenPaywall={onOpenPaywall} />

@@ -289,4 +289,7 @@ export const zhHant: Record<CopyKey, string> = {
   remindAfterSummary: '停車後 {duration}',
   remindBeforeSummary: '每次漲價前 {duration}',
   remindBeforeFirstSummary: '首次漲價前 {duration}',
+  // Tarife havuzu (§ sürücülerden gelen fiyatlar)
+  pooledChip: '建議 · {summary}',
+  pooledFrom: '由 {count} 位在這裡停過車的駕駛輸入。請對照收費牌確認。',
 };

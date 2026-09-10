@@ -289,4 +289,7 @@ export const nlNL: Record<CopyKey, string> = {
   remindAfterSummary: '{duration} na het parkeren',
   remindBeforeSummary: '{duration} voor elke prijsstap',
   remindBeforeFirstSummary: '{duration} voor de eerste prijsstap',
+  // Tarife havuzu (§ sürücülerden gelen fiyatlar)
+  pooledChip: 'Voorstel · {summary}',
+  pooledFrom: 'Ingevoerd door {count} bestuurders die hier parkeerden. Vergelijk met het bord.',
 };

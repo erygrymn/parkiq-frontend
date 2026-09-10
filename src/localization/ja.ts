@@ -289,4 +289,7 @@ export const ja: Record<CopyKey, string> = {
   remindAfterSummary: '駐車から{duration}後',
   remindBeforeSummary: '料金が上がる{duration}前',
   remindBeforeFirstSummary: '最初の値上がりの{duration}前',
+  // Tarife havuzu (§ sürücülerden gelen fiyatlar)
+  pooledChip: 'おすすめ · {summary}',
+  pooledFrom: 'ここに停めた{count}人のドライバーが入力した料金です。看板と見比べてください。',
 };

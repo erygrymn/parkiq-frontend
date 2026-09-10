@@ -282,7 +282,9 @@ foto seçici). Aynı anda tek aktif oturum. Cold start aktif oturum varsa doğru
      Çiplerin altında ayrı bir "Fotoğraf çek" eylemi durur: fotoğraf bir kat değildir, soruyu
      cevaplamaz, kata ek olarak alınır.
   2. **Tarife** — "What does it cost?": hafızadan gelen "Last time · 0–1h ₺50" yeşil çip (varsa) ·
-     Enter · Scan (premium). Enter/Scan tarife formunu **aynı panelin içinde** açar (üst üste binen
+     **"Suggested · 0–1h ₺50"** (havuzda bu otopark için veri varsa) · Enter · Scan (premium).
+     Öneri çipinin altında kaynağı YAZAR: "{n} sürücünün girdiğinden geliyor, panoyla karşılaştır".
+     Veri yoksa çip de yazı da hiç çıkmaz — uydurma fiyat göstermek hiç göstermemekten kötüdür. Enter/Scan tarife formunu **aynı panelin içinde** açar (üst üste binen
      ikinci sheet yok, İlke 9); alttaki tek "Done" hem formu hem oturumu kapatır.
   3. **Hatırlat** — yalnız tarife girilmediyse: "1 h later" · … · Off. Süre neye göre sayılıyorsa
      çipin kendisi onu söyler ("1 sa sonra"), soru da öyle sorar ("Park'tan ne kadar sonra?").

@@ -289,4 +289,7 @@ export const deDE: Record<CopyKey, string> = {
   remindAfterSummary: '{duration} nach dem Parken',
   remindBeforeSummary: '{duration} vor jeder Preisstufe',
   remindBeforeFirstSummary: '{duration} vor der ersten Preisstufe',
+  // Tarife havuzu (§ sürücülerden gelen fiyatlar)
+  pooledChip: 'Vorschlag · {summary}',
+  pooledFrom: 'Von {count} Fahrern eingetragen, die hier geparkt haben. Mit der Tafel abgleichen.',
 };

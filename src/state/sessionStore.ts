@@ -20,6 +20,15 @@ import { scanTariffBoard } from '../lib/ocr';
 import type { ScheduleKind } from '../lib/tariffSchedule';
 import { captureSpotPhoto, deleteSpotPhoto } from '../lib/photo';
 import type { Tariff } from '../lib/tariffMath';
+import {
+  fetchPooledTariff,
+  makeInstallSalt,
+  resolveSpotId,
+  submitTariff,
+  submitterHash,
+  type PooledTariff,
+  type TariffSource,
+} from '../lib/tariffPool';
 import { usePremiumStore } from './premiumStore';
 import { useSettingsStore } from './settingsStore';
 
@@ -106,6 +115,15 @@ interface SessionStore {
   /** Aynı yerdeki son oturumun katı; park anı kat sorusunda ilk çip. */
   suggestedFloor: string | null;
   /**
+   * Havuzdan gelen öneri: bu otoparka park etmiş sürücülerin en çok girdiği tarife
+   * (§ tarife havuzu). Veri yoksa null kalır ve öneri satırı hiç çıkmaz.
+   */
+  pooledTariff: PooledTariff | null;
+  /** Otoparkın havuzdaki kimliği; hem öneriyi sormak hem gönderim için aynı değer. */
+  spotId: string | null;
+  /** Tarifenin nereden geldiği — panelde "elle mi, taramadan mı, öneriden mi" ayrımı. */
+  tariffSource: TariffSource;
+  /**
    * Tarife forma DIŞARIDAN yazıldığında artar (öneri kabulü gibi). Form bunu key
    * olarak kullanıp kendini tazeler; kullanıcı yazarken artmaz, odak kaybolmaz.
    */
@@ -172,6 +190,8 @@ interface SessionStore {
   /** Bu oturum oto-algılamayla mı başladı — yanlış algı geri alma satırı için. */
   autoDetected: boolean;
   acceptSuggestedTariff: () => void;
+  /** Havuzdan gelen öneriyi tarife olarak uygular. */
+  acceptPooledTariff: () => void;
   dismissSuggestedTariff: () => void;
   confirmDetails: () => void;
   /** §7.6 Arabamı Bul bir sheet fazıdır: active ↔ finding. */
@@ -234,6 +254,36 @@ function refreshActivityIfLive(): void {
 }
 
 /**
+ * Tarife havuzuna gönderim (§ tarife havuzu).
+ *
+ * Yalnız oturum GERÇEKTEN başlarken, yalnız elde bir tarife ve bir otopark kimliği
+ * varken çalışır. Kurulum tuzu cihazda kalır; sunucuya giden değer ondan ve otopark
+ * kimliğinden türetilmiş kısa bir özettir, iki farklı otoparktaki gönderimi
+ * birbirine bağlamaya yetmez.
+ */
+function submitToPool(session: ParkSession, spotId: string | null, source: TariffSource): void {
+  if (!session.tariff || !spotId || session.latitude === null || session.longitude === null) return;
+  let salt = '';
+  try {
+    salt = repo().readSetting('poolSalt') ?? '';
+    if (salt === '') {
+      salt = makeInstallSalt();
+      repo().writeSetting('poolSalt', salt);
+    }
+  } catch {
+    return; // Tuz okunamıyorsa gönderme: sayaç şişer.
+  }
+  void submitTariff({
+    spotId,
+    name: session.placeName,
+    coords: { latitude: session.latitude, longitude: session.longitude },
+    tariff: session.tariff,
+    source,
+    submitter: submitterHash(salt, spotId),
+  });
+}
+
+/**
  * Dilim uyarılarını oturumun güncel haline göre yeniden kurar.
  * Tarife yoksa uyarı da yoktur — bu yüzden izin de İSTENMEZ (bağlamsal izin kuralı).
  */
@@ -261,6 +311,9 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   locationState: 'idle',
   suggestedTariff: null,
   suggestedFloor: null,
+  pooledTariff: null,
+  spotId: null,
+  tariffSource: 'manual',
   externalTariffVersion: 0,
   notificationState: 'idle',
   cameraState: 'idle',
@@ -352,6 +405,9 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       locationState: 'capturing',
       suggestedTariff: null,
       suggestedFloor: null,
+      pooledTariff: null,
+      spotId: null,
+      tariffSource: 'manual',
       locationPinnedByUser: false,
     });
     trackParkStarted(get().autoDetected ? 'auto' : 'manual');
@@ -391,6 +447,19 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         suggestedTariff: remembered,
         suggestedFloor: rememberedFloor,
       });
+
+      // Havuz: otoparkı OSM kimliğiyle eşle, o kimlik için en çok girilen tarifeyi sor.
+      // Ağ beklenmez — cevap gelirse soru ekranında bir çip daha belirir, gelmezse hiçbir şey.
+      const spot = resolveSpotId(outcome.place, useDiscoveryStore.getState().pois);
+      set({ spotId: spot.id });
+      const currency = useSettingsStore.getState().currency;
+      void fetchPooledTariff(spot.id, currency).then((pooled) => {
+        const live = get().session;
+        if (!live || live.id !== session.id || get().phase !== 'parking') return;
+        // Kullanıcı bu arada kendi tarifesini girdiyse öneri araya girmez.
+        if (live.tariff) return;
+        set({ pooledTariff: pooled });
+      });
     });
   },
 
@@ -417,7 +486,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     if (!session) return;
     const next = { ...session, tariff };
     persist(next);
-    set({ session: next, suggestedTariff: null });
+    // Elle girilen tarife öneriyi geçersiz kılar: kullanıcı panoyu okumuş demektir.
+    set({ session: next, suggestedTariff: null, pooledTariff: null, tariffSource: 'manual' });
     refreshActivityIfLive();
     syncAlerts(next, false, set); // izin, kullanıcı Done'a basınca istenir
   },
@@ -588,6 +658,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         ocrState: 'idle',
         ocrSchedule: outcome.schedule,
         ocrPartial: outcome.partial,
+        tariffSource: 'ocr',
+        pooledTariff: null,
         suggestedTariff: null,
         externalTariffVersion: get().externalTariffVersion + 1,
       });
@@ -710,12 +782,28 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
   dismissSuggestedTariff: () => set({ suggestedTariff: null }),
 
+  acceptPooledTariff: () => {
+    const { session, pooledTariff, externalTariffVersion } = get();
+    if (!session || !pooledTariff) return;
+    const next = { ...session, tariff: pooledTariff.tariff };
+    persist(next);
+    set({
+      session: next,
+      pooledTariff: null,
+      suggestedTariff: null,
+      tariffSource: 'pool',
+      externalTariffVersion: externalTariffVersion + 1,
+    });
+    syncAlerts(next, false, set);
+  },
+
   confirmDetails: () => {
     const { phase, session } = get();
     if (phase !== 'parking' || !session) return;
     const next = { ...session, confirmed: true };
     persist(next);
     set({ phase: 'active', session: next });
+    submitToPool(next, get().spotId, get().tariffSource);
     // Kullanıcı hatırlatıcısını burada onaylamış olur → izin tam bu anda istenir.
     syncAlerts(get().session, true, set);
     syncLiveActivity('start');

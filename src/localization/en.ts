@@ -288,5 +288,8 @@ export const en = {
   remindAfterSummary: '{duration} after parking',
   remindBeforeSummary: '{duration} before every price rise',
   remindBeforeFirstSummary: '{duration} before the first price rise',
+  // Tarife havuzu (§ sürücülerden gelen fiyatlar)
+  pooledChip: 'Suggested · {summary}',
+  pooledFrom: 'Suggested from {count} drivers who parked here. Check it against the board.',
 } as const;
 export type CopyKey = keyof typeof en;

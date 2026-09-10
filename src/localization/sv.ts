@@ -289,4 +289,7 @@ export const sv: Record<CopyKey, string> = {
   remindAfterSummary: '{duration} efter parkering',
   remindBeforeSummary: '{duration} före varje prishöjning',
   remindBeforeFirstSummary: '{duration} före första prishöjningen',
+  // Tarife havuzu (§ sürücülerden gelen fiyatlar)
+  pooledChip: 'Förslag · {summary}',
+  pooledFrom: 'Angiven av {count} förare som parkerat här. Jämför med skylten.',
 };

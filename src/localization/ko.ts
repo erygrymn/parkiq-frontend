@@ -289,4 +289,7 @@ export const ko: Record<CopyKey, string> = {
   remindAfterSummary: '주차 후 {duration}',
   remindBeforeSummary: '요금 인상 {duration} 전',
   remindBeforeFirstSummary: '첫 인상 {duration} 전',
+  // Tarife havuzu (§ sürücülerden gelen fiyatlar)
+  pooledChip: '추천 · {summary}',
+  pooledFrom: '여기에 주차한 운전자 {count}명이 입력한 요금입니다. 요금표와 비교해 보세요.',
 };

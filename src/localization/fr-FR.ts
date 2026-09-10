@@ -289,4 +289,7 @@ export const frFR: Record<CopyKey, string> = {
   remindAfterSummary: '{duration} après le stationnement',
   remindBeforeSummary: '{duration} avant chaque hausse',
   remindBeforeFirstSummary: '{duration} avant la première hausse',
+  // Tarife havuzu (§ sürücülerden gelen fiyatlar)
+  pooledChip: 'Suggéré · {summary}',
+  pooledFrom: 'Saisi par {count} conducteurs qui se sont garés ici. Vérifiez sur le panneau.',
 };

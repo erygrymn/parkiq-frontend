@@ -277,4 +277,7 @@ export const tr: Record<CopyKey, string> = {
   remindAfterSummary: 'Park’tan {duration} sonra',
   remindBeforeSummary: 'Her fiyat artışından {duration} önce',
   remindBeforeFirstSummary: 'İlk fiyat artışından {duration} önce',
+  // Tarife havuzu (§ sürücülerden gelen fiyatlar)
+  pooledChip: 'Önerilen · {summary}',
+  pooledFrom: 'Buraya park eden {count} sürücünün girdiğinden geliyor. Panoyla karşılaştır.',
 };

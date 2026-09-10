@@ -289,4 +289,7 @@ export const esES: Record<CopyKey, string> = {
   remindAfterSummary: '{duration} después de aparcar',
   remindBeforeSummary: '{duration} antes de cada subida',
   remindBeforeFirstSummary: '{duration} antes de la primera subida',
+  // Tarife havuzu (§ sürücülerden gelen fiyatlar)
+  pooledChip: 'Sugerida · {summary}',
+  pooledFrom: 'La han introducido {count} conductores que aparcaron aquí. Compárala con el cartel.',
 };
