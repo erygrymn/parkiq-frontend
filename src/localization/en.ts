@@ -252,7 +252,6 @@ export const en = {
   periodMonth: '{count} month',
   periodYear: '{count} year',
   lifetimeNote: 'One payment',
-  savedSoFar: 'ParkIQ has saved you {amount} so far',
   dailyMax: 'Daily maximum (optional)',
   beyondSchedule: 'Past what the board covers — the amount is no longer certain',
   clockFormat: 'Time format',
@@ -293,5 +292,6 @@ export const en = {
   pooledFrom: 'Suggested from {count} drivers who parked here. Check it against the board.',
   tariffPool: 'Share tariffs',
   tariffPoolHint: 'Your tariff is offered to other drivers who park at the same car park, and theirs to you. It carries the price of a place, not you. Off means neither.',
+  savedSoFarLead: 'ParkIQ has already saved you this much.',
 } as const;
 export type CopyKey = keyof typeof en;

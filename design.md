@@ -438,12 +438,23 @@ noktasız. Geliştirici bölümü yalnız `__DEV__`.
 
 ### 7.11 Paywall (tam ekran)
 
-- Poster gibi okunur, cümle yok. Zemin `surface/card`. Overline "PARKIQ PRO" → display-M noktasız
-  "PRO DETECTS PARKING" → yalnız kullanıcının kendi rakamı (varsa) "ParkIQ has saved you ₺340 so far"
-  `accent-text` 15/600 → 4 hairline satır: SF Symbol Regular 20 + 2–3 kelimelik etiket 15/600
+- Poster gibi okunur, cümle yok. Zemin `surface/card`. Overline "PARKIQ PRO" → **hero** → 4 hairline
+  satır:
+- **Hero iki varyanttır ve ekranın TEK anıdır.**
+  - Kullanıcının biriktirdiği para varsa hero ODUR: kutlama kapağının aynı bileşeni
+    (`CelebrationHero`) — "SAVED / ₺340." count-up + nokta en son, yeşil. Altında rakamsız tek satır
+    "ParkIQ bunu senin için biriktirdi" `text-secondary` 15/600. Haptik KAPALI: satın alma ekranında
+    titretmek zorlamadır, kutlama değil. Display-M başlık bu varyantta ÇIKMAZ (iki hero olmaz).
+  - Rakam yoksa hero satılan şeydir: display-M **noktasız** "PRO DETECTS PARKING", 320 ms fade + yükseliş.
+- **Sahneleme (≤1,3 sn):** hero → 420 ms (rakamsız varyantta 180 ms) sonra hairline satırlar 50 ms
+  stagger → sonra plan karoları 200 ms fade. Aynı anda iki şey hareket etmez. Reduce Motion → hepsi
+  200 ms crossfade.
+- 4 hairline satır: SF Symbol Regular 20 + 2–3 kelimelik etiket 15/600
   ("Auto-detect parking", "Scan tariff boards", "Compass and AR", "Parking filters") → **üç plan
   karosu yan yana** (Monthly · Yearly · Lifetime; `r-16`, hairline, seçili 2pt ink; dönem 13/600,
-  fiyat 17/800 tabular, tek satır alt bilgi; yıllık varsayılan ve "SAVE 56%" rozeti) → sabit alt blok:
+  fiyat 17/800 tabular, tek satır alt bilgi; yıllık varsayılan ve "SAVE 56%" rozeti). **Renk paranın
+  olduğu yerde:** seçili karo `alert-bg/money` yeşil kâğıda oturur, indirim rozeti `accent-fill`
+  dolgudur — dekoratif renk yok, gradyan yok → sabit alt blok:
   tek satır otomatik yenileme beyanı 11pt `text-tertiary` + CTA "Continue — ₺X/year" +
   "Restore · Terms · Privacy". Uzun özellik cümlesi, body paragrafı, kart yığını yok.
 - Durumlar in-surface, **sistem alert yok:** yükleniyor 3 iskelet; hata "Couldn't load plans." + ghost

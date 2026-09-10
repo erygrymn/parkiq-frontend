@@ -1,8 +1,10 @@
 import { SymbolView, type SFSymbol } from 'expo-symbols';
 import { useEffect, useMemo } from 'react';
 import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PrimaryCta } from '../components/Buttons';
+import { CelebrationHero } from '../components/motion/CelebrationHero';
 import { PressScale } from '../components/motion/PressScale';
 import { Caption, Overline } from '../components/Typography';
 import { hapticSelect } from '../lib/haptics';
@@ -12,7 +14,8 @@ import { getLocale, t, upper } from '../localization';
 import { usePremiumStore } from '../state/premiumStore';
 import { useUiStore } from '../state/uiStore';
 import { useTheme } from '../theme';
-import { radius, spacing, typeScale } from '../theme/tokens';
+import { CROSSFADE_MS, useReducedMotion } from '../theme/motion';
+import { lightColors, radius, spacing, typeScale } from '../theme/tokens';
 
 // Apple standart EULA + Twice gizlilik politikası (5.1.1 / 3.1.2)
 const TERMS_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
@@ -113,7 +116,9 @@ function PlanTile({
         minHeight: 96,
         borderRadius: radius.r16,
         borderCurve: 'continuous',
-        backgroundColor: colors.card,
+        // Seçili karo yeşil kâğıda oturur: ekranda renk PARANIN olduğu yerde çıkar,
+        // dekor olarak değil (§2 yeşil whitelist'i).
+        backgroundColor: selected ? colors.alertBgMoney : colors.card,
         borderWidth: 2,
         // Kalınlık sabit: seçim değişince karolar zıplamasın.
         borderColor: selected ? colors.ink : colors.gridline,
@@ -133,10 +138,11 @@ function PlanTile({
             paddingHorizontal: spacing.s8,
             paddingVertical: 2,
             borderRadius: radius.rFull,
-            backgroundColor: colors.ink,
+            // Rozet indirimi söylüyor, yani parayı: mürekkep değil accent.
+            backgroundColor: colors.accentFill,
           }}
         >
-          <Text style={{ fontSize: 10, fontWeight: '800', letterSpacing: 0.6, color: colors.card }}>{badge}</Text>
+          <Text style={{ fontSize: 10, fontWeight: '800', letterSpacing: 0.6, color: lightColors.card }}>{badge}</Text>
         </View>
       )}
       <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: '600', color: selected ? colors.ink : colors.textSecondary }}>
@@ -202,7 +208,7 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
 
   // Geçmişten gelen toplam tasarruf; paywall her açıldığında taze okunur. Uydurma ortalama değil,
   // bu telefonun kendi rakamı — yoksa satır hiç çıkmaz.
-  const savedSoFar = useMemo(() => {
+  const saved = useMemo(() => {
     if (!visible) return null;
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -211,11 +217,16 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
       const stats = require('../lib/stats') as typeof import('../lib/stats');
       const total = stats.computeStats(repo.listEndedSessions());
       if (total.totalSaved === null || total.totalSaved <= 0 || !total.savedCurrency) return null;
-      return formatMoney(total.totalSaved, total.savedCurrency, getLocale());
+      return { amount: total.totalSaved, currency: total.savedCurrency };
     } catch {
       return null;
     }
   }, [visible]);
+
+  const reduced = useReducedMotion();
+  /* Satırlar hero'nun ardından gelir; count-up'lı hero daha uzun sürdüğü için bekleme
+     ona göre. Toplam ≤ 1,3 sn — §3'ün 1,8 sn bütçesinin altında. */
+  const rowDelay = saved !== null ? 420 : 180;
 
   const ordered = useMemo(
     () => [...plans].sort((a, b) => PLAN_ORDER[a.period] - PLAN_ORDER[b.period]),
@@ -264,40 +275,53 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
             </Pressable>
           </View>
 
-          {/* Poster başlığı: display-M, noktasız (§7.11). Altında yalnız kullanıcının kendi rakamı. */}
+          {/* §7.11 poster. Ekranın TEK anı burada: kullanıcının kendi biriktirdiği para
+              sayılarak gelir ve nokta en son iner (kutlama kapağıyla aynı bileşen, aynı
+              gramer). Rakam yoksa hero satılan şeydir: display-M başlık, noktasız. */}
           <View style={{ gap: spacing.s8 }}>
             <Overline>{t('goPro')}</Overline>
-            <Text
-              style={{
-                fontSize: typeScale.displayM.fontSize,
-                fontWeight: typeScale.displayM.fontWeight,
-                letterSpacing: typeScale.displayM.letterSpacing,
-                lineHeight: Math.round(typeScale.displayM.fontSize * 1.1),
-                color: colors.ink,
-              }}
-              maxFontSizeMultiplier={1.3}
-            >
-              {upper(t('proHeadline'))}
-            </Text>
-            {savedSoFar !== null && (
-              <Text style={{ fontSize: 15, fontWeight: '600', color: colors.accentText }}>
-                {t('savedSoFar', { amount: savedSoFar })}
-              </Text>
+            {saved !== null ? (
+              <>
+                <CelebrationHero amount={saved.amount} currency={saved.currency} haptics={false} />
+                <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textSecondary }}>
+                  {t('savedSoFarLead')}
+                </Text>
+              </>
+            ) : (
+              <Animated.Text
+                entering={reduced ? FadeIn.duration(CROSSFADE_MS) : FadeInDown.duration(320)}
+                style={{
+                  fontSize: typeScale.displayM.fontSize,
+                  fontWeight: typeScale.displayM.fontWeight,
+                  letterSpacing: typeScale.displayM.letterSpacing,
+                  lineHeight: Math.round(typeScale.displayM.fontSize * 1.1),
+                  color: colors.ink,
+                }}
+                maxFontSizeMultiplier={1.3}
+              >
+                {upper(t('proHeadline'))}
+              </Animated.Text>
             )}
           </View>
 
+          {/* Satırlar hero bittikten SONRA gelir: aynı anda iki şey hareket etmez (§3). */}
           <View style={{ borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.gridline }}>
             {FEATURES.map((feature, index) => (
-              <FeatureRow
+              <Animated.View
                 key={feature.key}
-                symbol={feature.symbol}
-                label={t(feature.key)}
-                last={index === FEATURES.length - 1}
-              />
+                entering={
+                  reduced
+                    ? FadeIn.duration(CROSSFADE_MS)
+                    : FadeInDown.delay(rowDelay + index * 50).duration(CROSSFADE_MS)
+                }
+              >
+                <FeatureRow symbol={feature.symbol} label={t(feature.key)} last={index === FEATURES.length - 1} />
+              </Animated.View>
             ))}
           </View>
 
           {plansState === 'loading' && <SkeletonPlans />}
+
 
           {plansState === 'error' && (
             <View style={{ gap: spacing.s12 }}>
@@ -309,7 +333,12 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
           )}
 
           {plansState === 'ready' && (
-            <View style={{ gap: spacing.s12 }}>
+            <Animated.View
+              entering={
+                reduced ? FadeIn.duration(CROSSFADE_MS) : FadeIn.delay(rowDelay + 4 * 50).duration(CROSSFADE_MS)
+              }
+              style={{ gap: spacing.s12 }}
+            >
               <View style={{ flexDirection: 'row', gap: spacing.s8, paddingTop: spacing.s8 }}>
                 {ordered.map((plan) => (
                   <PlanTile
@@ -329,7 +358,7 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
                 <Caption>{t('freeThen', { intro: selected.introLabel, price: selected.priceLabel })}</Caption>
               )}
               {plansAreDemo && <Caption color={colors.warnText}>{t('demoPlans')}</Caption>}
-            </View>
+            </Animated.View>
           )}
         </ScrollView>
 

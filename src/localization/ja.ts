@@ -253,7 +253,6 @@ export const ja: Record<CopyKey, string> = {
   periodMonth: '{count}か月',
   periodYear: '{count}年間',
   lifetimeNote: '買い切り',
-  savedSoFar: 'ParkIQでこれまでに{amount}の節約',
   dailyMax: '1日の上限（任意）',
   beyondSchedule: '料金表の範囲を超えました — 金額はもう確実ではありません',
   clockFormat: '時刻表示',
@@ -294,4 +293,5 @@ export const ja: Record<CopyKey, string> = {
   pooledFrom: 'ここに停めた{count}人のドライバーが入力した料金です。看板と見比べてください。',
   tariffPool: '料金を共有',
   tariffPoolHint: '入力した料金は同じ駐車場に停める人へ、相手の料金はあなたへ提案されます。送られるのは場所の料金で、あなたの情報ではありません。オフにすると両方とも行われません。',
+  savedSoFarLead: 'ParkIQ がこれだけ節約しました。',
 };

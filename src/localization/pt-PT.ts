@@ -75,7 +75,6 @@ export const ptPT: Partial<Record<CopyKey, string>> = {
   noPurchasesBody: 'Nada para restaurar nesta Apple Account. Se pagou com outra, inicie sessão nessa e tente de novo.',
   restoring: 'A restaurar…',
   lifetimeNote: 'Pagamento único, sem subscrição',
-  savedSoFar: 'O ParkIQ já lhe poupou {amount}',
   followDevice: 'Seguir o telemóvel',
   calibrateCompass: 'Bússola desregulada — faça um 8 no ar com o telemóvel',
   poiError: 'Não foi possível carregar os parques por perto — verifique a ligação',

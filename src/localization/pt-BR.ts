@@ -253,7 +253,6 @@ export const ptBR: Record<CopyKey, string> = {
   periodMonth: '{count} mês',
   periodYear: '{count} ano',
   lifetimeNote: 'Pagamento único',
-  savedSoFar: 'O ParkIQ já te economizou {amount}',
   dailyMax: 'Máximo diário (opcional)',
   beyondSchedule: 'Além do que a placa cobre — o valor já não é exato',
   clockFormat: 'Formato de hora',
@@ -294,4 +293,5 @@ export const ptBR: Record<CopyKey, string> = {
   pooledFrom: 'Enviada por {count} motoristas que estacionaram aqui. Confira na placa.',
   tariffPool: 'Compartilhar tarifas',
   tariffPoolHint: 'Sua tarifa é sugerida a quem estaciona no mesmo lugar, e a deles a você. Viaja o preço de um local, nada sobre você. Desligado: nenhuma das duas.',
+  savedSoFarLead: 'Foi isso que o ParkIQ já economizou para você.',
 };

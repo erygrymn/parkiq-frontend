@@ -253,7 +253,6 @@ export const nlNL: Record<CopyKey, string> = {
   periodMonth: '{count} maand',
   periodYear: '{count} jaar',
   lifetimeNote: 'Eenmalige betaling',
-  savedSoFar: 'ParkIQ bespaarde je tot nu toe {amount}',
   dailyMax: 'Dagmaximum (optioneel)',
   beyondSchedule: 'Voorbij wat het bord aangeeft — het bedrag is niet meer zeker',
   clockFormat: 'Tijdnotatie',
@@ -294,4 +293,5 @@ export const nlNL: Record<CopyKey, string> = {
   pooledFrom: 'Ingevoerd door {count} bestuurders die hier parkeerden. Vergelijk met het bord.',
   tariffPool: 'Tarieven delen',
   tariffPoolHint: 'Jouw tarief wordt voorgesteld aan bestuurders bij dezelfde parkeerplaats, en dat van hen aan jou. Het gaat om de prijs van een plek, niet om jou. Uit betekent geen van beide.',
+  savedSoFarLead: 'Dit heeft ParkIQ je al bespaard.',
 };

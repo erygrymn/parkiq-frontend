@@ -12,7 +12,16 @@ import { Dot } from './Stamp';
 // nokta EN SON iner (DOT_SPRING) ve notificationSuccess ile eşlenir. Ekranın tek imza noktası.
 // Satır sırası dile bağlı: İngilizce "SAVED / ₺50.", Türkçe "₺50 / CEBİNDE." (SavingsCard ile aynı).
 
-export function CelebrationHero({ amount, currency }: { amount: number; currency: string }) {
+export function CelebrationHero({
+  amount,
+  currency,
+  haptics = true,
+}: {
+  amount: number;
+  currency: string;
+  /** Paywall'da kapalı: satın alma ekranında titretmek zorlama olur, kutlama değil. */
+  haptics?: boolean;
+}) {
   const { colors } = useTheme();
   const locale = getLocale();
   const moneyFirst = locale === 'tr';
@@ -45,13 +54,19 @@ export function CelebrationHero({ amount, currency }: { amount: number; currency
       fontWeight={host === 'amount' ? amountStyle.fontWeight : wordStyle.fontWeight}
       letterSpacing={host === 'amount' ? amountStyle.letterSpacing : wordStyle.letterSpacing}
       land={counted}
-      onLanded={hapticStamp}
+      onLanded={haptics ? hapticStamp : undefined}
     />
   );
 
   const amountRow = (withDot: boolean) => (
     <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
-      <CountUp value={amount} format={format} style={amountStyle} onTick={hapticTick} onDone={() => setCounted(true)} />
+      <CountUp
+        value={amount}
+        format={format}
+        style={amountStyle}
+        onTick={haptics ? hapticTick : undefined}
+        onDone={() => setCounted(true)}
+      />
       {withDot && dot('amount')}
     </View>
   );

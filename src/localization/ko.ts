@@ -253,7 +253,6 @@ export const ko: Record<CopyKey, string> = {
   periodMonth: '{count}개월',
   periodYear: '{count}년',
   lifetimeNote: '1회 결제',
-  savedSoFar: 'ParkIQ가 지금까지 {amount} 아껴줬어요',
   dailyMax: '일 최대 요금 (선택)',
   beyondSchedule: '요금표에 없는 시간대예요 — 금액이 정확하지 않아요',
   clockFormat: '시간 표시',
@@ -294,4 +293,5 @@ export const ko: Record<CopyKey, string> = {
   pooledFrom: '여기에 주차한 운전자 {count}명이 입력한 요금입니다. 요금표와 비교해 보세요.',
   tariffPool: '요금 공유',
   tariffPoolHint: '입력한 요금은 같은 주차장에 세우는 운전자에게, 그들의 요금은 당신에게 제안됩니다. 오가는 것은 장소의 요금이지 당신에 대한 정보가 아닙니다. 끄면 둘 다 하지 않습니다.',
+  savedSoFarLead: 'ParkIQ가 이만큼 아껴 드렸습니다.',
 };

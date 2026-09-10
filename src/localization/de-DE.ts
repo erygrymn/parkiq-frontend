@@ -253,7 +253,6 @@ export const deDE: Record<CopyKey, string> = {
   periodMonth: '{count} Monat',
   periodYear: '{count} Jahr',
   lifetimeNote: 'Einmalzahlung',
-  savedSoFar: 'ParkIQ hat dir bisher {amount} gespart',
   dailyMax: 'Tagesmaximum (optional)',
   beyondSchedule: 'Über den Bereich der Tafel hinaus — der Betrag ist nicht mehr sicher',
   clockFormat: 'Zeitformat',
@@ -294,4 +293,5 @@ export const deDE: Record<CopyKey, string> = {
   pooledFrom: 'Von {count} Fahrern eingetragen, die hier geparkt haben. Mit der Tafel abgleichen.',
   tariffPool: 'Tarife teilen',
   tariffPoolHint: 'Dein Tarif wird anderen Fahrern im selben Parkhaus vorgeschlagen, ihrer dir. Übertragen wird der Preis eines Ortes, nichts über dich. Aus heißt: beides nicht.',
+  savedSoFarLead: 'So viel hat ParkIQ dir schon gespart.',
 };

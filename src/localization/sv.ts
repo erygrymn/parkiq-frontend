@@ -253,7 +253,6 @@ export const sv: Record<CopyKey, string> = {
   periodMonth: '{count} månad',
   periodYear: '{count} år',
   lifetimeNote: 'Engångsbetalning',
-  savedSoFar: 'ParkIQ har sparat {amount} åt dig hittills',
   dailyMax: 'Dygnsmax (valfritt)',
   beyondSchedule: 'Bortom det skylten täcker — beloppet är inte längre säkert',
   clockFormat: 'Tidsformat',
@@ -294,4 +293,5 @@ export const sv: Record<CopyKey, string> = {
   pooledFrom: 'Angiven av {count} förare som parkerat här. Jämför med skylten.',
   tariffPool: 'Dela taxor',
   tariffPoolHint: 'Din taxa föreslås för förare som parkerar på samma ställe, och deras för dig. Det är en plats pris som skickas, inget om dig. Av betyder ingetdera.',
+  savedSoFarLead: 'Så mycket har ParkIQ redan sparat åt dig.',
 };

@@ -240,7 +240,6 @@ export const tr: Record<CopyKey, string> = {
   periodMonth: '{count} ay',
   periodYear: '{count} yıl',
   lifetimeNote: 'Tek ödeme',
-  savedSoFar: 'ParkIQ şu ana kadar {amount} kazandırdı',
   dailyMax: 'Günlük tavan (isteğe bağlı)',
   beyondSchedule: 'Panonun anlattığı sürenin ötesindesin — tutar artık kesin değil',
   clockFormat: 'Saat biçimi',
@@ -282,4 +281,5 @@ export const tr: Record<CopyKey, string> = {
   pooledFrom: 'Buraya park eden {count} sürücünün girdiğinden geliyor. Panoyla karşılaştır.',
   tariffPool: 'Tarifeleri paylaş',
   tariffPoolHint: 'Girdiğin tarife aynı otoparka park eden sürücülere önerilir, onlarınki de sana. Giden şey bir yerin fiyatı, sana ait bir şey değil. Kapalıyken ikisi de olmaz.',
+  savedSoFarLead: 'ParkIQ bunu senin için biriktirdi.',
 };
