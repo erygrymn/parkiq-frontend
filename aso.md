@@ -383,21 +383,47 @@ Apple Haziran 2025'te ekran görüntüsü altyazılarını OCR ile indekslemeye 
 
 İlk 2 kare her şeydir — kullanıcıların çoğu kaydırmaz.
 
-Sıra, §2'deki ağırlığı takip eder: **1–2–3 sayaç ve para, 4 reklamsızlık, 5 araba bulma, 6–7 gerisi.**
+Sıra: **1 para, 2 araba bulma, 3 tasarruf kanıtı, 4 reklamsızlık, 5–7 gerisi.**
 
 | # | Kare | Altyazı (en-US) | Altyazı (tr) |
 |---|---|---|---|
 | 1 | Aktif oturum: tarife çubuğu amber, para kutusu görünür | **Leave now $5. Stay and it's $10.** | **Şimdi çık ₺50. Kalırsan ₺100.** |
-| 2 | Kilit ekranı + Dynamic Island geri sayım | The countdown, without opening the app | Geri sayım, uygulamayı açmadan |
+| 2 | Find My Car — kapalı alan kartı (foto + kat) | Level 3, blue pillar — even with no GPS | Kat 3, mavi kolon — GPS olmasa da |
 | 3 | Bitiş kutlaması "SAVED $5." + aylık toplam | $34 saved this month | Bu ay ₺340 tasarruf |
 | 4 | Sade tipografik kare (ürün ekranı değil) | **No ads. No account. No sign-up.** | **Reklam yok. Hesap yok. Kayıt yok.** |
-| 5 | Find My Car — kapalı alan kartı (foto + kat) | Level 3, blue pillar — even with no GPS | Kat 3, mavi kolon — GPS olmasa da |
+| 5 | Kilit ekranı + Dynamic Island geri sayım | The countdown, without opening the app | Geri sayım, uygulamayı açmadan |
 | 6 | Tarife panosu okuma | Point the camera. Runs on device. | Kamerayı tut. Cihazda çalışır. |
 | 7 | Harita — otopark + ⚡ | Car parks and EV chargers nearby | Yakındaki otoparklar ve şarj |
 
+**Sıra 2026-09-12'de değişti** (eskisi: 1–2–3 hepsi para, araba bulma 5'te). İki sebep:
+
+1. **İlk üç karenin üçü de para anlatıyordu** — tekrar. Kaydırmayan kullanıcı ürünün yalnız
+   yarısını görüyordu.
+2. **`find my car` en yüksek hacimli sorgu** (§1: IE/NZ'de KD 28–29, hedeflenebilir). O kelimeyle
+   gelen kişi 2. karede aradığını görmeli; 5. kare çoğu ziyaretçi için hiç yok demek.
+
+**1. kare neden hâlâ para, araba bulma değil:** [market-research.md](market-research.md) §5 talep
+matrisi — maliyet/tasarruf 11 anma ile en çok istenen şey ve **hiçbir araba-bulma uygulamasında yok**;
+foto+kat 5 uygulamada zaten VAR (kötü çalışıyor, ama var). 1. kare "neden diğer 83'ü değil de bu?"
+sorusunu cevaplar ve "arabanı buluyorum" o soruyu cevaplamıyor, çünkü hepsi onu diyor. Üstüne §0:
+gerçekten para kazanan üç uygulamanın üçü de araba-bulma uygulaması değil.
+
+**2. kare neden kapalı alan kartı, pusula değil:** §4.1 kategorinin ölüm sebebinin "yanlış konum"
+olduğunu, §4.2 kapalı otoparkta AR'ın çöktüğünü söylüyor. İnsanların arabayı en çok kaybettiği yer
+orası ve rakiplerin hepsi orada yalan söylüyor — güvenilirlik iddiası o karede kuruluyor.
+
+**Kilit ekranı 5'e düştü.** Yorumlardaki en net övgü o (*"I really rely on having the timer on my
+lockscreen. It's the best feature."* — 4★ US, ParkUsher) ama bir NASIL, ne değil: ürünü benimsemiş
+kullanıcıya hitap ediyor, mağazada duran yabancıya değil.
+
 4. kare veri iddiası TAŞIMAZ (yukarıdaki kural); yalnız reklam/hesap/kayıt der. Kasıtlı olarak ürün ekranı değil: bu pazarda reklam ve hesap zorunluluğu en sık şikayet ([market-research.md](market-research.md) §4.6–4.7), ve rakiplerin hiçbirinin ekran görüntülerinde böyle bir iddia yok.
 
-**AR karesi yok** — AR yazılı ama kasıtlı olarak gösterilmiyor (§2.1). Açık alanda çekilmiş bir AR karesi eklenecekse 5. karenin yerine değil **8. kare** olarak eklenir; kapalı otopark karesi (5) her zaman önce gelir, çünkü güvenilirlik iddiası orada.
+**AR karesi yok** — AR yazılı ama kasıtlı olarak gösterilmiyor (§2.1). Açık alanda çekilmiş bir AR karesi eklenecekse 2. karenin yerine değil **8. kare** olarak eklenir; kapalı otopark karesi (2) her zaman önce gelir, çünkü güvenilirlik iddiası orada.
+
+**8. kare adayı — elle pin düzeltme.** [market-research.md](market-research.md) §9: bu özellik
+pazarda HİÇ KİMSEDE yok ve ParkIQ'da var; kategorinin en büyük arızasının ("yanlış yeri kaydetti")
+panzehiri. Hiçbir karede anlatılmıyor. AR karesinden daha güçlü bir 8. kare adayı — altyazı
+"Wrong spot? Move the pin." / "Yanlış yer mi? Pini taşı." 
 
 **Kural:** 1. kare rakam içermeli. Bu pazardaki tüm rakiplerin 1. karesi haritada bir araba pini — birbirinin aynısı. Rakam farklılaştırıcı.
 
