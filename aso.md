@@ -383,7 +383,7 @@ Apple Haziran 2025'te ekran görüntüsü altyazılarını OCR ile indekslemeye 
 
 İlk 2 kare her şeydir — kullanıcıların çoğu kaydırmaz.
 
-Sıra: **1 para, 2 araba bulma, 3 tasarruf kanıtı, 4 reklamsızlık, 5–7 gerisi.**
+Sıra: **1 para, 2 araba bulma, 3 tasarruf kanıtı, 4 reklamsızlık, 5 kilit ekranı.**
 
 | # | Kare | Altyazı (en-US) | Altyazı (tr) |
 |---|---|---|---|
@@ -392,8 +392,12 @@ Sıra: **1 para, 2 araba bulma, 3 tasarruf kanıtı, 4 reklamsızlık, 5–7 ger
 | 3 | Bitiş kutlaması "SAVED $5." + aylık toplam | $34 saved this month | Bu ay ₺340 tasarruf |
 | 4 | Sade tipografik kare (ürün ekranı değil) | **No ads. No account. No sign-up.** | **Reklam yok. Hesap yok. Kayıt yok.** |
 | 5 | Kilit ekranı + Dynamic Island geri sayım | The countdown, without opening the app | Geri sayım, uygulamayı açmadan |
-| 6 | Tarife panosu okuma | Point the camera. Runs on device. | Kamerayı tut. Cihazda çalışır. |
-| 7 | Harita — otopark + ⚡ | Car parks and EV chargers nearby | Yakındaki otoparklar ve şarj |
+
+**Set 2026-09-12'de 5 kareye indi.** Tarife panosu okuma (eski 6) ve harita (eski 7)
+çıkarıldı. Haritanın bedeli açık: "en yakın otopark nerede" — ürünün üç temel
+sorusundan biri — mağazada hiç görünmüyor. Kaydırmayan kullanıcı zaten ilk ikiyi
+gördüğü için kayıp sınırlı, ama 6. kare eklenecekse en güçlü aday odur; eldeki
+çekimde ⚡ filtresi kapalıydı, altyazı şarj vaat ederken ekran onu göstermiyordu.
 
 **Sıra 2026-09-12'de değişti** (eskisi: 1–2–3 hepsi para, araba bulma 5'te). İki sebep:
 
