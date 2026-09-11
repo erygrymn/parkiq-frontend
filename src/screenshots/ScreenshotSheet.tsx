@@ -23,7 +23,7 @@ export function ScreenshotSheet({ visible, onClose }: { visible: boolean; onClos
     <PageSheet visible={visible} title="Screenshots" onClose={onClose}>
       <ScrollView contentContainerStyle={{ paddingBottom: spacing.s32 }}>
         <Caption style={{ paddingBottom: spacing.s12 }}>
-          aso.md §4. Picking a scene closes this sheet; capture the frame from the real screen behind it.
+          aso.md §4. Sahne seçilince panel kapanır; kareyi arkadaki gerçek ekrandan al.
         </Caption>
         <View style={{ borderTopWidth: 1, borderTopColor: colors.gridline }}>
           {SCENARIOS.map((scenario) => (

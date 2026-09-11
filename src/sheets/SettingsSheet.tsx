@@ -333,7 +333,7 @@ export function SettingsSheet({
           <View style={{ borderTopWidth: 1, borderTopColor: colors.gridline }}>
             <SettingRow label={t('devPremium')} trailing={switchControl(devUnlock, setDevUnlock)} />
             {/* aso.md §4 kareleri: sahte durum, gerçek yüzey. `screenshots` dalı. */}
-            <SettingRow label="Screenshot scenes" onPress={() => setScreenshotsOpen(true)} />
+            <SettingRow label="Screenshot sahneleri" onPress={() => setScreenshotsOpen(true)} />
             <SettingRow
               label={t('devResetOnboarding')}
               onPress={() => {

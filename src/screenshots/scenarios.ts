@@ -19,17 +19,32 @@ import { useUiStore } from '../state/uiStore';
 
 const MIN = 60_000;
 
-/** Kare 1 ve 3'ün tarifesi: 0–1s ₺50 · 1–2s ₺100 · 2–3s ₺150, günlük tavan ₺300. */
-const TARIFF: Tariff = {
-  type: 'tiered',
-  currency: 'TRY',
-  tiers: [
-    { endMin: 60, cumulativePrice: 50 },
-    { endMin: 120, cumulativePrice: 100 },
-    { endMin: 180, cumulativePrice: 150 },
-  ],
-  dailyMax: 300,
-};
+/**
+ * Sahne tarifesi. Rakamlar aso.md §4'ün altyazılarıyla birebir: EN'de
+ * "Leave now $5. Stay and it's $10", TR'de "Şimdi çık ₺50. Kalırsan ₺100".
+ * `assets/tariff-board-en.png` ve `-tr.png` panoları da aynı rakamları taşır —
+ * biri değişirse öteki de değişmeli, yoksa set kendi içinde yalan söyler.
+ */
+const TARIFF_STEPS: Record<'USD' | 'TRY', number> = { USD: 5, TRY: 50 };
+
+function tariffFor(currency: string): Tariff {
+  const step = TARIFF_STEPS[currency === 'TRY' ? 'TRY' : 'USD'];
+  return {
+    type: 'tiered',
+    currency: currency === 'TRY' ? 'TRY' : 'USD',
+    tiers: [
+      { endMin: 60, cumulativePrice: step },
+      { endMin: 120, cumulativePrice: step * 2 },
+      { endMin: 180, cumulativePrice: step * 3 },
+    ],
+    dailyMax: step * 6,
+  };
+}
+
+/** Sahneler app'in o anki para biriminde kurulur; EN seti için USD'de bırak. */
+function currentTariff(): Tariff {
+  return tariffFor(useSettingsStore.getState().currency);
+}
 
 /** Metro dev sunucusundan servis edilen paket içi foto — `expo-image` bunu açar. */
 function garagePhotoUri(): string | null {
@@ -97,39 +112,38 @@ export const SCENARIOS: Scenario[] = [
   {
     key: 'active-amber',
     frame: 1,
-    label: 'Active session · amber',
-    hint: 'Bar in amber, "Now ₺50 · Next ₺100"',
+    label: 'Aktif oturum · amber',
+    hint: 'Çubuk amber, para kutusu iki rakamı da taşıyor',
     apply: () => {
       resetStores();
-      useSettingsStore.setState({ currency: 'TRY', warnThresholdMin: 15 });
+      useSettingsStore.setState({ warnThresholdMin: 15 });
       // Dilim sonuna 8 dk: amber eşiğinin içinde, para kutusu iki rakamı da taşıyor.
       const started = Date.now() - 52 * MIN;
       useSessionStore.setState({
         phase: 'active',
-        session: session({ startedAtMs: started, recordedAtMs: started, tariff: TARIFF, floor: '3' }),
+        session: session({ startedAtMs: started, recordedAtMs: started, tariff: currentTariff(), floor: '3' }),
       });
     },
   },
   {
     key: 'celebration',
     frame: 3,
-    label: 'Celebration · SAVED',
-    hint: '"SAVED ₺50." + monthly total',
+    label: 'Kutlama · SAVED',
+    hint: 'Tasarruf damgası + aylık toplam',
     apply: () => {
       resetStores();
-      useSettingsStore.setState({ currency: 'TRY' });
       const started = Date.now() - 58 * MIN;
       useSessionStore.setState({
         phase: 'ended',
-        session: session({ startedAtMs: started, recordedAtMs: started, endedAtMs: Date.now(), tariff: TARIFF }),
+        session: session({ startedAtMs: started, recordedAtMs: started, endedAtMs: Date.now(), tariff: currentTariff() }),
       });
     },
   },
   {
     key: 'finding-indoor',
     frame: 5,
-    label: 'Find My Car · indoor',
-    hint: 'Level 3 + photo card (not the compass)',
+    label: 'Arabamı Bul · kapalı alan',
+    hint: 'Kat 3 + foto kartı (pusula değil)',
     apply: () => {
       resetStores();
       const started = Date.now() - 95 * MIN;
@@ -139,7 +153,7 @@ export const SCENARIOS: Scenario[] = [
         session: session({
           startedAtMs: started,
           recordedAtMs: started,
-          tariff: TARIFF,
+          tariff: currentTariff(),
           floor: '3',
           note: 'Mavi kolon, asansörün solu',
           photoUri: garagePhotoUri(),
@@ -151,23 +165,22 @@ export const SCENARIOS: Scenario[] = [
   {
     key: 'poster',
     frame: 4,
-    label: 'Typographic frame',
-    hint: 'Not a product screen — full-screen poster (EN/TR)',
+    label: 'Tipografik kare',
+    hint: 'Ürün ekranı değil — tam ekran poster (EN/TR)',
     // Poster ayrı bir tam ekran katman; ScreenshotSheet bu anahtarı özel ele alır.
     apply: () => undefined,
   },
   {
     key: 'tariff-scanned',
     frame: 6,
-    label: 'Tariff · scan result',
-    hint: 'Tiers read off the board, filled into the form',
+    label: 'Tarife · tarama sonucu',
+    hint: 'Panodan okunmuş dilimler formda',
     apply: () => {
       resetStores();
-      useSettingsStore.setState({ currency: 'TRY' });
       const started = Date.now() - 3 * MIN;
       useSessionStore.setState({
         phase: 'parking',
-        session: session({ startedAtMs: started, recordedAtMs: started, tariff: TARIFF, confirmed: false }),
+        session: session({ startedAtMs: started, recordedAtMs: started, tariff: currentTariff(), confirmed: false }),
         ocrState: 'idle',
       });
     },
@@ -175,8 +188,8 @@ export const SCENARIOS: Scenario[] = [
   {
     key: 'map-charging',
     frame: 7,
-    label: 'Map · charging filter',
-    hint: 'Charging filter on, pins visible',
+    label: 'Harita · şarj filtresi',
+    hint: '⚡ filtresi açık, pinler görünür',
     apply: () => {
       resetStores();
       useDiscoveryStore.setState({ pois: POIS, filter: 'charging', state: 'ready', radiusM: 1000 });
@@ -185,8 +198,8 @@ export const SCENARIOS: Scenario[] = [
   {
     key: 'reset',
     frame: 0,
-    label: 'Reset',
-    hint: 'Clear the fake state, back to discovery',
+    label: 'Sıfırla',
+    hint: 'Sahte durumu temizle, keşfe dön',
     apply: resetStores,
   },
 ];
