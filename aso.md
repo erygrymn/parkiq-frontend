@@ -476,6 +476,23 @@ $39.99 → $29.99 indirimi kayıp değil: yıllık $14.99 → $24.99 çıkışı
 
 Düz global fiyat kullanma — Almanya'yı Türkiye fiyatına satmak doğrudan para yakmaktır.
 
+**Durum 2026-09-11: CANLI.** Merdiven ASC'ye girildi, tüm bölgeler ABD tabanından eşitlendi
+(`asc subscriptions pricing equalize`), ardından endeks sapması olan dört ülke elle ezildi. Doğrulanan değerler:
+
+| Bölge | Aylık | Yıllık | Lifetime |
+|---|---|---|---|
+| US | $4.99 | $24.99 | $29.99 |
+| DE (1.2) | €5.99 | €29.99 | €34.99 |
+| GB (1.2) | £4.99 | £24.99 | £29.99 |
+| CA (0.9) | C$6.29 | C$31.49 | C$37.99 |
+| NZ (0.9) | NZ$8.99 | NZ$44.99 | NZ$53.99 |
+| AU (0.8) | A$6.39 | A$31.99 | A$37.99 |
+| TR (0.7) | ₺174.99 | ₺909.99 | ₺1099.99 |
+
+Endeks, Apple'ın eşitlediği yerel fiyatla çarpılarak uygulandı (Apple'ın eşitlemesi = 1.0 karşılığı).
+Lifetime her bölgede yıllığın ~1.2 katında tutuldu: NZ'de Apple'ın eşitlemesi ikisini de NZ$49.99'a
+düşürüyordu, o merdiveni çökertiyordu. Fiyat değişirse CLAUDE.md'deki ürün satırı da güncellenmeli.
+
 ### 6.5 Kaç indirme gerekiyor
 
 100 ödeyen müşteri başına (karma: %15 aylık, %45 yıllık, %40 lifetime — lifetime öne çıkarıldığı için ağır):
