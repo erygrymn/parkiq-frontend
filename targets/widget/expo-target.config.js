@@ -6,7 +6,7 @@ module.exports = {
   entitlements: {
     'com.apple.security.application-groups': ['group.parkiq.shared'],
   },
-  frameworks: ['SwiftUI', 'WidgetKit', 'ActivityKit', 'AppIntents'],
+  frameworks: ['SwiftUI', 'WidgetKit', 'ActivityKit'],
   // Marka işareti extension'ın kendi asset catalog'una girer: widget ve Live
   // Activity ana app'in bundle'ını okuyamaz, kendi kopyası olmak zorunda.
   images: {

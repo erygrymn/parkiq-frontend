@@ -71,15 +71,6 @@ public class ParkiqLiveActivityModule: Module {
       }
     }
 
-    /// Kilit ekranı "Bitir" düğmesi (ParkIQEndSessionIntent) bitiş anını App Group'a yazar;
-    /// RN bunu bir kez okur ve oturumu o anla kapatır. Okunan değer silinir.
-    Function("consumePendingEnd") { () -> Double? in
-      guard let defaults = UserDefaults(suiteName: self.appGroup) else { return nil }
-      let value = defaults.object(forKey: "pendingEndAtMs") as? Double
-      if value != nil { defaults.removeObject(forKey: "pendingEndAtMs") }
-      return value
-    }
-
     /// Widget'ın okuduğu paylaşılan kutu (§8.3). Oturum yoksa alanlar temizlenir.
     Function("setWidgetData") { (payload: [String: Any]) in
       // suiteName nil dönerse App Group entitlement'ı sağlanmamıştır: widget

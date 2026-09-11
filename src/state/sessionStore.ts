@@ -8,6 +8,7 @@ import {
 import { computeExitSummary } from '../lib/tariffMath';
 import { isIndoorLike } from '../lib/geo';
 import {
+  clearSessionSurfaces,
   endSessionActivity,
   isLiveActivityRunning,
   refreshSessionActivity,
@@ -350,10 +351,12 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       active = null;
     }
 
-    // Aktif oturum yoksa hayalet alarm da olmamalı: app öldürülmüşken oturum silinmiş
-    // ya da bitmiş olabilir; kurulu bir sistem alarmı kalırsa park bitmiş olmasına
-    // rağmen telefon çalar.
-    if (!active) void cancelSessionAlerts();
+    // Aktif oturum yoksa hayalet alarm, hayalet kilit ekranı kartı ve hayalet widget
+    // sayacı da olmamalı: app öldürülmüşken oturum silinmiş ya da bitmiş olabilir.
+    if (!active) {
+      void cancelSessionAlerts();
+      clearSessionSurfaces();
+    }
 
     set(
       active
@@ -877,6 +880,9 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   finish: () => {
     // Kayıt geçmişte kalır (endedAtMs dolu); yalnız bellek durumu sıfırlanır.
     if (get().phase !== 'ended') return;
+    // Bitiş akışı kilit ekranını zaten kapatıyor; burada bir kez daha süpürülür çünkü
+    // "bitirdim ama kilit ekranı saymaya devam ediyor" tam olarak bunun kaçtığı durum.
+    clearSessionSurfaces();
     set({
       phase: 'idle',
       session: null,

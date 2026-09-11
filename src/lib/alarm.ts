@@ -50,12 +50,16 @@ export function isAlarmAvailable(): boolean {
 /** Alarm ekranının vurgu rengi — marka yeşili (design.md §2 accent-fill). */
 const TINT = '#00A650';
 
+/** Erteleme süresi — alarm ekranındaki ikinci düğme. */
+const SNOOZE_MIN = 5;
+
 /**
  * Verilen ana TEK SEFERLİK sistem alarmı kurar. Döndürdüğü kimlik saklanmalı:
  * iptal etmenin tek yolu o.
  *
- * Ertelemesi YOK (`countdown` verilmez): park hatırlatıcısını ertelemek kullanıcıyı
- * bir sonraki fiyat diliminin içinde bırakır, yani tam da kaçınmak istediği şeyi yapar.
+ * BÜTÜN argümanlar açıkça verilir. Aradaki isteğe bağlı parametreyi `undefined`
+ * geçince alarm kuruluyor görünüp hiç çalmıyordu: köprü sıradaki değeri yanlış
+ * yuvaya koyuyor, zaman damgası kayboluyor. Audie'de çalışan çağrı da tam biçimli.
  */
 export async function scheduleParkAlarm(atMs: number, title: string): Promise<string | null> {
   const m = alarmKit();
@@ -69,8 +73,9 @@ export async function scheduleParkAlarm(atMs: number, title: string): Promise<st
       title.slice(0, 15),
       { text: t('alarmStop'), textColor: '#FFFFFF', icon: 'checkmark.circle.fill' },
       TINT,
-      undefined,
+      { text: t('minutesShort', { minutes: SNOOZE_MIN }), textColor: '#FFFFFF', icon: 'moon.zzz.fill' },
       seconds,
+      { postAlert: SNOOZE_MIN * 60 },
     );
     return id || null;
   } catch {

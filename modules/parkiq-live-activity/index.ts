@@ -41,7 +41,6 @@ interface NativeLiveActivity {
   update(payload: LiveActivityPayload): Promise<void>;
   end(payload: LiveActivityPayload | Record<string, never>): Promise<void>;
   setWidgetData(payload: WidgetPayload): void;
-  consumePendingEnd(): number | null;
 }
 
 let native: NativeLiveActivity | null = null;
@@ -102,16 +101,6 @@ export async function endLiveActivity(payload: LiveActivityPayload | null): Prom
     await native?.end(payload ?? ({} as Record<string, never>));
   } catch (error) {
     warn('end failed', error);
-  }
-}
-
-/** Kilit ekranından "Bitir"e basıldıysa bitiş anı (ms); bir kez döner, sonra silinir. */
-export function consumePendingEnd(): number | null {
-  try {
-    return native?.consumePendingEnd() ?? null;
-  } catch (error) {
-    warn('consumePendingEnd failed', error);
-    return null;
   }
 }
 

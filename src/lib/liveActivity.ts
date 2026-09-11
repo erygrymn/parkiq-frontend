@@ -1,5 +1,4 @@
 import {
-  consumePendingEnd,
   endLiveActivity,
   isLiveActivityAvailable,
   setWidgetData,
@@ -23,7 +22,7 @@ import type { ParkSession } from '../state/sessionStore';
 //
 // §4.10: Live Activity/widget işletim sistemi yetenekleridir — premium kapısı YOK.
 
-export { consumePendingEnd, isLiveActivityAvailable };
+export { isLiveActivityAvailable };
 
 /** Widget'ın statik etiketleri; App Group kutusuna yazılır. */
 function widgetStrings(): Record<string, string> {
@@ -32,7 +31,6 @@ function widgetStrings(): Record<string, string> {
     wSavedLabel: t('wSavedLabel'),
     wParkTitle: t('wParkTitle'),
     wParkHint: t('wParkHint'),
-    laEnd: t('endSession'),
   };
 }
 
@@ -117,6 +115,18 @@ export function refreshSessionActivity(session: ParkSession, warnThresholdMin: n
   // yoksa yer adı geç geldiğinde widget'ta boş kalıyordu.
   void updateLiveActivity(buildPayload(session, warnThresholdMin));
   syncWidget(session, warnThresholdMin);
+}
+
+/**
+ * Oturumsuz duruma süpürme: kilit ekranı kartını kaldırır ve widget kutusunu boşaltır.
+ *
+ * Bitiş akışı bunu zaten yapıyor ama her zaman ÇALIŞTIĞINI varsaymak yetmedi —
+ * kayıt bittiği hâlde kilit ekranındaki sayaç akmaya devam ediyordu. Kutlama kapağı
+ * kapanınca ve oturumsuz her soğuk açılışta bir daha çağrılır; iki kez çağırmak zararsız.
+ */
+export function clearSessionSurfaces(): void {
+  void endLiveActivity(null);
+  syncWidget(null);
 }
 
 /** §8.5 bitiş karesi: 3 sn yeşil flip, sonra kalkar. */

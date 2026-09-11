@@ -1,5 +1,4 @@
 import ActivityKit
-import AppIntents
 import SwiftUI
 import WidgetKit
 
@@ -160,25 +159,6 @@ private struct TariffProgress: View {
   }
 }
 
-// MARK: - Kilit ekranı "Bitir" düğmesi
-
-/// Tek dokunuşla biter, app açılmaz (ParkIQEndSessionIntent). Etiket RN'den gelir.
-private struct EndButton: View {
-  var body: some View {
-    if #available(iOS 17.0, *) {
-      Button(intent: ParkIQEndSessionIntent()) {
-        Text(Shared.text("laEnd", "End"))
-          .font(.system(size: 13, weight: .heavy))
-          .foregroundStyle(.white)
-          .padding(.horizontal, 14)
-          .frame(height: 30)
-          .background(Palette.track, in: Capsule())
-      }
-      .buttonStyle(.plain)
-    }
-  }
-}
-
 // MARK: - Live Activity gövdesi
 
 private struct LiveActivityView: View {
@@ -220,15 +200,11 @@ private struct LiveActivityView: View {
 
         // §8.1 hero: sonraki fiyat artışına kalan süre — sistemin kendi kendine doğru
         // tutabildiği tek gösterge, o yüzden en büyük yeri o alır.
-        HStack(alignment: .bottom, spacing: 12) {
-          VStack(alignment: .leading, spacing: 2) {
-            if let label = state.heroLabel {
-              Overline(text: label)
-            }
-            HeroTimer(startedAt: state.startedAt, boundary: state.nextBoundaryAt, tone: state.barTone)
+        VStack(alignment: .leading, spacing: 2) {
+          if let label = state.heroLabel {
+            Overline(text: label)
           }
-          Spacer(minLength: 0)
-          EndButton()
+          HeroTimer(startedAt: state.startedAt, boundary: state.nextBoundaryAt, tone: state.barTone)
         }
 
         if let range = liveRange(state.tierStartedAt, state.nextBoundaryAt) {
@@ -286,17 +262,13 @@ struct ParkIQLiveActivity: Widget {
             if let range = liveRange(context.state.tierStartedAt, context.state.nextBoundaryAt) {
               TariffProgress(range: range, tone: context.state.barTone)
             }
-            HStack(spacing: 8) {
-              if let footer = context.state.footerText {
-                Text(footer)
-                  .font(.system(size: 13, weight: .heavy))
-                  .monospacedDigit()
-                  .foregroundStyle(.white)
-                  .lineLimit(1)
-                  .minimumScaleFactor(0.7)
-              }
-              Spacer(minLength: 0)
-              EndButton()
+            if let footer = context.state.footerText {
+              Text(footer)
+                .font(.system(size: 13, weight: .heavy))
+                .monospacedDigit()
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
             }
           }
           .padding(.horizontal, 4)
@@ -485,30 +457,6 @@ struct ParkIQLockView: View {
   var body: some View {
     Group {
       switch family {
-      case .accessoryCircular:
-        ZStack {
-          AccessoryWidgetBackground()
-          if let range = liveRange(.now, entry.nextBoundaryAt) {
-            // Fiyat artışına kalan süre halkası: kendi kendine boşalır. Ortası boş —
-            // kilit ekranı görselleri tek renge düzleştirilir, marka işareti orada
-            // dolu bir kareye dönüşürdü.
-            ProgressView(timerInterval: range, countsDown: true) {
-              EmptyView()
-            } currentValueLabel: {
-              EmptyView()
-            }
-            .progressViewStyle(.circular)
-          } else if let started = entry.startedAt {
-            Text(started, style: .timer)
-              .font(.system(size: 13, weight: .heavy))
-              .monospacedDigit()
-              .lineLimit(1)
-              .minimumScaleFactor(0.5)
-              .padding(.horizontal, 4)
-          } else {
-            BrandGlyph(size: 26)
-          }
-        }
       case .accessoryRectangular:
         VStack(alignment: .leading, spacing: 1) {
           if entry.startedAt != nil {
@@ -569,7 +517,8 @@ struct ParkIQLockWidget: Widget {
     }
     .configurationDisplayName(Gallery.lockName)
     .description(Gallery.lockDescription)
-    .supportedFamilies([.accessoryCircular, .accessoryRectangular, .accessoryInline])
+    // Dairesel aile YOK: o boyutta yalnız bir halka kalıyor, ne olduğu anlaşılmıyor.
+    .supportedFamilies([.accessoryRectangular, .accessoryInline])
   }
 }
 

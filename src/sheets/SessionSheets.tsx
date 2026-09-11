@@ -611,9 +611,28 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
               ]}
               value={reminderValue}
               onChange={(minutes) =>
-                setReminder(minutes === 0 ? null : { anchor: 'afterPark', minutes, kind: 'notification' })
+                setReminder(
+                  minutes === 0
+                    ? null
+                    : { anchor: 'afterPark', minutes, kind: session.reminder?.kind ?? 'notification' },
+                )
               }
             />
+            {/* Tür de burada seçilir: hızlı akış her zaman "bildirim" kuruyordu, yani
+                alarm isteyen kullanıcı Ayarlar'a gitmeden alarm alamıyordu. */}
+            {session.reminder && (
+              <>
+                <ChipGroup<ReminderKind>
+                  options={[
+                    { key: 'notification', label: t('kindNotification') },
+                    { key: 'alarm', label: t('kindAlarm') },
+                  ]}
+                  value={session.reminder.kind === 'notification' ? 'notification' : 'alarm'}
+                  onChange={(kind) => setReminder({ ...session.reminder!, kind })}
+                />
+                {session.reminder.kind !== 'notification' && <Caption>{t('kindHint')}</Caption>}
+              </>
+            )}
           </>
         )}
       </Animated.View>
@@ -986,6 +1005,15 @@ export function ActiveSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
           >
             <ReminderEditor session={session} onOpenTariff={() => setTariffOpen(true)} />
           </Field>
+          {/* Açık blok uzayınca başlık satırı ekranın dışında kalıyor ve kapatmanın yolu
+              kalmıyordu: kapatma bloğun SONUNDA da duruyor. */}
+          <TextButton
+            label={t('close')}
+            onPress={() => {
+              setOpenField(null);
+              setDetailsOpen(false);
+            }}
+          />
         </Field>
       </View>
 

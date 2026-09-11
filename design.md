@@ -496,13 +496,11 @@ yoktur (yer adı ve kat da orada): park anından sonra girilen kat kilit ekranı
 - Dynamic Island: compact glyph + sayaç; minimal glyph; expanded mini kart.
 - Widget small/medium: hero rakam + yer adı; oturumsuz "₺340 saved this month". Quick Park widget'ı
   `parkiq://park` → app park kaydıyla açılır ve hızlı sorular (§7.3) hemen başlar.
-- **Kilit ekranı widget'ları** (circular / rectangular / inline): oturum yokken marka glyph'i / "Park"
+- **Kilit ekranı widget'ları** (rectangular / inline; dairesel aile YOK — o boyutta yalnız bir halka kalıyor, ne olduğu anlaşılmıyor): oturum yokken marka glyph'i / "Park"
   → `parkiq://park`; oturum varken sayaç → `parkiq://session`. Circular tarife varken geri sayım
   HALKASI (kendi kendine boşalır, ortasında glyph); rectangular: etiket + büyük sayaç + para satırı.
   Sistem tek renk çizer, renk seçilmez — sayaç kendi rengini dayatmaz.
-- **Live Activity "End" düğmesi** (kart sağ üst + expanded ada altı): `LiveActivityIntent` app'i
-  AÇMADAN bitiş anını App Group'a yazar ve kartı söndürür; app bir sonraki açılışta oturumu o anla
-  kapatır ve kutlama kapağını gösterir. Karta dokunmak `parkiq://session`.
+- Live Activity'de **düğme yok**: kart okunur, dokununca app aktif oturumda açılır (`parkiq://session`). Bitirme onay ister (§7.8) ve onay app içinde sorulur.
 - **Bitiş karesi:** zemin `#2FE07A`, tüm tipografi ink, "SAVED ₺50." (ink nokta), 3 sn, tek kare,
   animasyonsuz.
 - Bildirim: "Tier 2 in 15 min. Now ₺50, after ₺100." local, eşikten önce zamanlanır; ünlem yok.
