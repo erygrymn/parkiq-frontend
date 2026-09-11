@@ -100,6 +100,53 @@ function ReceiptBar({ state }: { state: TariffState }) {
   );
 }
 
+/**
+ * Hero satırlarının kart genişliğine sığacağı en büyük punto.
+ *
+ * Önce karakter SAYISI × sabit 0.62 ile tahmin ediliyordu. O oran 900
+ * ağırlığındaki BÜYÜK HARF için fazla iyimserdi: İngilizce "SAVED." gerçekte
+ * 3.79 birim yer tutuyor, eski hesap 3.10 diyordu — %22 eksik. Punto olduğundan
+ * büyük seçiliyor, RN kelimeyi ortadan bölüyor ve kartta "SAVE / D" yazıyordu.
+ *
+ * Katsayılar Inter Black'ten ÖLÇÜLDÜ (aynı değerler
+ * `src/lib/__tests__/savingsCardFit.test.ts` içinde bağımsız kontrol olarak da
+ * duruyor). Hepsi gerçeğin birkaç puan ÜSTÜNDE: fazla tahmin yazıyı gereğinden
+ * küçük yapar, eksik tahmin satırı böler — ikisi arasında tercih nettir.
+ *
+ * Ölçüm değil tahmin, çünkü kart ekran dışında TEK karede çizilip
+ * fotoğraflanıyor; gerçek metin ölçümünü okuyacak ikinci bir kare yok.
+ */
+const GLYPH_UNITS: Array<[RegExp, number]> = [
+  [/[IJİ.,:;'!|]/, 0.30],
+  [/[MW]/, 1.06],
+  // Para işareti rakamdan geniş: ₺ ölçümü 0.67, rakam 0.62. Tek sınıfa
+  // koyulduğunda "₺50" tahmini gerçeğin ALTINA düşüyordu.
+  [/[$₺€£]/, 0.72],
+  [/[0-9%]/, 0.66],
+  [/\s/, 0.28],
+];
+/** Büyük harf ortalaması (ölçüm 0.70; pay bırakıldı). */
+const DEFAULT_UNIT = 0.72;
+
+export function heroWidthUnits(text: string): number {
+  let units = 0;
+  for (const ch of text) {
+    const match = GLYPH_UNITS.find(([re]) => re.test(ch));
+    units += match ? match[1] : DEFAULT_UNIT;
+  }
+  return units;
+}
+
+/** Kart hero'su için güvenli punto. İki satır AYNI puntoyu paylaşır (display yığını). */
+export function fitHeroSize(lines: string[], usableWidth = CARD_WIDTH - 96 * 2): number {
+  const HERO_MAX = 288;
+  // Son satır imza noktasını da taşır; ölçüye o da girmeli.
+  const widest = Math.max(
+    ...lines.map((line, i) => heroWidthUnits(i === lines.length - 1 ? `${line}.` : line)),
+  );
+  return Math.max(64, Math.min(HERO_MAX, Math.floor((usableWidth * 0.94) / widest)));
+}
+
 export function SavingsCard({ data }: { data: SavingsCardData }) {
   const locale = getLocale();
   const savedText =
@@ -113,13 +160,7 @@ export function SavingsCard({ data }: { data: SavingsCardData }) {
   const heroValue = heroSaved && savedText ? savedText : formatDurationStamp(data.durationMs);
   const heroLines = moneyFirst ? [heroValue, heroWord] : [heroWord, heroValue];
 
-  // Sabit 288 punto uzun kelimeleri (TR "CEBİNDE") satır ortasından bölüyordu.
-  // En uzun satır kart genişliğine sığacak şekilde küçültülür; ~0.62 bu ağırlıktaki
-  // sans için karakter başına ortalama genişlik oranı.
-  const HERO_MAX = 288;
-  const usableWidth = CARD_WIDTH - 96 * 2;
-  const longestLine = Math.max(heroLines[0].length, heroLines[1].length + 1); // +1: imza noktası
-  const heroSize = Math.min(HERO_MAX, Math.floor(usableWidth / (longestLine * 0.62)));
+  const heroSize = fitHeroSize(heroLines);
 
   return (
     <View
