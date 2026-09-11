@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { PageSheet } from '../components/PageSheet';
 import { PressScale } from '../components/motion/PressScale';
 import { Caption } from '../components/Typography';
 import { useTheme } from '../theme';
 import { spacing } from '../theme/tokens';
+import { startDemoReel } from './demoReel';
 import { PosterFrame } from './PosterFrame';
 import { SCENARIOS } from './scenarios';
 
@@ -18,6 +19,9 @@ import { SCENARIOS } from './scenarios';
 export function ScreenshotSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { colors } = useTheme();
   const [posterOpen, setPosterOpen] = useState(false);
+  // Reel zamanlayıcılarla yaşıyor; sheet gidince durmazsa arkada dönmeye devam eder.
+  const stopReel = useRef<(() => void) | null>(null);
+  useEffect(() => () => stopReel.current?.(), []);
 
   return (
     <PageSheet visible={visible} title="Screenshots" onClose={onClose}>
@@ -33,6 +37,13 @@ export function ScreenshotSheet({ visible, onClose }: { visible: boolean; onClos
               onPress={() => {
                 if (scenario.key === 'poster') {
                   setPosterOpen(true);
+                  return;
+                }
+                stopReel.current?.();
+                stopReel.current = null;
+                if (scenario.key === 'demo-reel') {
+                  stopReel.current = startDemoReel();
+                  onClose();
                   return;
                 }
                 scenario.apply();

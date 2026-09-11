@@ -42,7 +42,7 @@ function tariffFor(currency: string): Tariff {
 }
 
 /** Sahneler app'in o anki para biriminde kurulur; EN seti için USD'de bırak. */
-function currentTariff(): Tariff {
+export function demoTariff(): Tariff {
   return tariffFor(useSettingsStore.getState().currency);
 }
 
@@ -56,7 +56,7 @@ function garagePhotoUri(): string | null {
   }
 }
 
-function session(overrides: Partial<ParkSession>): ParkSession {
+export function demoSession(overrides: Partial<ParkSession>): ParkSession {
   return {
     id: 'ss-session',
     startedAtMs: Date.now(),
@@ -65,9 +65,9 @@ function session(overrides: Partial<ParkSession>): ParkSession {
     floor: '',
     note: '',
     tariff: null,
-    latitude: 41.0766,
-    longitude: 29.0203,
-    placeName: 'Kanyon AVM',
+    latitude: 41.8827,
+    longitude: -87.6294,
+    placeName: 'Dearborn Garage',
     photoUri: null,
     reminder: null,
     accuracyM: 8,
@@ -76,15 +76,22 @@ function session(overrides: Partial<ParkSession>): ParkSession {
   };
 }
 
-const POIS: ParkingPoi[] = [
-  { id: 'way/1', kind: 'parking', name: 'Kanyon Otopark', latitude: 41.0768, longitude: 29.0205, covered: true, hasCharging: true, distanceM: 90 },
-  { id: 'way/2', kind: 'parking', name: 'Zorlu Center P2', latitude: 41.0672, longitude: 29.0165, covered: true, hasCharging: true, distanceM: 340 },
-  { id: 'way/3', kind: 'parking', name: 'Levent Meydan', latitude: 41.0801, longitude: 29.0121, covered: false, hasCharging: true, distanceM: 520 },
-  { id: 'node/4', kind: 'charging', name: 'Eşarj Levent', latitude: 41.0744, longitude: 29.0247, covered: null, hasCharging: true, distanceM: 210 },
-  { id: 'node/5', kind: 'charging', name: 'ZES Büyükdere', latitude: 41.0812, longitude: 29.0188, covered: null, hasCharging: true, distanceM: 610 },
+/**
+ * Sahte otoparklar. Adlar sokak adından türetildi: marka adı kullanmak 5.2.1
+ * (üçüncü parti ticari marka) kapısına girer, sokak adı girmez.
+ */
+export const DEMO_POIS: ParkingPoi[] = [
+  { id: 'way/1', kind: 'parking', name: 'Dearborn Garage', latitude: 41.8831, longitude: -87.6292, covered: true, hasCharging: true, distanceM: 90 },
+  { id: 'way/2', kind: 'parking', name: 'Franklin Street Parking', latitude: 41.8804, longitude: -87.6351, covered: true, hasCharging: true, distanceM: 340 },
+  { id: 'way/3', kind: 'parking', name: 'Riverside Lot', latitude: 41.8869, longitude: -87.6318, covered: false, hasCharging: true, distanceM: 520 },
+  { id: 'node/4', kind: 'charging', name: 'Adams St Chargers', latitude: 41.8796, longitude: -87.6265, covered: null, hasCharging: true, distanceM: 210 },
+  { id: 'node/5', kind: 'charging', name: 'Wacker Drive Charging', latitude: 41.8873, longitude: -87.6355, covered: null, hasCharging: true, distanceM: 610 },
 ];
 
-function resetStores(): void {
+export function resetDemoStores(): void {
+  // Mock veri İNGİLİZCE ve USD: EN birincil mağaza dili, TR seti para birimini
+  // Ayarlar'dan çevirerek çekilir (tarife de o birimden kurulur).
+  useSettingsStore.setState({ currency: 'USD' });
   useUiStore.setState({ historyOpen: false, arOpen: false, photo: null, endConfirm: false, locationInviteDismissed: true });
   useSessionStore.setState({
     phase: 'idle',
@@ -115,13 +122,13 @@ export const SCENARIOS: Scenario[] = [
     label: 'Aktif oturum · amber',
     hint: 'Çubuk amber, para kutusu iki rakamı da taşıyor',
     apply: () => {
-      resetStores();
+      resetDemoStores();
       useSettingsStore.setState({ warnThresholdMin: 15 });
       // Dilim sonuna 8 dk: amber eşiğinin içinde, para kutusu iki rakamı da taşıyor.
       const started = Date.now() - 52 * MIN;
       useSessionStore.setState({
         phase: 'active',
-        session: session({ startedAtMs: started, recordedAtMs: started, tariff: currentTariff(), floor: '3' }),
+        session: demoSession({ startedAtMs: started, recordedAtMs: started, tariff: demoTariff(), floor: '3' }),
       });
     },
   },
@@ -131,11 +138,11 @@ export const SCENARIOS: Scenario[] = [
     label: 'Kutlama · SAVED',
     hint: 'Tasarruf damgası + aylık toplam',
     apply: () => {
-      resetStores();
+      resetDemoStores();
       const started = Date.now() - 58 * MIN;
       useSessionStore.setState({
         phase: 'ended',
-        session: session({ startedAtMs: started, recordedAtMs: started, endedAtMs: Date.now(), tariff: currentTariff() }),
+        session: demoSession({ startedAtMs: started, recordedAtMs: started, endedAtMs: Date.now(), tariff: demoTariff() }),
       });
     },
   },
@@ -145,17 +152,17 @@ export const SCENARIOS: Scenario[] = [
     label: 'Arabamı Bul · kapalı alan',
     hint: 'Kat 3 + foto kartı (pusula değil)',
     apply: () => {
-      resetStores();
+      resetDemoStores();
       const started = Date.now() - 95 * MIN;
       useSessionStore.setState({
         phase: 'finding',
         // accuracyM yüksek = kapalı otopark: ekran pusula yerine foto+kat kartını seçer.
-        session: session({
+        session: demoSession({
           startedAtMs: started,
           recordedAtMs: started,
-          tariff: currentTariff(),
+          tariff: demoTariff(),
           floor: '3',
-          note: 'Mavi kolon, asansörün solu',
+          note: 'Blue pillar, left of the elevator',
           photoUri: garagePhotoUri(),
           accuracyM: 65,
         }),
@@ -176,11 +183,11 @@ export const SCENARIOS: Scenario[] = [
     label: 'Tarife · tarama sonucu',
     hint: 'Panodan okunmuş dilimler formda',
     apply: () => {
-      resetStores();
+      resetDemoStores();
       const started = Date.now() - 3 * MIN;
       useSessionStore.setState({
         phase: 'parking',
-        session: session({ startedAtMs: started, recordedAtMs: started, tariff: currentTariff(), confirmed: false }),
+        session: demoSession({ startedAtMs: started, recordedAtMs: started, tariff: demoTariff(), confirmed: false }),
         ocrState: 'idle',
       });
     },
@@ -191,15 +198,23 @@ export const SCENARIOS: Scenario[] = [
     label: 'Harita · şarj filtresi',
     hint: '⚡ filtresi açık, pinler görünür',
     apply: () => {
-      resetStores();
-      useDiscoveryStore.setState({ pois: POIS, filter: 'charging', state: 'ready', radiusM: 1000 });
+      resetDemoStores();
+      useDiscoveryStore.setState({ pois: DEMO_POIS, filter: 'charging', state: 'ready', radiusM: 1000 });
     },
+  },
+  {
+    key: 'demo-reel',
+    frame: 0,
+    label: 'UGC demo · kendi akar (28 sn)',
+    hint: 'Park → sayaç → amber → SAVED, döngüde. Ekran kaydı için.',
+    // Reel'i ScreenshotSheet başlatır: durdurma fonksiyonunu tutması gerekiyor.
+    apply: () => undefined,
   },
   {
     key: 'reset',
     frame: 0,
     label: 'Sıfırla',
     hint: 'Sahte durumu temizle, keşfe dön',
-    apply: resetStores,
+    apply: resetDemoStores,
   },
 ];
