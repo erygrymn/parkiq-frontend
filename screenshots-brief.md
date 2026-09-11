@@ -3,8 +3,13 @@
 Hedef ölçü: **1320 × 2868 px** (App Store 6.9" iPhone yuvası, dikey).
 Kaynaklar 1206 × 2622 — oran aynı, %9,5 büyütmeyle tam oturuyor.
 
-**Set 5 kare.** Apple 3–10 arası kabul ediyor. Sıra aso.md §4'ten; ilk iki kare
-her şeydir, kullanıcıların çoğu kaydırmaz.
+**Set 5 kare, yalnız İNGİLİZCE.** Apple 3–10 arası kabul ediyor. Sıra aso.md
+§4'ten; ilk iki kare her şeydir, kullanıcıların çoğu kaydırmaz.
+
+Türkçe altyazı seti üretilmiyor: tek set bütün mağazalarda görünür, Apple
+yerelleştirme yoksa birincil dile düşer. Metadata (ad, alt başlık, açıklama,
+anahtar kelimeler) Türkçe kalmaya devam ediyor — değişen yalnız görsellerin
+üstündeki yazı.
 
 ---
 
@@ -25,7 +30,6 @@ araba-bulma uygulamasında yok.
 |---|---|
 | Üst etiket | `THE PRICE, NOT THE TIME` |
 | Başlık | `LEAVE NOW $5.` <br> `STAY AND IT'S $10.` |
-| TR | `SÜRE DEĞİL, FİYAT` <br> `ŞİMDİ ÇIK ₺50.` <br> `KALIRSAN ₺100.` |
 | Zemin | Krem `#F5F2EB` |
 
 ---
@@ -46,7 +50,6 @@ yanlış yerde gösteriyor" şikâyeti — bu kare doğrudan ona cevap veriyor.
 |---|---|
 | Başlık | `LEVEL 3, BLUE PILLAR.` |
 | Alt satır | `Even where GPS gives up.` |
-| TR | `KAT 3, MAVİ KOLON.` <br> `GPS'in çalışmadığı yerde bile.` |
 | Zemin | Poster siyahı `#141416` — set ritmi için kontrast karesi |
 
 ---
@@ -62,7 +65,6 @@ kendi hesabı.
 | | |
 |---|---|
 | Başlık | `$34 SAVED THIS MONTH.` |
-| TR | `BU AY ₺340 BİRİKTİ.` |
 | Zemin | Krem |
 
 ---
@@ -77,7 +79,6 @@ rakiplerin hiçbirinin ekran görüntülerinde böyle bir iddia yok.
 | | |
 |---|---|
 | Metin | `NO ADS.` <br> `NO ACCOUNT.` <br> `NO SIGN-UP.` |
-| TR | `REKLAM YOK.` <br> `HESAP YOK.` <br> `KAYIT YOK.` |
 | Zemin | Poster siyahı |
 
 ⚠️ Bu kare veri akışı iddiası TAŞIMAZ. "Takip etmiyoruz", "veri cihazdan
@@ -98,7 +99,6 @@ best feature."*
 | | |
 |---|---|
 | Başlık | `THE COUNTDOWN, WITHOUT OPENING THE APP.` |
-| TR | `GERİ SAYIM, UYGULAMAYI AÇMADAN.` |
 | Zemin | Poster siyahı (kilit ekranı zaten koyu) |
 
 ---
@@ -136,3 +136,6 @@ basan bir figür, ya da işe yarayan bir dilimi. Boşluk dekordan pahalı görü
   Bilinçli bırakıldı — üç satır tek bir liste olarak okunuyor.
 - `paywall.png` mağaza karesi değil: App Store Connect'te üç IAP'ın inceleme
   ekran görüntüsü olarak yüklendi.
+- Ekran görüntülerindeki uygulama arayüzü de İngilizce olmalı — cihaz dili
+  İngilizce, para birimi USD. Türkçe bir arayüzün üstüne İngilizce altyazı
+  koymak seti tutarsız gösterir.

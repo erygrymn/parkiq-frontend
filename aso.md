@@ -385,13 +385,20 @@ Apple Haziran 2025'te ekran görüntüsü altyazılarını OCR ile indekslemeye 
 
 Sıra: **1 para, 2 araba bulma, 3 tasarruf kanıtı, 4 reklamsızlık, 5 kilit ekranı.**
 
-| # | Kare | Altyazı (en-US) | Altyazı (tr) |
-|---|---|---|---|
-| 1 | Aktif oturum: tarife çubuğu amber, para kutusu görünür | **Leave now $5. Stay and it's $10.** | **Şimdi çık ₺50. Kalırsan ₺100.** |
-| 2 | Find My Car — kapalı alan kartı (foto + kat) | Level 3, blue pillar — even with no GPS | Kat 3, mavi kolon — GPS olmasa da |
-| 3 | Bitiş kutlaması "SAVED $5." + aylık toplam | $34 saved this month | Bu ay ₺340 tasarruf |
-| 4 | Sade tipografik kare (ürün ekranı değil) | **No ads. No account. No sign-up.** | **Reklam yok. Hesap yok. Kayıt yok.** |
-| 5 | Kilit ekranı + Dynamic Island geri sayım | The countdown, without opening the app | Geri sayım, uygulamayı açmadan |
+| # | Kare | Altyazı |
+|---|---|---|
+| 1 | Aktif oturum: tarife çubuğu amber, para kutusu görünür | **Leave now $5. Stay and it's $10.** |
+| 2 | Find My Car — kapalı alan kartı (foto + kat) | Level 3, blue pillar — even where GPS gives up |
+| 3 | Bitiş kutlaması "SAVED $5." + aylık toplam | $34 saved this month |
+| 4 | Sade tipografik kare (ürün ekranı değil) | **No ads. No account. No sign-up.** |
+| 5 | Kilit ekranı + Dynamic Island geri sayım | The countdown, without opening the app |
+
+**Altyazılar yalnız İngilizce (2026-09-12).** Türkçe görsel seti üretilmiyor;
+Apple yerelleştirilmiş ekran görüntüsü yoksa birincil dilinkini gösterir. Bedeli
+TR mağazasında: metin Türkçe, görseller İngilizce kalıyor. Metadata (ad, alt
+başlık, açıklama, anahtar kelimeler) Türkçe olmaya devam ediyor — §1'deki TR
+terimleri zaten oradan indeksleniyor, ekran görüntüsü altyazıları sıralamaya
+girmiyor (yukarıdaki OCR bulgusu).
 
 Kare kare ne anlattığı, birebir kopya ve sanat yönetimi kuralları:
 [screenshots-brief.md](screenshots-brief.md).
