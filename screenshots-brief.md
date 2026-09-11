@@ -136,6 +136,3 @@ basan bir figür, ya da işe yarayan bir dilimi. Boşluk dekordan pahalı görü
   Bilinçli bırakıldı — üç satır tek bir liste olarak okunuyor.
 - `paywall.png` mağaza karesi değil: App Store Connect'te üç IAP'ın inceleme
   ekran görüntüsü olarak yüklendi.
-- Ekran görüntülerindeki uygulama arayüzü de İngilizce olmalı — cihaz dili
-  İngilizce, para birimi USD. Türkçe bir arayüzün üstüne İngilizce altyazı
-  koymak seti tutarsız gösterir.
