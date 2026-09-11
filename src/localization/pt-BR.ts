@@ -166,6 +166,7 @@ export const ptBR: Record<CopyKey, string> = {
   autoRenewNotice: 'Renova automaticamente até o cancelamento. Gerencie nos Ajustes.',
   proFeatureFind: 'Bússola e RA',
   proFeatureFilter: 'Filtros de estacionamento',
+  proFeaturePool: 'Tarifas sugeridas por outros motoristas',
   planPerMonth: '{price} / mês',
   planSave: 'ECONOMIZE {percent}%',
   terms: 'Termos (EULA)',

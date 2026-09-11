@@ -166,6 +166,7 @@ export const esES: Record<CopyKey, string> = {
   autoRenewNotice: 'Se renueva automáticamente hasta que se cancele. Gestiónalo en Ajustes.',
   proFeatureFind: 'Brújula y RA',
   proFeatureFilter: 'Filtros de parking',
+  proFeaturePool: 'Tarifas sugeridas por otros conductores',
   planPerMonth: '{price} / mes',
   planSave: 'AHORRA {percent} %',
   terms: 'Términos (EULA)',

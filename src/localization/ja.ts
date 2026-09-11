@@ -166,6 +166,7 @@ export const ja: Record<CopyKey, string> = {
   autoRenewNotice: '解約するまで自動更新されます。設定で管理できます。',
   proFeatureFind: 'コンパスとAR',
   proFeatureFilter: '駐車場フィルター',
+  proFeaturePool: '他のドライバーが入力した料金の提案',
   planPerMonth: '月 {price}',
   planSave: '{percent}% 節約',
   terms: '利用規約 (EULA)',

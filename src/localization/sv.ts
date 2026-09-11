@@ -166,6 +166,7 @@ export const sv: Record<CopyKey, string> = {
   autoRenewNotice: 'Förnyas automatiskt tills den sägs upp. Hantera i Inställningar.',
   proFeatureFind: 'Kompass och AR',
   proFeatureFilter: 'Parkeringsfilter',
+  proFeaturePool: 'Föreslagna taxor från andra förare',
   planPerMonth: '{price} / mån',
   planSave: 'SPARA {percent} %',
   terms: 'Villkor (EULA)',

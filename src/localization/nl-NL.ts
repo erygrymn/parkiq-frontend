@@ -166,6 +166,7 @@ export const nlNL: Record<CopyKey, string> = {
   autoRenewNotice: 'Verlengt automatisch tot opzegging. Beheer in Instellingen.',
   proFeatureFind: 'Kompas en AR',
   proFeatureFilter: 'Parkeerfilters',
+  proFeaturePool: 'Voorgestelde tarieven van andere bestuurders',
   planPerMonth: '{price} / maand',
   planSave: 'BESPAAR {percent}%',
   terms: 'Voorwaarden (EULA)',

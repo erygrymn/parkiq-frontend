@@ -166,6 +166,7 @@ export const deDE: Record<CopyKey, string> = {
   autoRenewNotice: 'Verlängert sich automatisch bis zur Kündigung. Verwaltung in den Einstellungen.',
   proFeatureFind: 'Kompass und AR',
   proFeatureFilter: 'Parkplatzfilter',
+  proFeaturePool: 'Tarifvorschläge von anderen Fahrern',
   planPerMonth: '{price} / Monat',
   planSave: '{percent}% SPAREN',
   terms: 'Nutzungsbedingungen (EULA)',

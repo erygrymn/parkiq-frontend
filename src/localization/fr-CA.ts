@@ -19,6 +19,7 @@ export const frCA: Partial<Record<CopyKey, string>> = {
   notParkedYet: 'Pas stationné ici ? Supprimez ce stationnement',
   simpleReminder: 'Vous êtes stationné depuis {duration}.',
   proFeatureFilter: 'Filtrez les stationnements par borne, intérieur et distance',
+  proFeaturePool: "Tarifs suggérés par d'autres conducteurs",
   autoParkedAsk: 'Vous venez de vous stationner ? Touchez pour lancer le compteur ici.',
   goProUpsell: 'Scannez les panneaux, retrouvez la voiture, filtrez les stationnements',
   purchaseDoneBody: 'Scan des panneaux, boussole et guidage AR, détection auto et filtres de stationnement sont actifs.',

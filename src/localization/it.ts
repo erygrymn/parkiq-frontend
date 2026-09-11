@@ -167,6 +167,7 @@ export const it: Record<CopyKey, string> = {
   autoRenewNotice: 'Si rinnova automaticamente fino alla disdetta. Gestibile nelle Impostazioni.',
   proFeatureFind: 'Bussola e AR',
   proFeatureFilter: 'Filtri parcheggio',
+  proFeaturePool: 'Tariffe suggerite da altri automobilisti',
   planPerMonth: '{price} / mese',
   planSave: 'RISPARMI {percent}%',
   terms: 'Condizioni (EULA)',

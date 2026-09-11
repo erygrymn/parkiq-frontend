@@ -53,6 +53,7 @@ export const ptPT: Partial<Record<CopyKey, string>> = {
   proFeatureScan: 'Lê a placa de tarifas com a câmara',
   autoRenewNotice: 'A subscrição renova-se automaticamente até ser cancelada. O pagamento sai da sua Apple Account na confirmação e em cada renovação. Pode gerir ou cancelar nas Definições.',
   proFeatureFilter: 'Filtra parques por carregamento, cobertura e distância',
+  proFeaturePool: 'Tarifas sugeridas por outros condutores',
   planSave: 'POUPE {percent}%',
   plansError: 'Não foi possível carregar os planos. Verifique a ligação.',
   settings: 'Definições',

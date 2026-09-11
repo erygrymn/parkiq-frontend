@@ -165,6 +165,7 @@ export const en = {
   autoRenewNotice: 'Renews automatically until cancelled. Manage in Settings.',
   proFeatureFind: 'Compass and AR',
   proFeatureFilter: 'Parking filters',
+  proFeaturePool: 'Suggested tariffs from other drivers',
   planPerMonth: '{price} / month',
   planSave: 'SAVE {percent}%',
   terms: 'Terms (EULA)',

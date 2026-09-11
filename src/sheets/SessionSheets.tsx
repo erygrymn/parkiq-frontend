@@ -404,6 +404,7 @@ function StepHeader({
 
 export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   const { colors } = useTheme();
+  const isPremium = useIsPremium();
   const session = useSessionStore((s) => s.session);
   const locationState = useSessionStore((s) => s.locationState);
   const suggestedTariff = useSessionStore((s) => s.suggestedTariff);
@@ -577,7 +578,13 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
                   : []),
                 // Havuz önerisi: yalnız bu otopark için veri varsa çıkar (§ tarife havuzu).
                 ...(pooledTariff
-                  ? [{ key: 'pool', label: t('pooledChip', { summary: formatTariffSummary(pooledTariff.tariff, getLocale()) }) }]
+                  ? [
+                      {
+                        key: 'pool',
+                        label: t('pooledChip', { summary: formatTariffSummary(pooledTariff.tariff, getLocale()) }),
+                        locked: !isPremium,
+                      },
+                    ]
                   : []),
                 { key: 'enter', label: t('enterTariff') },
                 { key: 'scan', label: t('scanShort') },
@@ -589,6 +596,11 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
                   return;
                 }
                 if (key === 'pool') {
+                  if (!isPremium) {
+                    trackPaywallShown('feature');
+                    onOpenPaywall();
+                    return;
+                  }
                   acceptPooledTariff();
                   return;
                 }

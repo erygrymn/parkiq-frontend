@@ -166,6 +166,7 @@ export const ko: Record<CopyKey, string> = {
   autoRenewNotice: '해지 전까지 자동 갱신됩니다. 설정에서 관리하세요.',
   proFeatureFind: '나침반과 AR',
   proFeatureFilter: '주차장 필터',
+  proFeaturePool: '다른 운전자가 입력한 요금 제안',
   planPerMonth: '월 {price}',
   planSave: '{percent}% 절약',
   terms: '이용약관 (EULA)',

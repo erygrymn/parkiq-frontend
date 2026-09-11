@@ -166,6 +166,7 @@ export const frFR: Record<CopyKey, string> = {
   autoRenewNotice: 'Renouvellement automatique jusqu’à annulation. Gérable dans Réglages.',
   proFeatureFind: 'Boussole et RA',
   proFeatureFilter: 'Filtres de parking',
+  proFeaturePool: "Tarifs suggérés par d'autres conducteurs",
   planPerMonth: '{price} / mois',
   planSave: 'ÉCONOMISEZ {percent} %',
   terms: 'Conditions (EULA)',

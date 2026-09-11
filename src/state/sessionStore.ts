@@ -806,6 +806,10 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   acceptPooledTariff: () => {
     const { session, pooledTariff, externalTariffVersion } = get();
     if (!session || !pooledTariff) return;
+    // Havuz önerisini UYGULAMAK premium (ürün kararı, 2026-09-11). Öneri çipi görünür kalır —
+    // rakamı görmek ürünün sözünü tutar, tek dokunuşla forma dökmek satılan konfordur.
+    // Kilitliyken bu eylem sessizce düşer; paywall köprüsünü çip kendi kurar.
+    if (!usePremiumStore.getState().isPremium) return;
     const next = { ...session, tariff: pooledTariff.tariff };
     persist(next);
     set({

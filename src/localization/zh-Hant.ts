@@ -166,6 +166,7 @@ export const zhHant: Record<CopyKey, string> = {
   autoRenewNotice: '取消前自動續訂。可在「設定」中管理。',
   proFeatureFind: '指南針與 AR',
   proFeatureFilter: '停車場篩選',
+  proFeaturePool: '其他駕駛提供的費率建議',
   planPerMonth: '每月 {price}',
   planSave: '省 {percent}%',
   terms: '條款 (EULA)',

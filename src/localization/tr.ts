@@ -156,6 +156,7 @@ export const tr: Record<CopyKey, string> = {
   autoRenewNotice: 'İptal edilene dek otomatik yenilenir. Ayarlar’dan yönetilir.',
   proFeatureFind: 'Pusula ve AR',
   proFeatureFilter: 'Otopark filtreleri',
+  proFeaturePool: 'Diğer sürücülerden gelen tarife önerisi',
   planPerMonth: 'ayda {price}',
   planSave: '%{percent} TASARRUF',
   terms: 'Şartlar (EULA)',
