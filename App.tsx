@@ -26,6 +26,7 @@ import { refreshSessionActivity } from './src/lib/liveActivity';
 import { CROSSFADE_MS, SPRING } from './src/theme/motion';
 import { sheetIndex } from './src/theme/sheetMotion';
 import { PressScale } from './src/components/motion/PressScale';
+import { ProCorner } from './src/components/ProBadge';
 import { Caption } from './src/components/Typography';
 import { initAnalytics, trackPaywallShown } from './src/lib/analytics';
 import { ForceUpdateScreen, useForcedUpdate } from './src/screens/ForceUpdateGate';
@@ -64,10 +65,13 @@ function FloatingIconButton({
   symbol,
   label,
   onPress,
+  locked,
 }: {
   symbol: SFSymbol;
   label: string;
   onPress: () => void;
+  /** Premium: köşeye altın taç. Satın alma sonrası çağıran taraf bunu geçmez, rozet düşer. */
+  locked?: boolean;
 }) {
   const { colors, scheme } = useTheme();
   // design.md §5 kare cam ikon buton: gerçek blur, 22pt Light sembol, pressed 0.97 (PressScale).
@@ -87,6 +91,7 @@ function FloatingIconButton({
       <Glass radius={radius.r12} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
         <SymbolView name={symbol} size={22} tintColor={colors.ink} weight="light" />
       </Glass>
+      {locked && <ProCorner />}
     </PressScale>
   );
 }
@@ -368,6 +373,7 @@ function Root() {
           <FloatingIconButton
             symbol="line.3.horizontal.decrease"
             label={t('filters')}
+            locked={!isPremium}
             onPress={() => {
               if (!isPremium) {
                 trackPaywallShown('feature');

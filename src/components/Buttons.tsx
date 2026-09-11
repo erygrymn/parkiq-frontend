@@ -1,7 +1,8 @@
-import { StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from '../theme';
-import { darkColors, lightColors, radius, typeScale } from '../theme/tokens';
+import { darkColors, lightColors, radius, spacing, typeScale } from '../theme/tokens';
 import { PressScale } from './motion/PressScale';
+import { ProBadge } from './ProBadge';
 
 // design.md §5 Primary CTA: 52pt hap, ekran başına TEK, gölgesiz + kenar ışığı; pressed 0.97 + SPRING.
 // §5 Ghost: 44pt inset hap. Her ikisi PressScale üzerinden ölçeklenir (§3 mikro geri bildirim).
@@ -12,6 +13,11 @@ interface ButtonProps {
   disabled?: boolean;
   /** Yerleşim (flex, margin); görsel stil bileşenin kendisindedir. */
   style?: StyleProp<ViewStyle>;
+}
+
+interface GhostButtonProps extends ButtonProps {
+  /** Premium: etiketin yanında altın taç. Yetki gelince çağıran taraf bunu geçmez. */
+  locked?: boolean;
 }
 
 export function PrimaryCta({
@@ -60,7 +66,7 @@ export function PrimaryCta({
   );
 }
 
-export function GhostButton({ label, onPress, disabled, style }: ButtonProps) {
+export function GhostButton({ label, onPress, disabled, style, locked }: GhostButtonProps) {
   const { colors } = useTheme();
   return (
     <PressScale
@@ -77,15 +83,18 @@ export function GhostButton({ label, onPress, disabled, style }: ButtonProps) {
         backgroundColor: pressed ? colors.insetPressed : colors.inset,
       })}
     >
-      <Text
-        style={{
-          fontSize: 15,
-          fontWeight: '600',
-          color: disabled ? colors.disabled : colors.ink,
-        }}
-      >
-        {label}
-      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s4 }}>
+        {locked && <ProBadge size={13} />}
+        <Text
+          style={{
+            fontSize: 15,
+            fontWeight: '600',
+            color: disabled ? colors.disabled : colors.ink,
+          }}
+        >
+          {label}
+        </Text>
+      </View>
     </PressScale>
   );
 }

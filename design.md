@@ -73,6 +73,10 @@ cam) ve `src/theme/motion.ts`'te (spring'ler, süreler). Component içinde ham h
   her zaman ink; `#FFB300` açık temada hiçbir rolde.
 - Amber yalnız gerçek bir fiyat artışına bağlanır ve her zaman ikon + metin çiftiyle gelir. Kırmızı
   hiçbir zaman yok.
+- Altın (`pro` #B8860B / #F5C242) tek bir işin rengidir: premium rozeti `crown.fill`. Amberle
+  karıştırılmaz — biri "paran artmak üzere", diğeri "bu kilitli" der. Kilitli HER yüzeyde aynı taç
+  durur (filtre, çipler, tarife tarama, pusula, AR, Ayarlar, Geçmiş daveti) ve yalnız `!isPremium`
+  iken çizilir: yetki gelince rozet düşer, özellik açılır. Dolgu olarak kullanılmaz.
 - Bilgi taşıyan metin asla `disabled` grisiyle yazılmaz. Hiyerarşi: ink > text-secondary >
   text-tertiary > disabled (bilgi taşımaz).
 - Gri ailesi tek (zinc). Gölge rengi sıcak-ink `rgba(24,20,12,x)`, max alfa .18. Renkli glow yok.
@@ -237,8 +241,11 @@ Harita üstünde logo/watermark alanı yalnız Mapbox atfı.
 **Mimari:** Tab bar yok. Root = `MapCanvas` (asla unmount olmaz) + her zaman açık durum-güdümlü
 bottom sheet (`@gorhom/bottom-sheet`). Faz enum'u: `idle | parking | active | finding | ending |
 ended`. Faz değişimi = sheet morph (§3). Geçmiş kök sheet sahnesidir (fazdan bağımsız, harita üstte);
-Ayarlar pageSheet; Paywall tam ekran; AR tam ekran overlay. Küçük düzenleme yüzeyleri `BottomSheetModal` (RN `Modal` yasak; tek istisna sistem kamera/
-foto seçici). Aynı anda tek aktif oturum. Cold start aktif oturum varsa doğrudan `active`.
+Ayarlar pageSheet; Paywall tam ekran; AR tam ekran overlay. Küçük düzenleme yüzeyleri gorhom
+panelidir (`PopupSheet`) — jest, spring ve zemin aynı. Taşıyıcısı 2026-09-11'de RN `Modal`'a
+alındı: gorhom 5.2'de portal konağı sağlayıcının ilk çocuğu olduğu için panel uygulamanın ALTINA
+çiziliyordu (filtre butonu ölü, tarife editöründeki "Gir" basılamaz görünüyordu). Kural aynı kalır —
+ham RN `Modal` ile sheet yazılmaz, `PopupSheet` kullanılır. Aynı anda tek aktif oturum. Cold start aktif oturum varsa doğrudan `active`.
 
 ### 7.1 Onboarding: 3 tipografik manifesto posteri (poster katmanı)
 

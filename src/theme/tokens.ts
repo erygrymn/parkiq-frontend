@@ -13,6 +13,10 @@ export interface ColorTokens {
   accentText: string;
   warnFill: string;
   warnText: string;
+  /** Premium rozeti (taç) — amberden AYRI bir rol: amber yalnız gerçek fiyat artışına bağlanır. */
+  proFill: string;
+  /** Rozetin zemini; ikonun yanında etiket taşıdığı yerlerde kullanılır. */
+  proBg: string;
   textSecondary: string;
   textTertiary: string;
   disabled: string;
@@ -40,6 +44,8 @@ export const lightColors: ColorTokens = {
   accentText: '#0B7A3E',
   warnFill: '#C77700',
   warnText: '#B45309',
+  proFill: '#B8860B',
+  proBg: '#FBF3DC',
   textSecondary: '#6E6E78',
   textTertiary: '#71717A',
   disabled: '#9A9AA2',
@@ -67,6 +73,8 @@ export const darkColors: ColorTokens = {
   accentText: '#2FE07A',
   warnFill: '#FFB300',
   warnText: '#FFB300',
+  proFill: '#F5C242',
+  proBg: 'rgba(245,194,66,0.14)',
   textSecondary: '#9B9BA4',
   textTertiary: '#8A8A93',
   disabled: '#6E6E78',

@@ -10,6 +10,7 @@ import { Linking, Pressable, Switch, Text, View } from 'react-native';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { PageSheet, Section } from '../components/PageSheet';
 import { SelectRow } from '../components/SelectRow';
+import { ProBadge } from '../components/ProBadge';
 import { openAppSettings, StatusLine } from '../components/StatusLine';
 import { Caption } from '../components/Typography';
 import { trackPaywallShown } from '../lib/analytics';
@@ -93,7 +94,7 @@ function SettingRow({
         borderBottomColor: colors.gridline,
       }}
     >
-      {locked && <SymbolView name="lock.fill" size={13} tintColor={colors.disabled} weight="regular" />}
+      {locked && <ProBadge size={13} />}
       <Text
         style={{
           flex: 1,
@@ -280,7 +281,7 @@ export function SettingsSheet({
             </>
           ) : (
             <>
-              <SettingRow label={t('goPro')} onPress={openPaywall} />
+              <SettingRow label={t('goPro')} locked onPress={openPaywall} />
               <SettingRow label={t('autoDetectPro')} locked onPress={openPaywall} />
             </>
           )}

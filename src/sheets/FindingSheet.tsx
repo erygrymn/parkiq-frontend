@@ -5,8 +5,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useSharedValue, withSpring } from 'react-native-reanimated';
 import { GhostButton, PrimaryCta } from '../components/Buttons';
+import { trackPaywallShown } from '../lib/analytics';
 import { CompassDial } from '../components/motion/CompassDial';
 import { PhotoThumb } from '../components/motion/PhotoViewer';
+import { ProBadge } from '../components/ProBadge';
 import { openAppSettings, StatusLine } from '../components/StatusLine';
 import { Body, Caption, Overline } from '../components/Typography';
 import { trackFindMyCar } from '../lib/analytics';
@@ -265,7 +267,14 @@ export function FindingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
 
       {indoor && carCoords !== null && <Caption>{t('indoorHint')}</Caption>}
       {!isPremium && !indoor && carCoords !== null && (
-        <StatusLine label={t('compassLocked')} onPress={onOpenPaywall} />
+        <StatusLine
+          label={t('compassLocked')}
+          pro
+          onPress={() => {
+            trackPaywallShown('feature');
+            onOpenPaywall();
+          }}
+        />
       )}
 
       {endConfirm ? (
@@ -275,8 +284,22 @@ export function FindingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
           {/* Aramanın bittiği an onay ister; blok aynı panelde açılır (§7.8). */}
           <PrimaryCta label={t('foundIt')} onPress={askEnd} />
           <View style={{ flexDirection: 'row', gap: spacing.s8 }}>
-            {isPremium && !indoor && carCoords !== null && isArAvailable && (
-              <GhostButton label={t('arMode')} onPress={openAr} style={{ flex: 1 }} />
+            {/* AR premium ama düğme kilitliyken de durur: yeteneğin var olduğunu görmek,
+                hiç görmemekten iyidir — dokunuş paywall'a gider (§7.10). */}
+            {!indoor && carCoords !== null && isArAvailable && (
+              <GhostButton
+                label={t('arMode')}
+                locked={!isPremium}
+                onPress={
+                  isPremium
+                    ? openAr
+                    : () => {
+                        trackPaywallShown('feature');
+                        onOpenPaywall();
+                      }
+                }
+                style={{ flex: 1 }}
+              />
             )}
             <GhostButton label={t('openInMaps')} onPress={() => openInMaps(session)} disabled={!carCoords} style={{ flex: 1 }} />
           </View>

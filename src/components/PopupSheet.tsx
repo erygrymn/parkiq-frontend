@@ -1,13 +1,13 @@
-import {
+import BottomSheet, {
   BottomSheetBackdrop,
-  BottomSheetModal,
   BottomSheetScrollView,
   useBottomSheetSpringConfigs,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
 import { SymbolView } from 'expo-symbols';
-import { useCallback, useEffect, useRef, type ReactNode } from 'react';
-import { Pressable, Text, useWindowDimensions, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Modal, Pressable, Text, useWindowDimensions, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { t, upper } from '../localization';
 import { useTheme } from '../theme';
@@ -18,9 +18,14 @@ import { PrimaryCta } from './Buttons';
 /**
  * Tek bir ayarı düzenlemek için alttan gelen küçük yüzey (tarife editörü, filtreler).
  *
- * design.md İlke 9: RN Modal değil, gorhom `BottomSheetModal` — jestle sürülür, kesilebilir,
- * kök sheet ile aynı spring'i (§3 `SPRING`) kullanır. Zemin 200 ms fade, panel spring ile gelir.
- * Klavye: `keyboardBehavior="interactive"`; içerik uzarsa panel %88'de durur ve içi kayar.
+ * design.md İlke 9 gereği panel gorhom'dur: jestle sürülür, kesilebilir, kök sheet ile aynı
+ * spring'i (§3 `SPRING`) kullanır. Zemin 200 ms fade, panel spring ile gelir. Klavye:
+ * `keyboardBehavior="interactive"`; içerik uzarsa panel %88'de durur ve içi kayar.
+ *
+ * Taşıyıcı neden RN Modal: `BottomSheetModal` portal konağına çizilir ve gorhom 5.2'de o konak
+ * sağlayıcının İLK çocuğudur — uygulamanın geri kalanı sonra geldiği için panelin ÜSTÜNE boyanır.
+ * Panel açılıyordu ama haritanın arkasında kalıyordu: filtre butonu ölü, tarife editöründeki "Gir"
+ * basılamaz görünüyordu. Ayrı bir pencere bu sıralamayı tamamen atlar.
  */
 export function PopupSheet({
   visible,
@@ -36,13 +41,29 @@ export function PopupSheet({
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
-  const ref = useRef<BottomSheetModal>(null);
+  const ref = useRef<BottomSheet>(null);
   const springs = useBottomSheetSpringConfigs(SPRING);
+  // Pencere panelden önce açılır, paneli kapanma animasyonu bitene kadar da açık tutar.
+  const [mounted, setMounted] = useState(visible);
+  // Kapanış `visible` prop'undan geldiyse `onClose` çağrılmaz: filtre paneli haritadan alan
+  // seçilirken GEÇİCİ olarak çekilir, sahibi hâlâ açık saymalı ki seçim bitince geri gelsin.
+  const closingFromProp = useRef(false);
 
   useEffect(() => {
-    if (visible) ref.current?.present();
-    else ref.current?.dismiss();
-  }, [visible]);
+    if (visible) {
+      closingFromProp.current = false;
+      setMounted(true);
+    } else if (mounted) {
+      closingFromProp.current = true;
+      ref.current?.close();
+    }
+  }, [visible, mounted]);
+
+  const handleClosed = useCallback(() => {
+    setMounted(false);
+    if (closingFromProp.current) closingFromProp.current = false;
+    else onClose();
+  }, [onClose]);
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -52,12 +73,16 @@ export function PopupSheet({
   );
 
   return (
-    <BottomSheetModal
+    <Modal visible={mounted} transparent animationType="none" statusBarTranslucent onRequestClose={handleClosed}>
+      {/* Ayrı pencere kendi jest köküne muhtaç: olmadan panel sürüklenmez. */}
+      <GestureHandlerRootView style={{ flex: 1 }}>
+    <BottomSheet
       ref={ref}
+      index={0}
       enableDynamicSizing
       maxDynamicContentSize={Math.round(height * 0.88)}
       enablePanDownToClose
-      onDismiss={onClose}
+      onClose={handleClosed}
       backdropComponent={renderBackdrop}
       animationConfigs={springs}
       keyboardBehavior="interactive"
@@ -91,7 +116,7 @@ export function PopupSheet({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t('close')}
-            onPress={() => ref.current?.dismiss()}
+            onPress={() => ref.current?.close()}
             hitSlop={8}
             style={({ pressed }) => ({
               width: 32,
@@ -108,9 +133,11 @@ export function PopupSheet({
 
         {children}
 
-        <PrimaryCta label={t('done')} onPress={() => ref.current?.dismiss()} />
+        <PrimaryCta label={t('done')} onPress={() => ref.current?.close()} />
       </BottomSheetScrollView>
-    </BottomSheetModal>
+    </BottomSheet>
+      </GestureHandlerRootView>
+    </Modal>
   );
 }
 

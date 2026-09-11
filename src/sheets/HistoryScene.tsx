@@ -1,3 +1,4 @@
+import { ProBadge } from '../components/ProBadge';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -269,7 +270,7 @@ export function HistoryScene({ onOpenPaywall }: { onOpenPaywall: () => void }) {
             opacity: pressed ? 0.6 : 1,
           })}
         >
-          <SymbolView name="sparkle" size={17} tintColor={colors.ink} weight="regular" />
+          <ProBadge size={16} />
           <Text style={{ flex: 1, fontSize: 15, fontWeight: '600', color: colors.ink }}>{t('goPro')}</Text>
           <SymbolView name="chevron.right" size={13} tintColor={colors.disabled} weight="semibold" />
         </Pressable>

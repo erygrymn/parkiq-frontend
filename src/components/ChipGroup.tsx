@@ -1,5 +1,6 @@
 import { Text, View } from 'react-native';
 import { hapticSelect } from '../lib/haptics';
+import { ProBadge } from './ProBadge';
 import { useTheme } from '../theme';
 import { radius, spacing } from '../theme/tokens';
 import { PressScale } from './motion/PressScale';
@@ -13,6 +14,8 @@ export interface ChipOption<T extends string | number> {
   label: string;
   /** Yeşil para tonu: hafızadan gelen tarife önerisi gibi "bunu seç" çipleri (§5.10). */
   tone?: 'accent';
+  /** Premium: etiketin önüne altın taç. Yetki gelince çağıran taraf bunu geçmez. */
+  locked?: boolean;
 }
 
 export function ChipGroup<T extends string | number>({
@@ -56,15 +59,18 @@ export function ChipGroup<T extends string | number>({
                     : colors.inset,
             })}
           >
-            <Text
-              style={{
-                fontSize: 13,
-                fontWeight: '600',
-                color: selected ? colors.card : opt.tone === 'accent' ? colors.accentText : colors.ink,
-              }}
-            >
-              {opt.label}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s4 }}>
+              {opt.locked && <ProBadge size={11} />}
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontWeight: '600',
+                  color: selected ? colors.card : opt.tone === 'accent' ? colors.accentText : colors.ink,
+                }}
+              >
+                {opt.label}
+              </Text>
+            </View>
           </PressScale>
         );
       })}

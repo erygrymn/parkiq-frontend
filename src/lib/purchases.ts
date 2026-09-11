@@ -170,13 +170,44 @@ export async function loadPlans(): Promise<PurchasePlan[] | null> {
   }
 }
 
-function hasPremium(info: unknown): boolean {
-  const entitlements = (info as { entitlements?: { active?: Record<string, unknown> } }).entitlements;
-  return Boolean(entitlements?.active?.[PREMIUM_ENTITLEMENT]);
+interface RcEntitlement {
+  latestPurchaseDateMillis?: number;
+  latestPurchaseDate?: string;
 }
 
-/** Satın alma; kullanıcı iptal ederse `canceled` döner (hata gösterilmez). */
-export async function purchasePlan(planId: string): Promise<'purchased' | 'canceled' | 'failed'> {
+function activeEntitlement(info: unknown): RcEntitlement | null {
+  const entitlements = (info as { entitlements?: { active?: Record<string, RcEntitlement> } }).entitlements;
+  return entitlements?.active?.[PREMIUM_ENTITLEMENT] ?? null;
+}
+
+function hasPremium(info: unknown): boolean {
+  return activeEntitlement(info) !== null;
+}
+
+/**
+ * Bu yetki ŞİMDİ mi ödendi, yoksa eskiden alınmış olan mı geri geldi.
+ *
+ * Uygulamayı silip kuran biri "Satın al"a bastığında App Store ödeme ekranını hiç göstermez:
+ * ürün zaten onun, işlem sessizce geri yüklenir. Ekranda "satın alındı" yazmak yanlış, Twice
+ * panosuna gelir olarak düşmesi daha yanlış — aynı para iki kez sayılır. Ayıran tek şey yetkinin
+ * SON ödeme anı: gerçek satın almada bu an istektir, geri yüklemede geçmişte kalmış bir tarihtir.
+ */
+const RESTORE_SLACK_MS = 60_000;
+export function wasRestored(info: unknown, startedAtMs: number): boolean {
+  const ent = activeEntitlement(info);
+  if (!ent) return false;
+  const paidAt = ent.latestPurchaseDateMillis ?? (ent.latestPurchaseDate ? Date.parse(ent.latestPurchaseDate) : NaN);
+  if (!Number.isFinite(paidAt)) return false;
+  return paidAt < startedAtMs - RESTORE_SLACK_MS;
+}
+
+/**
+ * Satın alma; kullanıcı iptal ederse `canceled` döner (hata gösterilmez).
+ * Ödeme alınmadan eski hak geri geldiyse `restored` — gelir olayı ATILMAZ.
+ */
+export async function purchasePlan(
+  planId: string,
+): Promise<'purchased' | 'restored' | 'canceled' | 'failed'> {
   if (!ensureConfigured() || !purchases) return 'failed';
   try {
     const offerings = (await purchases.getOfferings()) as {
@@ -184,8 +215,15 @@ export async function purchasePlan(planId: string): Promise<'purchased' | 'cance
     };
     const pkg = (offerings.current?.availablePackages ?? []).find((p) => p.identifier === planId);
     if (!pkg) return 'failed';
+    const startedAtMs = Date.now();
     const result = await purchases.purchasePackage(pkg);
-    if (!hasPremium((result as { customerInfo?: unknown }).customerInfo)) return 'failed';
+    const info = (result as { customerInfo?: unknown }).customerInfo;
+    if (!hasPremium(info)) return 'failed';
+
+    if (wasRestored(info, startedAtMs)) {
+      trackRestore();
+      return 'restored';
+    }
 
     // Gelir RevenueCat'te yaşar ama Twice panosunda da görünmeli (CLAUDE.md).
     // Deneme başlangıcı gelir SAYILMAZ; tipli yardımcı onu ayrı işaretler.

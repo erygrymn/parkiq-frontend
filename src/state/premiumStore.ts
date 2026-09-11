@@ -153,6 +153,12 @@ export const usePremiumStore = create<PremiumStore>((set, get) => ({
         set({ purchaseState: 'idle', hasEntitlement: true, isPremium: true, justPurchased: true });
         return;
       }
+      // App Store ödeme almadan eski hakkı geri verdiyse kutlama yok: "geri yüklendi" satırı
+      // çıkar, panel 1,2 s sonra kapanır. Yeniden kuran kullanıcı ne olduğunu görmeli.
+      if (result === 'restored') {
+        set({ purchaseState: 'idle', hasEntitlement: true, isPremium: true, notice: 'restored' });
+        return;
+      }
       // İptal sessizdir: kullanıcı zaten bilinçli vazgeçti (§7.10 durum listesi).
       set({ purchaseState: 'idle', notice: result === 'failed' ? 'failed' : null });
     });

@@ -20,6 +20,7 @@ import { trackPaywallShown, trackShareCard } from '../lib/analytics';
 import { hapticCommit, hapticSelect, hapticStamp } from '../lib/haptics';
 import { shouldAskForReview, shouldShowCelebrationPaywall } from '../lib/review';
 import { useIsPremium } from '../state/premiumStore';
+import { ProBadge } from '../components/ProBadge';
 import { openAppSettings, StatusLine } from '../components/StatusLine';
 import { TariffBar } from '../components/TariffBar';
 import { TariffForm } from '../components/TariffForm';
@@ -183,8 +184,8 @@ export function IdleSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
       <ChipGroup<PoiFilter>
         options={[
           { key: 'all', label: t('filterAll') },
-          { key: 'charging', label: t('filterCharging') },
-          { key: 'covered', label: t('filterCovered') },
+          { key: 'charging', label: t('filterCharging'), locked: !isPremium },
+          { key: 'covered', label: t('filterCovered'), locked: !isPremium },
         ]}
         value={filter}
         // Filtreleme premium (ürün kararı). Çipler GÖRÜNÜR kalır — yeteneğin
@@ -275,6 +276,7 @@ type ParkField = 'floor' | 'note' | 'photo' | 'backdate' | 'reminder';
 
 /** Tarife formu + tarama satırı + OCR durumları — park ve aktif sheet'lerde aynı. */
 function TariffEditor({ onOpenPaywall, onClose }: { onOpenPaywall: () => void; onClose?: () => void }) {
+  const isPremium = useIsPremium();
   const { colors } = useTheme();
   const session = useSessionStore((s) => s.session);
   const externalTariffVersion = useSessionStore((s) => s.externalTariffVersion);
@@ -309,7 +311,11 @@ function TariffEditor({ onOpenPaywall, onClose }: { onOpenPaywall: () => void; o
         ) : (
           <SymbolView name="camera.viewfinder" size={17} tintColor={colors.ink} weight="regular" />
         )}
-        <Text style={{ fontSize: 15, color: colors.ink }}>{ocrState === 'scanning' ? t('scanning') : t('scanBoard')}</Text>
+        <Text style={{ flex: 1, fontSize: 15, color: colors.ink }}>
+          {ocrState === 'scanning' ? t('scanning') : t('scanBoard')}
+        </Text>
+        {/* Tarama premium: fiyatı dokunmadan önce görünsün (§7.10 tetikleri). */}
+        {!isPremium && <ProBadge size={14} />}
       </Pressable>
 
       {ocrSchedule !== null && (
@@ -332,6 +338,7 @@ function TariffEditor({ onOpenPaywall, onClose }: { onOpenPaywall: () => void; o
       {ocrState === 'locked' && (
         <StatusLine
           label={t('scanPro')}
+          pro
           onPress={() => {
             onClose?.();
             trackPaywallShown('feature');
