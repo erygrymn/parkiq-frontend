@@ -115,6 +115,7 @@ export interface Scenario {
   apply: () => void;
 }
 
+/** aso.md §4 tablosuyla aynı sırada; kare numarası orada değişirse burada da değişir. */
 export const SCENARIOS: Scenario[] = [
   {
     key: 'active-amber',
@@ -148,7 +149,7 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     key: 'finding-indoor',
-    frame: 5,
+    frame: 2,
     label: 'Arabamı Bul · kapalı alan',
     hint: 'Kat 3 + foto kartı (pusula değil)',
     apply: () => {

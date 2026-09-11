@@ -30,7 +30,7 @@ export function ScreenshotSheet({ visible, onClose }: { visible: boolean; onClos
           aso.md §4. Sahne seçilince panel kapanır; kareyi arkadaki gerçek ekrandan al.
         </Caption>
         <View style={{ borderTopWidth: 1, borderTopColor: colors.gridline }}>
-          {SCENARIOS.map((scenario) => (
+          {[...SCENARIOS].sort((a, b) => (a.frame || 99) - (b.frame || 99)).map((scenario) => (
             <PressScale
               key={scenario.key}
               accessibilityRole="button"

@@ -15,11 +15,15 @@ veri shipping'e girmez.
 | # | Sahne | Nerede çekilir |
 |---|---|---|
 | 1 | Aktif oturum · amber | Simülatör (dev build) |
+| 2 | Arabamı Bul · kapalı alan | Simülatör (dev build) |
 | 3 | Kutlama · SAVED | Simülatör (dev build) |
 | 4 | Tipografik kare | Simülatör — tam ekran poster, EN/TR toggle'ı altta |
-| 5 | Arabamı Bul · kapalı alan | Simülatör (dev build) |
+| 5 | Kilit ekranı + Dynamic Island | **Gerçek cihaz** — bkz. aşağısı |
 | 6 | Tarife · tarama sonucu | Simülatör — *panoya bakan kamera karesi değil, bkz. aşağısı* |
 | 7 | Harita · şarj filtresi | Simülatör (dev build, Mapbox token gerekli) |
+
+Sıra 2026-09-12'de değişti (araba bulma 5'ten 2'ye, kilit ekranı 2'den 5'e) — gerekçe
+[aso.md §4](../../aso.md)'te.
 
 **Para birimi sahneyi sürer.** `scenarios.ts` tarifeyi Ayarlar'daki para biriminden kurar:
 USD → 5/10/15/30, TRY → 50/100/150/300. EN seti USD'de, TR seti TRY'de çekilir; rakamlar
