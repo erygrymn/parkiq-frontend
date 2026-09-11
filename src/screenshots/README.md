@@ -52,6 +52,12 @@ EN birincil mağaza dili (aso.md), o yüzden varsayılan pano `-en` olanı.
 4. **Harita**, dev build ister (Mapbox native). Expo Go'da boş çıkar; `EXPO_PUBLIC_MAPBOX_TOKEN`
    dolu olmalı.
 
+## Reel'i durdurmak
+
+Reel Ayarlar'dan bağımsız yaşıyor — panel kapansa da akmaya devam eder, zaten öyle olmalı.
+Durdurmak için Ayarlar'ı tekrar aç, **Sıfırla** sahnesine dokun. Başka bir sahne seçmek de
+durdurur.
+
 ## Not
 
 Kare 1 ve 3'ün amber/kutlama anları `Date.now()`'a göre kuruluyor: sahneyi seçtikten sonra

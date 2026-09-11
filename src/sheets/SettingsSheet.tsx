@@ -343,7 +343,11 @@ export function SettingsSheet({
             />
           </View>
           <Caption style={{ paddingTop: spacing.s8 }}>{t('devPremiumHint')}</Caption>
-          <ScreenshotSheet visible={screenshotsOpen} onClose={() => setScreenshotsOpen(false)} />
+          <ScreenshotSheet
+            visible={screenshotsOpen}
+            onClose={() => setScreenshotsOpen(false)}
+            onCloseSettings={onClose}
+          />
         </Section>
       )}
     </PageSheet>
