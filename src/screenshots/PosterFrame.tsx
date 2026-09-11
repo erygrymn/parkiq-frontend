@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useUiStore } from '../state/uiStore';
 import { spacing } from '../theme/tokens';
 
 // aso.md §4 kare 4 — tipografik manifesto. Ürün ekranı DEĞİL, bu yüzden hiçbir
@@ -18,14 +19,22 @@ const LINES: Record<'en' | 'tr', string[]> = {
   tr: ['REKLAM YOK.', 'HESAP YOK.', 'KAYIT YOK.'],
 };
 
-export function PosterFrame({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+export function PosterFrame() {
   const insets = useSafeAreaInsets();
   const [lang, setLang] = useState<'en' | 'tr'>('en');
+  const open = useUiStore((s) => s.posterOpen);
   const lines = LINES[lang];
 
+  if (!open) return null;
+
   return (
-    <Modal visible={visible} animationType="fade" presentationStyle="fullScreen">
-      <View style={{ flex: 1, backgroundColor: POSTER_BLACK, justifyContent: 'center', paddingHorizontal: spacing.s24 }}>
+    <>
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          { backgroundColor: POSTER_BLACK, justifyContent: 'center', paddingHorizontal: spacing.s24 },
+        ]}
+      >
         {lines.map((line) => (
           <Text
             key={line}
@@ -51,11 +60,15 @@ export function PosterFrame({ visible, onClose }: { visible: boolean; onClose: (
           <Pressable accessibilityRole="button" onPress={() => setLang(lang === 'en' ? 'tr' : 'en')} hitSlop={12}>
             <Text style={{ fontSize: 11, color: '#3A3A40' }}>{lang === 'en' ? 'TR' : 'EN'}</Text>
           </Pressable>
-          <Pressable accessibilityRole="button" onPress={onClose} hitSlop={12}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => useUiStore.getState().closePoster()}
+            hitSlop={12}
+          >
             <Text style={{ fontSize: 11, color: '#3A3A40' }}>close</Text>
           </Pressable>
         </View>
       </View>
-    </Modal>
+    </>
   );
 }

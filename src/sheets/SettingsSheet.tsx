@@ -10,7 +10,7 @@ import { Linking, Pressable, Switch, Text, View } from 'react-native';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { PageSheet, Section } from '../components/PageSheet';
 import { SelectRow } from '../components/SelectRow';
-import { ScreenshotSheet } from '../screenshots/ScreenshotSheet';
+import { ScreenshotScenes } from '../screenshots/ScreenshotScenes';
 import { ProBadge } from '../components/ProBadge';
 import { openAppSettings, StatusLine } from '../components/StatusLine';
 import { Caption } from '../components/Typography';
@@ -179,7 +179,6 @@ export function SettingsSheet({
   } = useSettingsStore.getState();
   const permissions = usePermissions(visible);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const [screenshotsOpen, setScreenshotsOpen] = useState(false);
 
   const deleteAll = () => {
     try {
@@ -332,8 +331,6 @@ export function SettingsSheet({
         <Section title={t('developer')}>
           <View style={{ borderTopWidth: 1, borderTopColor: colors.gridline }}>
             <SettingRow label={t('devPremium')} trailing={switchControl(devUnlock, setDevUnlock)} />
-            {/* aso.md §4 kareleri: sahte durum, gerçek yüzey. `screenshots` dalı. */}
-            <SettingRow label="Screenshot sahneleri" onPress={() => setScreenshotsOpen(true)} />
             <SettingRow
               label={t('devResetOnboarding')}
               onPress={() => {
@@ -343,11 +340,8 @@ export function SettingsSheet({
             />
           </View>
           <Caption style={{ paddingTop: spacing.s8 }}>{t('devPremiumHint')}</Caption>
-          <ScreenshotSheet
-            visible={screenshotsOpen}
-            onClose={() => setScreenshotsOpen(false)}
-            onCloseSettings={onClose}
-          />
+          {/* aso.md §4 kareleri: sahte durum, gerçek yüzey. `screenshots` dalı. */}
+          <ScreenshotScenes onDone={onClose} />
         </Section>
       )}
     </PageSheet>

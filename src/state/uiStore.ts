@@ -60,6 +60,10 @@ interface UiStore {
    */
   locationInviteDismissed: boolean;
   dismissLocationInvite: () => void;
+  /** Ekran görüntüsü posteri (§7.1 poster katmanı) — kök overlay, Modal değil. */
+  posterOpen: boolean;
+  openPoster: () => void;
+  closePoster: () => void;
   /** Satın alma başarısı: paywall kapanır, geldiği ekranda `PRO.` damgası (§7.11). */
   proStampAt: number | null;
   showProStamp: () => void;
@@ -87,6 +91,9 @@ export const useUiStore = create<UiStore>((set) => ({
   setHistorySpots: (spots) => set({ historySpots: spots }),
   locationInviteDismissed: false,
   dismissLocationInvite: () => set({ locationInviteDismissed: true }),
+  posterOpen: false,
+  openPoster: () => set({ posterOpen: true }),
+  closePoster: () => set({ posterOpen: false }),
   proStampAt: null,
   showProStamp: () => set({ proStampAt: Date.now() }),
   clearProStamp: () => set({ proStampAt: null }),

@@ -1,7 +1,11 @@
 # Ekran görüntüsü sahneleri
 
-`__DEV__` içinde **Ayarlar > Geliştirici > Screenshot sahneleri**. Bir satıra dokun,
-panel kapansın, kareyi arkadaki **gerçek** ekrandan al.
+`__DEV__` içinde **Ayarlar > Geliştirici**, en altta sahne listesi. Bir satıra dokun,
+Ayarlar kapansın, kareyi arkadaki **gerçek** ekrandan al.
+
+Liste ayrı bir sheet DEĞİL, bilerek: iç içe RN Modal iki hata üretti (Ayarlar kapanınca
+çocuk Modal öksüz kalıp bomboş beyaz bir sayfa olarak asılı kalıyordu; bir de sahne
+seçilince Ayarlar kapanmayıp kareyi örtüyordu). Poster de aynı sebeple kök overlay.
 
 Sahte ekran yazılmadı, sahte **durum** yazıldı: `scenarios.ts` store'lara state basıyor,
 kareyi çizen şey üretimdeki yüzeyin kendisi. İkinci bir "screenshot sürümü" komponent

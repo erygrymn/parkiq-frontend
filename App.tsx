@@ -29,6 +29,7 @@ import { Caption } from './src/components/Typography';
 import { initAnalytics, trackPaywallShown } from './src/lib/analytics';
 import { ForceUpdateScreen, useForcedUpdate } from './src/screens/ForceUpdateGate';
 import { MapCanvas } from './src/screens/MapCanvas';
+import { PosterFrame } from './src/screenshots/PosterFrame';
 import { Onboarding } from './src/screens/Onboarding';
 import { FilterSheet } from './src/sheets/FilterSheet';
 import { PaywallSheet } from './src/sheets/PaywallSheet';
@@ -408,6 +409,7 @@ function Root() {
       {/* Kök overlay'ler (İlke 9): kutlama kapağı, AR kamera, tam ekran foto. Sheet'in ÜSTÜNDE. */}
       {phase === 'ended' && <EndedSheet onOpenPaywall={() => setPaywallOpen(true)} />}
       {arOpen && phase === 'finding' && <ArOverlay />}
+      <PosterFrame />
       <PhotoViewer />
       <ProStamp />
       <StatusBar style={scheme === 'dark' || (arOpen && phase === 'finding') ? 'light' : 'dark'} />
