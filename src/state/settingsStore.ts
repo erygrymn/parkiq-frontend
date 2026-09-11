@@ -42,18 +42,24 @@ interface SettingsStore {
   resetOnboarding: () => void;
   /** Her şeyi sil sonrası tercihleri cihaz varsayılanına döndürür. */
   resetToDefaults: () => void;
-  /** §7.4b oto-algılama açık mı (premium; kullanıcı Ayarlar'dan açar). */
-  autoDetectEnabled: boolean;
-  setAutoDetect: (value: boolean) => void;
   /**
    * Tarife havuzu: girilen tarife diğer sürücülere önerilsin mi.
    *
-   * Varsayılan AÇIK — havuz ancak veri girildiğinde işe yarar ve gönderilen şey bir
-   * YERİN fiyatı, kişiye ait bir şey değil. Kapatan kullanıcı alışverişin iki
-   * tarafından da çıkar: ne gönderir ne öneri görür. Tek yönlü kullanım (almak ama
-   * vermemek) havuzu bedavaya bindirilecek bir şeye çevirirdi.
+   * Kapatan kullanıcı alışverişin iki tarafından da çıkar: ne gönderir ne öneri
+   * görür. Tek yönlü kullanım (almak ama vermemek) havuzu bedavaya bindirilecek
+   * bir şeye çevirirdi.
    */
   tariffPoolEnabled: boolean;
+  /**
+   * Kullanıcıya SORULDU mu.
+   *
+   * Havuz konum taşır (otopark kimliği ve koordinat), bu yüzden sessiz bir
+   * varsayılanla açılamaz: App Store 5.1.5 konum verisi için "notify and obtain
+   * consent before collecting, transmitting" diyor. Cevap gelene kadar ne
+   * gönderim ne sorgu yapılır; `tariffPoolEnabled` yalnız cevap verildikten
+   * sonra bir anlam taşır.
+   */
+  tariffPoolAsked: boolean;
   setTariffPool: (value: boolean) => void;
   hydrated: boolean;
   hydrate: () => void;
@@ -143,22 +149,17 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   currency: 'TRY',
   warnThresholdMin: DEFAULT_WARN_THRESHOLD_MIN,
   onboardingSeen: false,
-  // Premium kullanıcıda varsayılan AÇIK: satın alınan özelliğin çalışması için
-  // ayrıca bir anahtar aramak zorunda kalmak "para verdim çalışmıyor" üretiyor.
-  autoDetectEnabled: true,
   tariffPoolEnabled: true,
+  tariffPoolAsked: false,
   clockFormat: 'device',
   units: 'device',
   hydrated: false,
 
-  setAutoDetect: (autoDetectEnabled) => {
-    write('autoDetectEnabled', autoDetectEnabled ? '1' : '0');
-    set({ autoDetectEnabled });
-  },
-
+  // Cevap her iki yönde de kalıcıdır: soru bir kez sorulur, bir daha çıkmaz.
   setTariffPool: (tariffPoolEnabled) => {
     write('tariffPoolEnabled', tariffPoolEnabled ? '1' : '0');
-    set({ tariffPoolEnabled });
+    write('tariffPoolAsked', '1');
+    set({ tariffPoolEnabled, tariffPoolAsked: true });
   },
 
   completeOnboarding: () => {
@@ -190,8 +191,8 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       locale: device.locale,
       currency: device.currency,
       warnThresholdMin: DEFAULT_WARN_THRESHOLD_MIN,
-      autoDetectEnabled: true,
       tariffPoolEnabled: true,
+      tariffPoolAsked: false,
     });
   },
 
@@ -218,9 +219,8 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     if (isUsableCurrency(currency)) next.currency = currency;
     if (Number.isFinite(threshold) && threshold > 0) next.warnThresholdMin = threshold;
     if (read('onboardingSeen') === '1') next.onboardingSeen = true;
-    // Varsayılan açık olduğu için yalnız KAPATMA kararı kalıcılaşır.
-    if (read('autoDetectEnabled') === '0') next.autoDetectEnabled = false;
     if (read('tariffPoolEnabled') === '0') next.tariffPoolEnabled = false;
+    if (read('tariffPoolAsked') === '1') next.tariffPoolAsked = true;
 
     const clockPref = read('clockFormat');
     if (clockPref === '12' || clockPref === '24' || clockPref === 'device') {

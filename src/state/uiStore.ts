@@ -51,6 +51,15 @@ interface UiStore {
   closeHistory: () => void;
   selectHistory: (id: string | null) => void;
   setHistorySpots: (spots: HistorySpot[]) => void;
+  /**
+   * Konum izni daveti bu OTURUMDA kapatıldı mı (§7.2).
+   *
+   * Kalıcı değil: kapatan kullanıcı uygulamayı bir daha açtığında davet geri
+   * gelir. Kalıcı olsaydı bir kazara dokunuş izni sonsuza kadar gömerdi; her
+   * açılışta ısrar etmek de ayrı bir sorun, o yüzden oturum ömrü.
+   */
+  locationInviteDismissed: boolean;
+  dismissLocationInvite: () => void;
   /** Satın alma başarısı: paywall kapanır, geldiği ekranda `PRO.` damgası (§7.11). */
   proStampAt: number | null;
   showProStamp: () => void;
@@ -76,6 +85,8 @@ export const useUiStore = create<UiStore>((set) => ({
   closeHistory: () => set({ historyOpen: false, historySelectedId: null }),
   selectHistory: (id) => set({ historySelectedId: id }),
   setHistorySpots: (spots) => set({ historySpots: spots }),
+  locationInviteDismissed: false,
+  dismissLocationInvite: () => set({ locationInviteDismissed: true }),
   proStampAt: null,
   showProStamp: () => set({ proStampAt: Date.now() }),
   clearProStamp: () => set({ proStampAt: null }),

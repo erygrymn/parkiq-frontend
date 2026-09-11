@@ -190,11 +190,11 @@ Bunlar App Store Connect'te ayrı ayrı doldurulur ve **arama sıralamasına gir
 | IAP adı — aylık | 30 | `Pro Monthly - Scan & Compass` | 28 |
 | IAP adı — yıllık | 30 | `Pro Yearly - Scan & Compass` | 27 |
 | IAP adı — lifetime | 30 | `Pro Lifetime - Scan & Compass` | 29 |
-| IAP açıklaması (üçü de aynı) | 45 | `Board scan, compass, auto-detect, filters` | 41 |
+| IAP açıklaması (üçü de aynı) | 45 | `Board scan, compass, filters, shared rates` | 42 |
 | In-App Event başlığı | 30 | `Parking Cost Week` | 17 |
 | In-App Event kısa açıklama | 50 | `See what parking really costs you this week` | 43 |
 
-**Dürüstlük kuralı:** Üç IAP de **aynı** `pro` entitlement'ını açıyor. Bu yüzden adları özellik adıyla ayrıştırılmaz (kullanıcı "Pro Monthly — Auto-Detect" görüp yalnız oto-algılama aldığını sanabilir; Apple bunu yanıltıcı sayar). Üçü de aynı özellik ifadesini taşır, yalnız süre değişir.
+**Dürüstlük kuralı:** Üç IAP de **aynı** `pro` entitlement'ını açıyor. Bu yüzden adları özellik adıyla ayrıştırılmaz (kullanıcı "Pro Monthly — Board Scan" görüp yalnız taramayı aldığını sanabilir; Apple bunu yanıltıcı sayar). Üçü de aynı özellik ifadesini taşır, yalnız süre değişir.
 
 ⛔ IAP adına **`AR` yazılmaz** — AR yazıldı ama lansmanda satılmıyor (§2.1). Kod AR'ı `!indoor && isArAvailable` koşuluyla açıyor ([FindMyCar.tsx:247](src/screens/FindMyCar.tsx:247)); yani her cihazda ve her yerde çalışmıyor, IAP adında vaat edilemez.
 
@@ -209,7 +209,6 @@ Bu üç IAP adı = **84 ekstra indekslenen karakter**, tamamen ücretsiz. `scan`
 | **Tarife panosu tarama** | 🔒 **Pro** | [sessionStore.ts:401](src/state/sessionStore.ts:401) — `if (!isPremium) set({ ocrState: 'locked' })` |
 | **Otopark filtreleme** | 🔒 Pro | [SessionSheets.tsx:115](src/sheets/SessionSheets.tsx:115) |
 | **Arabamı Bul (pusula)** | 🔒 Pro | [SessionSheets.tsx:647](src/sheets/SessionSheets.tsx:647) |
-| **Oto-algılama** | 🔒 Pro | [SettingsSheet.tsx:202](src/sheets/SettingsSheet.tsx:202) |
 | Sınırsız geçmiş + istatistik | ✅ Free | [HistorySheet.tsx:197](src/sheets/HistorySheet.tsx:197) yalnız **davet satırı**, kilit değil |
 | Live Activity / Dynamic Island / widget | ✅ Free | [SessionSheets.tsx:548](src/sheets/SessionSheets.tsx:548) — §4.10 gereği premium kontrolü yok |
 | Sayaç, dilim uyarıları, foto/kat/not, konum paylaşımı, harita | ✅ Free | premium gate'i yok |
@@ -266,16 +265,11 @@ Nearby car parks and EV chargers on the map.
 
 PRO ADDS
 Reading the price board with the camera. Compass walk-back to
-your car. Automatic saving when your car's Bluetooth
-disconnects. Car park filters for EV charging, covered parking
+your car. Car park filters for EV charging, covered parking
 and distance.
-
-ParkIQ is not a tracker. It does not follow your car around.
-It remembers where you left it and what it is costing you.
 
 NO ACCOUNT
 No login. No sign-up. Nothing to fill in before you park.
-Your sessions, photos and saved spots live on your iPhone.
 Reading the price board runs on the device.
 
 No ads. Ever.
@@ -348,17 +342,11 @@ Yakındaki otoparklar ve şarj istasyonları.
 
 PRO'DA OLAN
 Tarife panosunu kamerayla okuma. Arabaya pusulayla dönüş.
-Aracın Bluetooth'u kesilince otomatik kayıt. Otopark
-filtresi — şarj, kapalı, mesafe.
-
-ParkIQ bir takip uygulaması değil. Arabanın peşinden gitmez.
-Nereye bıraktığını ve sana kaça mal olduğunu hatırlar.
+Otopark filtresi — şarj, kapalı, mesafe.
 
 HESAP YOK
 Giriş yok. Kayıt yok. Park etmeden önce doldurulacak hiçbir
 şey yok.
-Oturumların, fotoğrafların ve kayıtlı yerlerin telefonunda
-durur.
 Pano okuma cihaz üstünde çalışır.
 
 Reklam yok. Hiç.
@@ -565,6 +553,29 @@ Kanonik dosya düzeni: `metadata/app-info/<locale>.json` (name, subtitle, privac
 1. **`whatsNew` 1.0 sürümünde düzenlenemiyor** — API `Attribute 'whatsNew' cannot be edited at this time` döndürüyor. İlk sürümde "Yenilikler" alanı yok; §3.4'teki metin 1.1'de kullanılacak.
 2. **Açıklamada emoji yasak** — `Description can't contain the following character(s): ⚡`. TR açıklamasından ⚡ kaldırıldı. Aynı sebeple IAP adlarında uzun tire (—) yerine düz tire (-) kullanıldı. Bu kısıt [design.md](design.md)'nin emoji yasağıyla zaten örtüşüyor.
 3. **Yeni locale `asc localizations update` ile açılmıyor** (`no existing localization found`). Önce `asc metadata push` kanonik dosyayla locale'i yaratır, sonra alanlar yazılır. en-GB eklenirken aynı iki adım gerekecek.
+
+### 7.2 App Store uyum turu (2026-09-12)
+
+`app-review-guidelines:checkup` denetiminin mağaza tarafına düşen sonuçları. **Hepsi ASC'ye
+PUSH EDİLDİ ve geri çekilerek doğrulandı** (36 alan, 18 dil; `asc metadata push` → `asc metadata pull`):
+
+- **Oto-algılama cümlesi 18 dilden silindi.** Modül yalnız CarPlay'i araç sayıyordu ama metin
+  "Bluetooth" diyordu (2.3.1 + 5.6); özellik koddan tamamen kaldırıldı.
+- **Veri akışı iddiaları silindi:** "not a tracker" / "live on your iPhone" ve tüm dil karşılıkları.
+  Bu dosyanın 2026-09-11 kuralı zaten bunu söylüyordu, açıklama ona uymuyordu. Kalanlar kurala
+  UYGUN: reklam/hesap/kayıt yokluğu ve "pano okuma cihaz üstünde çalışır".
+- **`supportUrl`** 18 dilde `https://www.twiceapps.co/privacy`, **`marketingUrl`** 18 dilde
+  `https://www.twiceapps.co` (en-US ve tr'de `app-ads.txt`e bakıyordu).
+- **IAP açıklaması** `Board scan, compass, auto-detect, filters` → `Board scan, compass, filters,
+  shared rates`, üç üründe de canlı. `metadata push` IAP'lere DOKUNMAZ, ayrı komutlar gerekti —
+  lifetime (non-consumable) `asc iap localizations update --localization-id …`, iki abonelik
+  `asc subscriptions localizations update --id …`. Bayrak adı iki komutta FARKLI (`--localization-id`
+  vs `--id`); yanlışını verince asc sessizce hiçbir şey yapmıyor, çıkış kodu 0 dönüyor.
+  Adlar `… - Scan & Compass` olarak kaldı, ikisi de hâlâ doğru.
+
+Ayrıca gizlilik etiketleri gözden geçirilmeli: tarife havuzu park koordinatını sunucuya yolluyor,
+yani "Hassas Konum · Uygulama İşlevselliği · izleme yok" beyan edilmeli ve `ios.privacyManifests`
+ile birebir aynı olmalı.
 
 ### Faz 1 — Lansman + 0–8 hafta
 - [ ] en-AU, en-IE, en-NZ yerelleştirmeleri eklenir (metin en-GB ile aynı, ayrı yerelleştirme ayrı indeksleme demek)

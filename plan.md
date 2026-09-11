@@ -111,7 +111,7 @@ Bağlayıcı olduğunda claude.ai bağlayıcı ayarlarından yetkilendirilmesi g
 - [x] Geçmiş kök sheet sahnesi oldu (2026-09-08): ayrı pageSheet yok; noktalar haritada, satır → kamera uçuşu + araba pini, detay sheet içinde. Ayarlar pageSheet kaldı (koyu yüzey `surface/card`, 17/600 ortalanmış başlık).
 - [x] Paywall: sistem Alert'ler kalktı; başarı → sheet kapanır + kök `ProStamp` ("PRO." ink nokta + haptik);
       restore satırları in-surface; plan kartı hairline + seçili ink border. Kullanıcının rakamı zaten başlık altında.
-- [x] Ayarlar: tüm veriyi sil → `ConfirmSheet` (Alert kalktı); satırlar zaten metin satırı. · [ ] oto-algılama açılış kartı (izin açıklaması; ayrı iş).
+- [x] Ayarlar: tüm veriyi sil → `ConfirmSheet` (Alert kalktı); satırlar zaten metin satırı.
 - [x] Keşif: cam kareler gerçek blur; chip'ler `PressScale` + `selection` (sheet içinde, cam değil); POI kartı
       faz crossfade'iyle morph; pin seçimi 1.25× `SPRING` + `selection`; en yakın 3 satır stagger.
 - [x] Harita stili: gömülü `styleJSON` (`src/lib/mapStyle.ts`, Streets v8 üstüne krem/ink katmanlar, POI etiketi
@@ -136,7 +136,8 @@ Bağlayıcı olduğunda claude.ai bağlayıcı ayarlarından yetkilendirilmesi g
 
 **7.2 Keşif** · [x] Mapbox + puck + pinler · [x] arama · [x] chip'ler · [x] en yakın 3 · [x] POI kartı
 · [x] konuma dön · [x] offline satırı · [x] cam kareler gerçek blur · [x] POI morph + pin spring
-· [x] harita ↔ sheet bağı · [x] custom stil (gömülü JSON) · [ ] cluster kademeleri · [ ] izin reddi manuel pin akışı
+· [x] harita ↔ sheet bağı · [x] custom stil (gömülü JSON) · [ ] cluster kademeleri
+· [x] izin reddi manuel pin akışı (§7.12) · [x] izin daveti satırı (`LocationInvite`)
 
 **7.3 Park anı** · [x] ≤2 sn kayıt · [x] kat/not/foto/backdate/hatırlatıcı/tarife · [x] tarife hafızası
 · [x] zayıf GPS nudge · [x] pin düzeltme · [x] damga sekansı + haptik · [x] "+ Add details" inline
@@ -164,13 +165,22 @@ noktası · [x] düzlem algılama · [x] oklüzyon · [x] cam HUD · [x] kenar g
 **7.9 Geçmiş (sheet sahnesi)** · [x] harita noktaları + uçuş · [x] liste + gruplar · [x] boş durum · [x] detay · [x] KPI + grafik · [x] aylık kart
 · [x] kutusuz KPI · [x] hairline satırlar · [x] stagger · [x] silme onayı sheet
 
-**7.10 Ayarlar** · [x] tema/dil/para/eşik · [x] oto-algılama · [x] abonelik · [x] izinler · [x] veri
+**7.10 Ayarlar** · [x] tema/dil/para/eşik · [x] abonelik · [x] izinler · [x] veri (havuz anahtarı)
 · [x] hakkında · [x] silme onayı sheet
 
 **7.11 Paywall** · [x] planlar · [x] özellikler · [x] restore + yasal · [x] tetikler · [x] Alert'siz
 durumlar · [x] `PRO.` damgası · [x] hairline plan kartı
 
 **7.12 Pin bırakma** · [x] katman · [ ] kart `SPRING` girişi
+
+**7.13 Zorunlu güncelleme** · [x] `ForceUpdateGate`
+
+**App Store uyum turu (2026-09-12)** · [x] konum duvarı kaldırıldı, yerine §7.2 daveti (5.1.2(i))
+· [x] izin metinlerinden veri akışı iddiası çıktı (14 dil, 2.3.1) · [x] tarife havuzu rıza soruyor
+(`tariffPoolAsked`, 5.1.5) · [x] oto-algılama tamamen kaldırıldı (kod + paywall + 18 dil mağaza metni)
+· [x] `NSPhotoLibraryAddUsageDescription` (paylaşım sayfası çökmesi, 2.1) · [x] `ios.privacyManifests`
+· [x] mağaza `supportUrl`/`marketingUrl` · [ ] cihazda kontrol: izni reddet → uygulama çalışıyor mu,
+paylaşım kartı → "Görüntüyü Kaydet" çökmüyor mu
 
 **8 LA/DI/widget** · [x] hepsi (regresyon testi Faz 5)
 

@@ -165,14 +165,13 @@ export function SettingsSheet({
   const isPremium = useIsPremium();
   const devUnlock = usePremiumStore((s) => s.devUnlock);
   const setDevUnlock = usePremiumStore((s) => s.setDevUnlock);
-  const { themeMode, locale, currency, warnThresholdMin, autoDetectEnabled, tariffPoolEnabled, clockFormat, units } =
+  const { themeMode, locale, currency, warnThresholdMin, tariffPoolEnabled, clockFormat, units } =
     useSettingsStore();
   const {
     setThemeMode,
     setLocalePref,
     setCurrency,
     setWarnThreshold,
-    setAutoDetect,
     setTariffPool,
     setClockFormatPref,
     setUnits,
@@ -270,20 +269,15 @@ export function SettingsSheet({
         </View>
       </Section>
 
-      {/* Pro ve oto-algılama tek grupta: ikisi de aynı satın almanın yüzü. */}
       <Section title="Pro">
         <View style={{ borderTopWidth: 1, borderTopColor: colors.gridline }}>
           {isPremium ? (
             <>
               <SettingRow label={t('goPro')} value={t('proActive')} />
               <SettingRow label={t('manageSubscription')} onPress={openSubscriptionSettings} />
-              <SettingRow label={t('autoDetect')} trailing={switchControl(autoDetectEnabled, setAutoDetect)} />
             </>
           ) : (
-            <>
-              <SettingRow label={t('goPro')} locked onPress={openPaywall} />
-              <SettingRow label={t('autoDetectPro')} locked onPress={openPaywall} />
-            </>
+            <SettingRow label={t('goPro')} locked onPress={openPaywall} />
           )}
         </View>
       </Section>

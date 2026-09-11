@@ -265,6 +265,8 @@ ham RN `Modal` ile sheet yazılmaz, `PopupSheet` kullanılır. Aynı anda tek ak
 
 - Harita üst 2/3. Sağ üstte cam kareler: History (`clock.arrow.circlepath`), Settings (`gearshape`),
   Filters (`line.3.horizontal.decrease`). Ekranın üst 1/3'ünde birincil dokunulabilir öğe yok.
+- Konum izni yoksa panelin EN ÜSTÜNDE davet satırı (§7.13): başlık + caption + "izin ver" /
+  "şimdi değil". İzin gelince kendiliğinden düşer. Uygulama izinsiz de tam çalışır — pin bırakılır.
 - Sheet kompakt (arama + "I Parked") → çekilince chip'ler + en yakın 3 otopark (editöryal satırlar:
   overline yürüme/mesafe · 21/900 ad · "Directions" text). Arama native geocoder.
 - Pin seçimi → kart o otoparka morph (aynı sheet, 200 ms crossfade + `SPRING` yükseklik); harita
@@ -303,8 +305,6 @@ ham RN `Modal` ile sheet yazılmaz, `PopupSheet` kullanılır. Aynı anda tek ak
   sorulmaz, aktif sheet'in **Details** satırında yaşar (§7.5).
 - Araba pini haritaya damgayla aynı anda iner (§3 park anı sekansı).
 - Zayıf GPS → durum satırı "Weak signal · add level or photo"; konum yoksa "Mark it on the map".
-- Oto-algılama (premium) `idle → active` geçer, damga oynamaz; sheet üstünde "Auto-detected · Not
-  parked? Undo" satırı 10 dk.
 
 ### 7.4 Tarife girişi + OCR
 
@@ -445,8 +445,8 @@ ne öneri görür — havuz çift yönlü bir alışveriştir, tek yönlü kulla
 Tek pageSheet yüzeyi. Koyu temada kart zemini `surface/card` (arkadaki kararmış haritadan bir
 basamak açık); başlık ortalanmış 17/600, sistem nav bar hissi, çift kabuk yok. Liste grupları
 hairline satırlarla: hatırlatıcı eşiği, bildirimler, görünüm, dil, para birimi,
-oto-algılama (premium; açılış tek sayfalık kart + izinler), abonelik durumu → paywall, izin durumları
-(§5 durum satırı + Settings deep link), veri (dışa aktar / sil), hakkında. Başlık 22/900 uppercase
+abonelik durumu → paywall, izin durumları
+(§5 durum satırı + Settings deep link), veri (tarife havuzu / dışa aktar / sil), hakkında. Başlık 22/900 uppercase
 noktasız. Geliştirici bölümü yalnız `__DEV__`.
 
 ### 7.11 Paywall (tam ekran)
@@ -474,7 +474,7 @@ noktasız. Geliştirici bölümü yalnız `__DEV__`.
   Retry; satın alma CTA'da spinner + ekran kilitli; **başarı → sheet kapanır, geldiği ekranda `PRO.`
   damgası (ink nokta) + `notificationSuccess`**; restore → 13pt satır "Restored." / "No purchases
   found."
-- Satılan yalnız ParkIQ işlevi: oto-algılama, tarife tarama, pusula + AR, otopark filtresi. LA /
+- Satılan yalnız ParkIQ işlevi: tarife tarama, pusula + AR, otopark filtresi, havuz önerisini uygulama. LA /
   widget / bildirim asla paywall'da yazmaz.
 
 ### 7.12 Pin bırakma katmanı
@@ -482,7 +482,22 @@ noktasız. Geliştirici bölümü yalnız `__DEV__`.
 Harita altta kayar, artı işareti ekran merkezinde sabit; altta beyaz kart (`r-24`) + ipucu + siyah
 "Use pin" + ghost "Cancel". Sheet bu sırada gizli; dönüşte açık alan geri gelir.
 
----
+### 7.13 Zorunlu güncelleme kapısı
+
+Uygulamanın önüne geçen TEK tam ekran yüzey (§ Twice sürüm kontrolü "forced" derse). Zemin `bg`
+(poster katmanı DEĞİL: krem karantinası İlke 3 ve tam yüzeyli siyah İlke 6 burada da geçerli),
+display-M uppercase başlık **noktasız** — kapı bir boş durumdur, nokta grameri blacklist'inde —,
+15/400 `text-secondary` gövde, tek siyah hap CTA (İlke 4). İkincil aksiyon, kaçış yolu, illüstrasyon,
+ikon ve giriş animasyonu yok: duvarı yumuşatmak onu geciktirmekten başka bir şey yapmaz.
+
+**Konum izni kapı DEĞİLDİR.** Bir zamanlar buradaydı ve kaldırıldı: App Store 5.1.2(i) sistem
+yeteneğini uygulamayı kullanmanın şartı yapmayı yasaklıyor, 5.1.1(iv) tam da konumu örnek verip
+alternatif istiyor — alternatif zaten §7.12 pin bırakma. İzin daveti §7.2'de keşif panelinin
+üstünde bir satır olarak yaşar: 17/600 başlık, caption gövde, iki metin butonu (izin / şimdi değil),
+siyah hap YOK (o hakkı "Park Ettim" tutuyor). iOS izni ömürde bir kez sorduğu için buton iki hal
+taşır — sorulmamışsa sistem penceresi, reddedilmişse Ayarlar. Ön plana her dönüşte izin yeniden
+okunur. "Şimdi değil" yalnız o oturumu susturur: kalıcı olsaydı kazara bir dokunuş izni sonsuza
+gömerdi.
 
 ## 8. Live Activity, Dynamic Island, widget
 

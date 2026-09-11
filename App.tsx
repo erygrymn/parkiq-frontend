@@ -4,8 +4,6 @@ import BottomSheet, {
   useBottomSheetSpringConfigs,
 } from '@gorhom/bottom-sheet';
 import Animated, { FadeIn, interpolate, useAnimatedStyle } from 'react-native-reanimated';
-import * as Notifications from 'expo-notifications';
-import { AUTO_PARK_KIND } from './src/lib/notifications';
 import { StatusBar } from 'expo-status-bar';
 import { SymbolView, type SFSymbol } from 'expo-symbols';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -37,7 +35,6 @@ import { PaywallSheet } from './src/sheets/PaywallSheet';
 import { PoiSheet } from './src/sheets/PoiSheet';
 import { SettingsSheet } from './src/sheets/SettingsSheet';
 import { ActiveSheet, EndedSheet, IdleSheet, ParkingSheet } from './src/sheets/SessionSheets';
-import { startAutoDetect } from './modules/parkiq-autodetect';
 import { useDiscoveryStore } from './src/state/discoveryStore';
 import { useNetworkStore } from './src/state/networkStore';
 import { useIsPremium, usePremiumStore } from './src/state/premiumStore';
@@ -309,33 +306,7 @@ function Root() {
     return () => sub.remove();
   }, []);
 
-  // Oto-algılama bildirimine dokunuş: park akışı kopuş noktasından başlar.
-  useEffect(() => {
-    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = (response.notification.request.content.data ?? {}) as {
-        kind?: string;
-        latitude?: number;
-        longitude?: number;
-        atMs?: number;
-      };
-      if (data.kind !== AUTO_PARK_KIND) return;
-      if (typeof data.latitude !== 'number' || typeof data.longitude !== 'number') return;
-      useSessionStore.getState().parkAt({
-        latitude: data.latitude,
-        longitude: data.longitude,
-        atMs: typeof data.atMs === 'number' ? data.atMs : Date.now(),
-      });
-    });
-    return () => sub.remove();
-  }, []);
-
-  // §7.4b oto-algılama (premium): araç bağlantısı kopunca otomatik kayıt.
   const isPremium = useIsPremium();
-  const autoDetectEnabled = useSettingsStore((s) => s.autoDetectEnabled);
-  useEffect(() => {
-    if (!isPremium || !autoDetectEnabled) return;
-    return startAutoDetect(() => useSessionStore.getState().autoPark());
-  }, [isPremium, autoDetectEnabled]);
 
   const backgroundStyle = useMemo(
     () => ({ backgroundColor: colors.card, borderRadius: radius.r24 }),
@@ -468,6 +439,8 @@ export default function App() {
       <SafeAreaProvider>
         <ThemeProvider>
           {/* key: dil değişince ağaç tazelenir — t() modül seviyesinde okunur */}
+          {/* Konum izni uygulamayı KAPATMAZ: izinsiz de harita açılır, pin bırakarak
+              park kaydedilir. Davet keşif panelinin üstünde yaşar (§7.2). */}
           {forcedUpdate ? (
             <ForceUpdateScreen />
           ) : onboardingSeen ? (

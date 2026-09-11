@@ -12,111 +12,118 @@ const { withDangerousMod } = require('expo/config-plugins');
 // Klasör adları iOS'un dil kodları — uygulama içi `Locale` birimleriyle birebir
 // aynı değil (iOS 'de' der, biz 'de-DE'; iOS bölgesizi tercih eder).
 
+// Metinler İŞİ anlatır, veri akışı SÖZÜ vermez. "Bu cihazdan çıkmaz" cümlesi
+// buradaydı ve tarife havuzu koordinat gönderdiği an yalana dönüyordu (App Store
+// 2.3.1); aynı kural mağaza metninde de geçerli (aso.md).
 const LOCATION = 'NSLocationWhenInUseUsageDescription';
 const CAMERA = 'NSCameraUsageDescription';
-const PHOTOS = 'NSPhotoLibraryUsageDescription';
+// Paylaşım sayfasındaki "Görüntüyü Kaydet" bu anahtar olmadan uygulamayı sonlandırır.
+const PHOTOS = 'NSPhotoLibraryAddUsageDescription';
 
 const STRINGS = {
   tr: {
     [LOCATION]:
-      'ParkIQ arabanı nereye bıraktığını kaydeder, dönüşte bulman için. Konumun bu cihazda kalır.',
+      'ParkIQ arabanı nereye bıraktığını kaydeder, dönüşte bulman için; çevrendeki otoparkları da gösterir.',
     [CAMERA]:
-      'Park yerinin fotoğrafını çek, kamerayı doğrultup arabana dönüş yolunu gör. Fotoğraflar ve kamera görüntüsü bu cihazda kalır.',
+      'Park yerinin fotoğrafını çek, tarife panosunu okut, kamerayı doğrultup arabana dönüş yolunu gör.',
     [PHOTOS]:
-      'Park yerinin fotoğrafını galerinden seçebilmen için. Fotoğraf bu cihazdan çıkmaz.',
+      'Paylaşım sayfasından ParkIQ kartını fotoğraflarına kaydedebilmen için.',
   },
   de: {
     [LOCATION]:
-      'ParkIQ merkt sich, wo du geparkt hast, damit du dein Auto wiederfindest. Dein Standort bleibt auf diesem Gerät.',
+      'ParkIQ merkt sich, wo du geparkt hast, damit du dein Auto wiederfindest, und zeigt Parkplätze in deiner Nähe.',
     [CAMERA]:
-      'Fotografiere deinen Stellplatz und richte die Kamera aus, um den Weg zurück zum Auto zu sehen. Fotos und Kamerabild bleiben auf diesem Gerät.',
+      'Fotografiere deinen Stellplatz, lass eine Preistafel auslesen und richte die Kamera aus, um den Weg zurück zum Auto zu sehen.',
     [PHOTOS]:
-      'Damit du ein Foto deines Stellplatzes aus deiner Mediathek wählen kannst. Das Foto verlässt dieses Gerät nicht.',
+      'Damit du eine ParkIQ-Karte aus dem Teilen-Menü in deiner Mediathek sichern kannst.',
   },
   fr: {
     [LOCATION]:
-      'ParkIQ enregistre où vous vous êtes garé pour que vous retrouviez votre voiture. Votre position reste sur cet appareil.',
+      'ParkIQ enregistre où vous vous êtes garé pour que vous retrouviez votre voiture, et affiche les parkings autour de vous.',
     [CAMERA]:
-      'Photographiez votre place et pointez la caméra pour voir le chemin du retour. Les photos et le flux caméra restent sur cet appareil.',
+      'Photographiez votre place, faites lire un panneau de tarifs et pointez la caméra pour voir le chemin du retour.',
     [PHOTOS]:
-      'Pour choisir une photo de votre place depuis votre photothèque. La photo ne quitte pas cet appareil.',
+      'Pour enregistrer une carte ParkIQ dans votre photothèque depuis la feuille de partage.',
   },
   es: {
     [LOCATION]:
-      'ParkIQ guarda dónde aparcaste para que encuentres tu coche al volver. Tu ubicación se queda en este dispositivo.',
+      'ParkIQ guarda dónde aparcaste para que encuentres tu coche al volver, y muestra aparcamientos cerca de ti.',
     [CAMERA]:
-      'Haz una foto de tu plaza y apunta la cámara para ver el camino de vuelta al coche. Las fotos y la cámara se quedan en este dispositivo.',
+      'Haz una foto de tu plaza, lee un panel de tarifas y apunta la cámara para ver el camino de vuelta al coche.',
     [PHOTOS]:
-      'Para que elijas una foto de tu plaza desde tu fototeca. La foto no sale de este dispositivo.',
+      'Para guardar una tarjeta de ParkIQ en tu fototeca desde la hoja para compartir.',
   },
   'es-MX': {
     [LOCATION]:
-      'ParkIQ guarda dónde estacionaste para que encuentres tu carro al volver. Tu ubicación se queda en este dispositivo.',
+      'ParkIQ guarda dónde estacionaste para que encuentres tu carro al volver, y muestra estacionamientos cerca de ti.',
     [CAMERA]:
-      'Toma una foto de tu lugar y apunta la cámara para ver el camino de regreso al carro. Las fotos y la cámara se quedan en este dispositivo.',
+      'Toma una foto de tu lugar, lee un tablero de tarifas y apunta la cámara para ver el camino de regreso al carro.',
     [PHOTOS]:
-      'Para que elijas una foto de tu lugar desde tu fototeca. La foto no sale de este dispositivo.',
+      'Para guardar una tarjeta de ParkIQ en tu fototeca desde la hoja para compartir.',
   },
   it: {
     [LOCATION]:
-      'ParkIQ registra dove hai parcheggiato così ritrovi l’auto al ritorno. La tua posizione resta su questo dispositivo.',
+      'ParkIQ registra dove hai parcheggiato così ritrovi l’auto al ritorno, e mostra i parcheggi intorno a te.',
     [CAMERA]:
-      'Fotografa il posto e punta la fotocamera per vedere la strada verso l’auto. Le foto e la fotocamera restano su questo dispositivo.',
+      'Fotografa il posto, fai leggere un cartello delle tariffe e punta la fotocamera per vedere la strada verso l’auto.',
     [PHOTOS]:
-      'Per scegliere dalla libreria una foto del posto dove hai parcheggiato. La foto non lascia questo dispositivo.',
+      'Per salvare una scheda ParkIQ nella tua libreria dal foglio di condivisione.',
   },
   nl: {
     [LOCATION]:
-      'ParkIQ onthoudt waar je hebt geparkeerd, zodat je je auto terugvindt. Je locatie blijft op dit apparaat.',
+      'ParkIQ onthoudt waar je hebt geparkeerd, zodat je je auto terugvindt, en toont parkeerplekken in de buurt.',
     [CAMERA]:
-      'Maak een foto van je plek en richt de camera om de weg terug naar je auto te zien. Foto’s en camerabeeld blijven op dit apparaat.',
+      'Maak een foto van je plek, laat een tarievenbord uitlezen en richt de camera om de weg terug naar je auto te zien.',
     [PHOTOS]:
-      'Zodat je een foto van je parkeerplek uit je bibliotheek kunt kiezen. De foto verlaat dit apparaat niet.',
+      'Om een ParkIQ-kaart vanuit het deelmenu in je fotobibliotheek te bewaren.',
   },
   'pt-BR': {
     [LOCATION]:
-      'O ParkIQ guarda onde você estacionou para achar seu carro na volta. Sua localização fica neste dispositivo.',
+      'O ParkIQ guarda onde você estacionou para achar seu carro na volta, e mostra estacionamentos por perto.',
     [CAMERA]:
-      'Tire uma foto da vaga e aponte a câmera para ver o caminho de volta ao carro. As fotos e a câmera ficam neste dispositivo.',
+      'Tire uma foto da vaga, leia um quadro de tarifas e aponte a câmera para ver o caminho de volta ao carro.',
     [PHOTOS]:
-      'Para escolher uma foto da vaga na sua fototeca. A foto não sai deste dispositivo.',
+      'Para salvar um cartão do ParkIQ na sua fototeca pela folha de compartilhamento.',
   },
   'pt-PT': {
     [LOCATION]:
-      'O ParkIQ guarda onde estacionou para encontrar o seu carro no regresso. A sua localização fica neste dispositivo.',
+      'O ParkIQ guarda onde estacionou para encontrar o seu carro no regresso, e mostra estacionamentos por perto.',
     [CAMERA]:
-      'Tire uma foto do lugar e aponte a câmara para ver o caminho de volta ao carro. As fotos e a câmara ficam neste dispositivo.',
+      'Tire uma foto do lugar, leia um quadro de tarifas e aponte a câmara para ver o caminho de volta ao carro.',
     [PHOTOS]:
-      'Para escolher uma foto do lugar na sua fototeca. A foto não sai deste dispositivo.',
+      'Para guardar um cartão do ParkIQ na sua fototeca a partir da folha de partilha.',
   },
   ja: {
     [LOCATION]:
-      'ParkIQ は駐車した場所を記録し、戻るときに車を見つけられるようにします。位置情報はこの端末から出ません。',
+      'ParkIQ は駐車した場所を記録し、戻るときに車を見つけられるようにします。近くの駐車場も表示します。',
     [CAMERA]:
-      '駐車場所の写真を撮り、カメラを向けて車までの道を確認します。写真とカメラ映像はこの端末から出ません。',
-    [PHOTOS]: '駐車場所の写真をライブラリから選ぶために使います。写真はこの端末から出ません。',
+      '駐車場所の写真を撮り、料金表を読み取り、カメラを向けて車までの道を確認します。',
+    [PHOTOS]:
+      '共有シートから ParkIQ のカードを写真に保存するために使います。',
   },
   ko: {
     [LOCATION]:
-      'ParkIQ가 주차한 위치를 저장해 돌아올 때 차를 찾도록 도와줘요. 위치 정보는 이 기기에만 남아요.',
+      'ParkIQ가 주차한 위치를 저장해 돌아올 때 차를 찾도록 도와주고, 근처 주차장도 보여줘요.',
     [CAMERA]:
-      '주차 자리를 사진으로 찍고, 카메라를 비춰 차까지 가는 길을 봐요. 사진과 카메라 화면은 이 기기에만 남아요.',
-    [PHOTOS]: '주차 자리 사진을 보관함에서 고르기 위해 사용해요. 사진은 이 기기를 벗어나지 않아요.',
+      '주차 자리를 사진으로 찍고, 요금표를 읽고, 카메라를 비춰 차까지 가는 길을 봐요.',
+    [PHOTOS]:
+      '공유 시트에서 ParkIQ 카드를 사진 보관함에 저장하기 위해 사용해요.',
   },
   'zh-Hant': {
     [LOCATION]:
-      'ParkIQ 會記住你停車的位置，讓你回來時找得到車。你的位置只留在這台裝置上。',
+      'ParkIQ 會記住你停車的位置，讓你回來時找得到車，也會顯示附近的停車場。',
     [CAMERA]:
-      '拍下停車位，並用相機看回到車子的方向。照片與相機畫面只留在這台裝置上。',
-    [PHOTOS]: '讓你從照片圖庫選擇停車位的照片。照片不會離開這台裝置。',
+      '拍下停車位、讀取費率牌，並用相機看回到車子的方向。',
+    [PHOTOS]:
+      '讓你從分享選單把 ParkIQ 卡片存到照片圖庫。',
   },
   sv: {
     [LOCATION]:
-      'ParkIQ sparar var du parkerade så att du hittar tillbaka till bilen. Din plats stannar på den här enheten.',
+      'ParkIQ sparar var du parkerade så att du hittar tillbaka till bilen, och visar parkeringar i närheten.',
     [CAMERA]:
-      'Fotografera din plats och rikta kameran för att se vägen tillbaka till bilen. Foton och kamerabilden stannar på den här enheten.',
+      'Fotografera din plats, läs av en taxeskylt och rikta kameran för att se vägen tillbaka till bilen.',
     [PHOTOS]:
-      'För att du ska kunna välja ett foto av din parkeringsplats ur biblioteket. Fotot lämnar aldrig den här enheten.',
+      'För att spara ett ParkIQ-kort i ditt bildbibliotek från delningsmenyn.',
   },
 };
 

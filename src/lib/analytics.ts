@@ -79,7 +79,7 @@ export function trackOnboardingDone(): void {
   log('onboarding_completed');
 }
 
-export function trackParkStarted(source: 'manual' | 'auto' | 'widget'): void {
+export function trackParkStarted(source: 'manual' | 'widget'): void {
   log('park_started', { source });
 }
 

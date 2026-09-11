@@ -16,7 +16,7 @@ import {
   syncWidget,
 } from '../lib/liveActivity';
 import { captureCurrentPlace, describeCoords } from '../lib/location';
-import { askAutoParked, cancelSessionAlerts, scheduleSessionAlerts } from '../lib/notifications';
+import { cancelSessionAlerts, scheduleSessionAlerts } from '../lib/notifications';
 import { scanTariffBoard } from '../lib/ocr';
 import type { ScheduleKind } from '../lib/tariffSchedule';
 import { captureSpotPhoto, deleteSpotPhoto } from '../lib/photo';
@@ -181,15 +181,8 @@ interface SessionStore {
   removePhoto: () => void;
   /** §7.4 tarife panosu taraması; sonuç forma dışarıdan yazılır. */
   scanTariff: () => void;
-  /** §7.4b oto-algılama tetiklediğinde çağrılır (premium): yalnız sorar. */
-  autoPark: () => void;
-  /** Bildirimden gelen onay: kopuş anının konumu ve zamanıyla oturumu başlatır. */
-  parkAt: (place: { latitude: number; longitude: number; atMs: number }) => void;
-  dismissAutoPark: () => void;
   /** Park formundan çıkış: kayıt silinir, keşfe dönülür. */
   cancelPark: () => void;
-  /** Bu oturum oto-algılamayla mı başladı — yanlış algı geri alma satırı için. */
-  autoDetected: boolean;
   acceptSuggestedTariff: () => void;
   /** Havuzdan gelen öneriyi tarife olarak uygular. */
   acceptPooledTariff: () => void;
@@ -263,7 +256,9 @@ function refreshActivityIfLive(): void {
  * birbirine bağlamaya yetmez.
  */
 function submitToPool(session: ParkSession, spotId: string | null, source: TariffSource): void {
-  if (!useSettingsStore.getState().tariffPoolEnabled) return;
+  // Cevap verilmeden hiçbir şey gitmez (5.1.5 konum rızası); kapatan da göndermez.
+  const settings = useSettingsStore.getState();
+  if (!settings.tariffPoolAsked || !settings.tariffPoolEnabled) return;
   if (!session.tariff || !spotId || session.latitude === null || session.longitude === null) return;
   let salt = '';
   try {
@@ -325,7 +320,6 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   pickingLocation: null,
   pickedCenter: null,
   reopenAfterPick: null,
-  autoDetected: false,
   locationPinnedByUser: false,
   locationEditSeq: 0,
 
@@ -429,7 +423,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       tariffSource: 'manual',
       locationPinnedByUser: false,
     });
-    trackParkStarted(get().autoDetected ? 'auto' : 'manual');
+    trackParkStarted('manual');
 
     // Konum yakalama kaydı BLOKLAMAZ; sonuç geldiğinde oturuma işlenir.
     void captureCurrentPlace().then((outcome) => {
@@ -469,8 +463,10 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
       // Havuz: otoparkı OSM kimliğiyle eşle, o kimlik için en çok girilen tarifeyi sor.
       // Ağ beklenmez — cevap gelirse soru ekranında bir çip daha belirir, gelmezse hiçbir şey.
-      // Kapatan kullanıcıya hiç sorulmaz: ne gönderir ne öneri görür.
-      if (!useSettingsStore.getState().tariffPoolEnabled) return;
+      // Sorgu da otopark kimliğini (dolayısıyla kaba konumu) taşır: rıza verilmeden
+      // bu da yapılmaz. Kapatan kullanıcı ne gönderir ne öneri görür.
+      const poolSettings = useSettingsStore.getState();
+      if (!poolSettings.tariffPoolAsked || !poolSettings.tariffPoolEnabled) return;
       const spot = resolveSpotId(outcome.place, useDiscoveryStore.getState().pois);
       set({ spotId: spot.id });
       const currency = useSettingsStore.getState().currency;
@@ -562,58 +558,6 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   },
 
   /**
-   * §7.4b: CarPlay bağlantısı koptu. Oturum AÇILMAZ — kopuş noktası bildirimle
-   * sorulur. Böylece yanlış algı geriye hayalet kayıt bırakmaz ve kullanıcı
-   * "ben park etmedim" demek için hiçbir şey temizlemek zorunda kalmaz.
-   */
-  autoPark: () => {
-    if (get().phase !== 'idle') return; // tek oturum kuralı
-    const atMs = Date.now();
-    void captureCurrentPlace().then((outcome) => {
-      if (outcome.status !== 'ok') return;
-      void askAutoParked({
-        latitude: outcome.place.latitude,
-        longitude: outcome.place.longitude,
-        atMs,
-      });
-    });
-  },
-
-  parkAt: ({ latitude, longitude, atMs }) => {
-    if (get().phase !== 'idle') return;
-    get().park();
-    const session = get().session;
-    if (!session) return;
-    // Kayıt anı kopuş anıdır: kullanıcı bildirime dakikalar sonra dokunmuş
-    // olabilir ve sayaç arabayı bıraktığı andan itibaren saymalı.
-    const next: ParkSession = {
-      ...session,
-      startedAtMs: atMs,
-      recordedAtMs: atMs,
-      latitude,
-      longitude,
-      accuracyM: 0,
-    };
-    persist(next);
-    set({
-      session: next,
-      autoDetected: true,
-      locationState: 'ok',
-      // Konum bildirimle geldi: park()'ın gecikmeli yakalaması bunu ezmesin.
-      locationPinnedByUser: true,
-    });
-    void describeCoords({ latitude, longitude }).then((place) => {
-      if (place.placeName) get().setParkLocation(place);
-    });
-  },
-
-  /** §7.4b yanlış algı: kullanıcı "ben park etmedim" derse kayıt tamamen silinir. */
-  dismissAutoPark: () => {
-    if (!get().autoDetected) return;
-    get().cancelPark();
-  },
-
-  /**
    * Park formundan geri çıkış — kayıt tamamen silinir ve keşfe dönülür.
    * Yalnız `parking` fazında geçerli: oturum bir kez başladıktan (active) sonra
    * çıkış yolu "Bitir"dir, sessizce silmek geçmişi bozar.
@@ -631,7 +575,6 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     set({
       phase: 'idle',
       session: null,
-      autoDetected: false,
       suggestedTariff: null,
       ocrState: 'idle',
       locationState: 'idle',

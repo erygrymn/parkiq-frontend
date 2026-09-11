@@ -28,9 +28,8 @@ const PRIVACY_URL = 'https://www.twiceapps.co/privacy';
 // işlevlerini satar. LA, Dynamic Island, widget ve bildirim uyarıları herkese ÜCRETSİZDİR.
 const FEATURES: Array<{
   symbol: SFSymbol;
-  key: 'proFeatureAuto' | 'proFeatureScan' | 'proFeatureFind' | 'proFeatureFilter' | 'proFeaturePool';
+  key: 'proFeatureScan' | 'proFeatureFind' | 'proFeatureFilter' | 'proFeaturePool';
 }> = [
-  { symbol: 'sensor.tag.radiowaves.forward', key: 'proFeatureAuto' },
   { symbol: 'camera.viewfinder', key: 'proFeatureScan' },
   { symbol: 'person.2.circle', key: 'proFeaturePool' },
   { symbol: 'location.north.circle', key: 'proFeatureFind' },

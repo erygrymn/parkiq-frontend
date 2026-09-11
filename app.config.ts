@@ -17,6 +17,25 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       // Xcode otomatik imzalamada "Time Sensitive Notifications" yeteneğini kendisi ekler.
       'com.apple.developer.usernotifications.time-sensitive': true,
     },
+    // Gizlilik manifesti (5.1.1/5.1.2). Required-reason API'lerini pod'lar kendi
+    // manifestleriyle beyan ediyor; burada beyan edilen şey UYGULAMANIN topladığı
+    // veri: tarife havuzu park koordinatını sunucuya yolluyor, dolayısıyla hassas
+    // konum "toplanıyor" sayılır. ATT yok, izleme yok. Bu tablo App Store Connect
+    // gizlilik etiketleriyle BİREBİR aynı kalmalı.
+    privacyManifests: {
+      NSPrivacyTracking: false,
+      NSPrivacyTrackingDomains: [],
+      NSPrivacyCollectedDataTypes: [
+        {
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePreciseLocation',
+          // Gönderim otopark başına türetilmiş bir özet taşıyor: kimliğe bağlı değil.
+          NSPrivacyCollectedDataTypeLinked: false,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+        },
+      ],
+      NSPrivacyAccessedAPITypes: [],
+    },
     infoPlist: {
       ...((config.ios?.infoPlist as Record<string, unknown>) ?? {}),
       // ActivityKit: Live Activity izni

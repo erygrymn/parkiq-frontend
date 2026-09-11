@@ -11,8 +11,9 @@
       "bundleIdentifier": "com.twiceapps.parkiq",
       "buildNumber": "5",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "ParkIQ saves where you parked so you can find your car later. Your location stays on this device.",
-        "NSCameraUsageDescription": "Take a photo of your parking spot, and point the camera to see the way back to your car. Photos and the camera feed stay on this device.",
+        "NSLocationWhenInUseUsageDescription": "ParkIQ saves where you parked so you can find your car later, and shows parking around you.",
+        "NSCameraUsageDescription": "Take a photo of your parking spot, read a tariff board, and point the camera to see the way back to your car.",
+        "NSPhotoLibraryAddUsageDescription": "So you can save a ParkIQ card to your photo library from the share sheet.",
         "ITSAppUsesNonExemptEncryption": false,
         "CFBundleLocalizations": [
           "en",

@@ -39,6 +39,8 @@ import { getLocale, t, upper } from '../localization';
 import { useSessionStore, type ParkSession, type ReminderKind } from '../state/sessionStore';
 import { useUiStore } from '../state/uiStore';
 import { useSettingsStore } from '../state/settingsStore';
+import { ConfirmSheet } from '../components/ConfirmSheet';
+import { LocationInvite } from '../screens/LocationGate';
 import { useTheme } from '../theme';
 import { CROSSFADE_MS, SPRING } from '../theme/motion';
 import { radius, spacing, typeScale } from '../theme/tokens';
@@ -168,6 +170,9 @@ export function IdleSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
 
   return (
     <View style={{ paddingHorizontal: spacing.s20, paddingBottom: spacing.s20, gap: spacing.s16 }}>
+      {/* İzin yoksa davet en üstte; verildiğinde kendi kendine kaybolur. */}
+      <LocationInvite />
+
       {/* Hedefi ara → ORANIN çevresindeki otoparklar (evden çıkmadan planlama). */}
       <SearchBar onPick={(result) => pinTo(result.coords)} onLocate={locateMe} />
 
@@ -412,8 +417,6 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   const pooledTariff = useSessionStore((s) => s.pooledTariff);
   const tariffSource = useSessionStore((s) => s.tariffSource);
   const cameraState = useSessionStore((s) => s.cameraState);
-  const autoDetected = useSessionStore((s) => s.autoDetected);
-  const dismissAutoPark = useSessionStore((s) => s.dismissAutoPark);
   const { setFloor, acceptSuggestedTariff, acceptPooledTariff, confirmDetails, setReminder, capturePhoto, scanTariff } =
     useSessionStore.getState();
   const cancelPark = useSessionStore((s) => s.cancelPark);
@@ -421,6 +424,16 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   const [customLevel, setCustomLevel] = useState(false);
   const [tariffOpen, setTariffOpen] = useState(false);
   const [undoVisible, setUndoVisible] = useState(true);
+
+  // Havuz rızası. Tam olarak tarifenin GİRİLDİĞİ anda sorulur: paylaşılacak bir şey
+  // ancak o an doğar ve park kaydının ilk iki saniyesi bölünmez. Tarife hiç girmeyen
+  // kullanıcıya hiç sorulmaz — ona zaten hiçbir şey gönderilmiyor.
+  const tariffPoolAsked = useSettingsStore((s) => s.tariffPoolAsked);
+  const hasTariff = session?.tariff != null;
+  const [poolAsk, setPoolAsk] = useState(false);
+  useEffect(() => {
+    if (hasTariff && !tariffPoolAsked) setPoolAsk(true);
+  }, [hasTariff, tariffPoolAsked]);
 
   // §7.3: "Undo" 10 sn görünür; sonra sheet'i aşağı çekmek geri alma yolu olarak kalır.
   useEffect(() => {
@@ -512,8 +525,6 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
       {(locationState === 'unavailable' || locationState === 'denied') && (
         <StatusLine label={t('locationMissing')} onPress={pickOnMap} />
       )}
-      {/* Oto-algılama tetiklediyse geri alma yolu açık kalır */}
-      {autoDetected && <StatusLine label={t('notParkedYet')} onPress={dismissAutoPark} />}
 
       {/* §7.3 hızlı sorular: form yok. Her soru tek dokunuşla cevaplanır ya da atlanır; yazı
           yalnız "Başka" seçilince istenir. Cevap → 180 ms → sıradaki soru; sorular bitince aktif. */}
@@ -662,6 +673,19 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
         <PrimaryCta label={lastStep ? t('done') : t('nextStep')} onPress={lastStep ? confirmDetails : advance} />
       </Animated.View>
 
+      {/* Kaçırmak da bir cevaptır ve "hayır"a sayılır: rıza sorusunda sessizlik izin değildir. */}
+      <ConfirmSheet
+        visible={poolAsk}
+        title={t('tariffPool')}
+        body={t('tariffPoolAsk')}
+        confirmLabel={t('tariffPoolShare')}
+        cancelLabel={t('tariffPoolKeep')}
+        onConfirm={() => useSettingsStore.getState().setTariffPool(true)}
+        onClose={() => {
+          setPoolAsk(false);
+          if (!useSettingsStore.getState().tariffPoolAsked) useSettingsStore.getState().setTariffPool(false);
+        }}
+      />
     </Animated.View>
   );
 }
