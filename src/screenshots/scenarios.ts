@@ -47,7 +47,7 @@ export function demoTariff(): Tariff {
 }
 
 /** Metro dev sunucusundan servis edilen paket içi foto — `expo-image` bunu açar. */
-function garagePhotoUri(): string | null {
+export function garagePhotoUri(): string | null {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     return Image.resolveAssetSource(require('./assets/garage.png') as number).uri ?? null;

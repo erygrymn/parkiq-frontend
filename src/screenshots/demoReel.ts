@@ -1,10 +1,10 @@
 import { useDiscoveryStore } from '../state/discoveryStore';
 import { useSessionStore } from '../state/sessionStore';
 import { useUiStore } from '../state/uiStore';
-import { DEMO_POIS, demoSession, demoTariff, resetDemoStores } from './scenarios';
+import { DEMO_POIS, demoSession, demoTariff, garagePhotoUri, resetDemoStores } from './scenarios';
 
 /**
- * UGC reklamının yan panelinde akan demo (28 sn). Kendi kendine oynar, dokunuş
+ * UGC reklamının yan panelinde akan demo (32 sn). Kendi kendine oynar, dokunuş
  * beklemez — ekran kaydı alırken elin kadraja girmesin diye.
  *
  * Zaman SIKIŞTIRILIR ama matematik sıkıştırılmaz: her tik'te oturumun
@@ -69,11 +69,32 @@ export function startDemoReel(): () => void {
         startClock(now);
       },
     },
-    // 0:13 — amber penceresinde bekle: "Now $5 · Next $10" okunacak kadar dursun.
-    { atMs: 13_000, run: () => stopClock() },
-    // 0:18 — çıkış. Kutlama kapağı: SAVED $5.
+    // 0:11 — amber penceresinde bekle: "Now $5 · Next $10" okunacak kadar dursun.
+    // (Replik 0:09–0:15 burayı anlatıyor, 0:15–0:19 kilit ekranı — o kare bu
+    // reel'den ÇIKMAZ, gerçek cihazda ayrıca çekilir.)
+    { atMs: 11_000, run: () => stopClock() },
+    // 0:19 — Arabamı Bul: kapalı otopark kartı. accuracyM yüksek olduğu için
+    // ekran pusulaya değil foto + kat kartına düşer; replik tam bunu anlatıyor.
     {
-      atMs: 18_000,
+      atMs: 19_000,
+      run: () => {
+        const live = useSessionStore.getState().session;
+        if (!live) return;
+        useSessionStore.setState({
+          phase: 'finding',
+          session: {
+            ...live,
+            floor: '3',
+            note: 'Blue pillar, left of the elevator',
+            photoUri: garagePhotoUri(),
+            accuracyM: 65,
+          },
+        });
+      },
+    },
+    // 0:25 — çıkış. Kutlama kapağı: SAVED $5.
+    {
+      atMs: 25_000,
       run: () => {
         const live = useSessionStore.getState().session;
         if (!live) return;
@@ -83,8 +104,8 @@ export function startDemoReel(): () => void {
         });
       },
     },
-    // 0:26 — başa dön; kayıt döngü halinde alınabilsin.
-    { atMs: 26_000, run: () => steps[0].run() },
+    // 0:31 — başa dön; kayıt döngü halinde alınabilsin.
+    { atMs: 31_000, run: () => steps[0].run() },
   ];
 
   function startClock(startedAtMs: number): void {

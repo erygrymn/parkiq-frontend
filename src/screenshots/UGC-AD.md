@@ -1,7 +1,7 @@
-# UGC reklamı — TikTok (28 sn)
+# UGC reklamı — TikTok (32 sn)
 
 Karakter tam kare 9:16 konuşur, **elleri boş**. App ekran kaydı sağ üstte yuvarlatılmış
-dikey kart olarak biner (kadrajın ~%34'ü), 0:09'da girer 0:24'te çıkar.
+dikey kart olarak biner (kadrajın ~%34'ü), 0:08'de girer 0:30'da çıkar.
 
 ## Karakter
 
@@ -24,11 +24,18 @@ masrafta inandırıcı olur; tipleme bunun için seçildi.
 | Zaman | Replik | Yan panel |
 |---|---|---|
 | 0:00–0:04 | "Every garage does the same thing to you. You come back nine minutes late, and it costs you double." | — |
-| 0:04–0:09 | "I park four, five times a week for client meetings. I was never checking. I'd come back whenever, and pay whatever." | — |
-| 0:09–0:16 | "This counts down to the minute the price goes up. Not the time — the *price*. It just says: leave now, five dollars. Stay, it's ten." | Sayaç akar → çubuk amber → "Now $5 · Next $10" |
-| 0:16–0:21 | "And it's on my lock screen. I'm not even opening the app, I just look." | Kilit ekranı + Live Activity |
-| 0:21–0:26 | "Three days in, it had already paid for itself. Which is not a big claim. I just didn't pay ten bucks, once." | Kutlama: SAVED $5. |
-| 0:26–0:28 | "ParkIQ. It's free to try." | İkon + wordmark |
+| 0:04–0:08 | "I park four, five times a week for client meetings. I was never checking. I'd come back whenever, and pay whatever." | — |
+| 0:08–0:15 | "This counts down to the minute the price goes up. Not the time — the *price*. It just says: leave now, five dollars. Stay, it's ten." | Sayaç akar → çubuk amber → "Now $5 · Next $10" |
+| 0:15–0:19 | "And it's on my lock screen. I'm not even opening the app, I just look." | Kilit ekranı + Live Activity |
+| 0:19–0:25 | "The other thing — level four of a garage looks exactly like level three. One tap when I park, and it keeps the spot, the floor, a photo. Coming back I just follow it." | Arabamı Bul: kat 3 + foto kartı |
+| 0:25–0:30 | "Three days in, it had already paid for itself. Which is not a big claim. I just didn't pay ten bucks, once." | Kutlama: SAVED $5. |
+| 0:30–0:32 | "ParkIQ. It's free to try." | İkon + wordmark |
+
+**Arabamı Bul beat'i neden "the other thing" diye giriyor:** reklamın omurgası para
+hikâyesi; araba bulma ikinci vaat. Öne alınsa iki ayrı ürün anlatılmış gibi dağılır.
+Buraya konunca "zaten indirdim, bir de bu varmış" etkisi yapıyor. Ayrıca aso.md §1'e göre
+`find my car` en yüksek hacimli sorgu — indirmeyi o kelime getiriyor, videoda hatırlatmak
+arama niyetiyle geleni doğruluyor.
 
 ## Neden son beat böyle
 
@@ -50,7 +57,8 @@ bir kez $5'lık dilim atlamamak zaten bir ayı karşılıyor. Rakam gerçekten t
 **Ayarlar > Geliştirici > Screenshot sahneleri > UGC demo · kendi akar (28 sn)**.
 
 Kendi kendine oynar, dokunuş beklemez — kayıt sırasında el kadraja girmesin diye. Döngüde:
-keşif → park damgası → sayaç 0'dan 52 dakikaya koşar → amber → SAVED $5 → başa dön.
+keşif → park damgası → sayaç 0'dan 52 dakikaya koşar → amber → Arabamı Bul (kat 3 + foto)
+→ SAVED $5 → başa dön. Beat'ler transkriptin saniyeleriyle hizalı.
 
 Zaman sıkıştırılıyor ama **matematik sıkıştırılmıyor**: her tik'te `startedAtMs` geriye
 itiliyor, çubuk ve sayaç bunu gerçek geçmiş süre sanıp `tariffMath`'ten normal yoldan
