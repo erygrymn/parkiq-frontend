@@ -27,6 +27,20 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
   },
   plugins: [
+    /*
+     * iOS tabanı 18.0.
+     *
+     * AlarmKit köprüsü (react-native-nitro-ios-alarm-kit) podspec'inde en az iOS 18
+     * istiyor; Expo'nun varsayılanıyla `pod install` "compatible versions" hatasıyla
+     * duruyordu. Alarmın kendisi zaten iOS 26+; taban 18 olunca eski sürümlerde app
+     * hiç kurulmuyor ama alarm sözü tutulabiliyor. Audie'de de aynı taban kullanılıyor.
+     */
+    [
+      'expo-build-properties',
+      {
+        ios: { deploymentTarget: '18.0' },
+      },
+    ],
     // expo-image: SDWebImage/AVIF/heic desteği için config plugin
     'expo-image',
     [
