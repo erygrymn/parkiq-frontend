@@ -294,4 +294,10 @@ export const ko: Record<CopyKey, string> = {
   tariffPool: '요금 공유',
   tariffPoolHint: '입력한 요금은 같은 주차장에 세우는 운전자에게, 그들의 요금은 당신에게 제안됩니다. 오가는 것은 장소의 요금이지 당신에 대한 정보가 아닙니다. 끄면 둘 다 하지 않습니다.',
   savedSoFarLead: 'ParkIQ가 이만큼 아껴 드렸습니다.',
+  // Soru akışı ilerletme + bitirme onayı (§7.3, §7.8)
+  nextStep: '다음',
+  endQuestion: '주차를 끝낼까요?',
+  endAndSave: '끝내고 {amount} 절약',
+  keep: '계속 주차',
+  alarmStop: '중지',
 };

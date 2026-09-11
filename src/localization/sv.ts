@@ -294,4 +294,10 @@ export const sv: Record<CopyKey, string> = {
   tariffPool: 'Dela taxor',
   tariffPoolHint: 'Din taxa föreslås för förare som parkerar på samma ställe, och deras för dig. Det är en plats pris som skickas, inget om dig. Av betyder ingetdera.',
   savedSoFarLead: 'Så mycket har ParkIQ redan sparat åt dig.',
+  // Soru akışı ilerletme + bitirme onayı (§7.3, §7.8)
+  nextStep: 'Nästa',
+  endQuestion: 'Avsluta parkeringen?',
+  endAndSave: 'Avsluta och spara {amount}',
+  keep: 'Stå kvar',
+  alarmStop: 'Stoppa',
 };

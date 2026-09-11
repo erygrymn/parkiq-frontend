@@ -21,6 +21,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       ...((config.ios?.infoPlist as Record<string, unknown>) ?? {}),
       // ActivityKit: Live Activity izni
       NSSupportsLiveActivities: true,
+      // AlarmKit (iOS 26+): "Sesli" hatırlatıcı sistem alarmı kurar — sessiz modu deler.
+      NSAlarmKitUsageDescription:
+        'ParkIQ schedules an alarm so your parking reminder rings even when the phone is on silent.',
     },
   },
   plugins: [

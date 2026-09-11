@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import { cancelParkAlarms, isAlarmAvailable, scheduleParkAlarm } from './alarm';
 import { formatDurationStamp, formatMoney } from './format';
 import { getLocale, t } from '../localization';
 import { listUpcomingBoundaries } from './tariffMath';
@@ -28,6 +29,39 @@ Notifications.setNotificationHandler({
 });
 
 export type NotificationPermission = 'granted' | 'denied';
+
+/**
+ * Kurulan sistem alarmlarının kimlikleri (SQLite `settings`).
+ *
+ * Alarmı iptal etmenin TEK yolu kimliğidir; app öldürülüp açılsa da bu liste kalır.
+ * Oturum bittiğinde/geri alındığında `cancelSessionAlerts` hepsini durdurur — çalmadan
+ * iptal edilme garantisi buradan gelir.
+ */
+const ALARM_IDS_KEY = 'alarmHandles';
+
+function repo() {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return require('../db/sessionRepo') as typeof import('../db/sessionRepo');
+}
+
+function readAlarmIds(): string[] {
+  try {
+    const raw = repo().readSetting(ALARM_IDS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeAlarmIds(ids: string[]): void {
+  try {
+    repo().writeSetting(ALARM_IDS_KEY, JSON.stringify(ids));
+  } catch {
+    /* yazılamazsa süpürme yolu (stopAllAlarms) yine de çalışır */
+  }
+}
 
 /**
  * İzin yalnız BAĞLAMINDA istenir (kullanıcı bir hatırlatıcı kurarken).
@@ -83,6 +117,10 @@ export async function cancelSessionAlerts(): Promise<void> {
   } catch {
     // Bildirim katmanı yoksa sessizce geç: sayaç ve tarife çubuğu etkilenmez.
   }
+  // Sistem alarmları bildirimlerden AYRI yaşar: park erken bitirilince ikisi de susmalı.
+  const ids = readAlarmIds();
+  writeAlarmIds([]);
+  await cancelParkAlarms(ids);
 }
 
 /**
@@ -98,11 +136,22 @@ async function scheduleAt(
   atMs: number,
   title: string | undefined,
   body: string,
-  options: { sound?: boolean; timeSensitive?: boolean } = {},
+  options: { sound?: boolean; timeSensitive?: boolean; alarm?: boolean } = {},
 ): Promise<void> {
   const sound = options.sound === true;
   const seconds = Math.round((atMs - Date.now()) / 1000);
   if (seconds <= 0) return;
+
+  /* "Sesli"/"Her ikisi" seçildiyse GERÇEK alarm kurulur (iOS 26+). Bildirim sessiz
+     moddaki telefonu uyandıramıyor; kullanıcının beklediği şey buydu. Alarm kurulduysa
+     yanına ayrıca bir de sesli bildirim koymayız — aynı an iki kez ötmesin. */
+  if (options.alarm && isAlarmAvailable()) {
+    const id = await scheduleParkAlarm(atMs, title ?? 'ParkIQ');
+    if (id) {
+      writeAlarmIds(readAlarmIds().concat(id));
+      return;
+    }
+  }
   await Notifications.scheduleNotificationAsync({
     content: {
       title,
@@ -171,7 +220,7 @@ export async function scheduleSessionAlerts(
           t('simpleReminder', {
             duration: formatDurationStamp(reminder.minutes * 60_000).toLowerCase(),
           }),
-          { sound: loud, timeSensitive: true },
+          { sound: loud, timeSensitive: true, alarm: loud },
         );
       } else {
         const wanted = reminder.anchor === 'beforeFirstTier' ? 1 : MAX_TIER_ALERTS;
@@ -187,7 +236,7 @@ export async function scheduleSessionAlerts(
               now: formatMoney(boundary.currentPrice, currency, locale),
               next: formatMoney(boundary.nextPrice, currency, locale),
             }),
-            { sound: loud, timeSensitive: true },
+            { sound: loud, timeSensitive: true, alarm: loud },
           );
         }
       }

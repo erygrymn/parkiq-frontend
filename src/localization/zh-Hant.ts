@@ -294,4 +294,10 @@ export const zhHant: Record<CopyKey, string> = {
   tariffPool: '分享費率',
   tariffPoolHint: '你輸入的費率會建議給停在同一個停車場的駕駛，他們的也會給你。傳的是一個地點的價格，不是你的資料。關閉時兩者都不會發生。',
   savedSoFarLead: 'ParkIQ 已經幫你省下這些。',
+  // Soru akışı ilerletme + bitirme onayı (§7.3, §7.8)
+  nextStep: '下一步',
+  endQuestion: '要結束這次停車嗎？',
+  endAndSave: '結束並省下 {amount}',
+  keep: '繼續停著',
+  alarmStop: '停止',
 };

@@ -293,5 +293,11 @@ export const en = {
   tariffPool: 'Share tariffs',
   tariffPoolHint: 'Your tariff is offered to other drivers who park at the same car park, and theirs to you. It carries the price of a place, not you. Off means neither.',
   savedSoFarLead: 'ParkIQ has already saved you this much.',
+  // Soru akışı ilerletme + bitirme onayı (§7.3, §7.8)
+  nextStep: 'Next',
+  endQuestion: 'End this session?',
+  endAndSave: 'End & save {amount}',
+  keep: 'Keep parking',
+  alarmStop: 'Stop',
 } as const;
 export type CopyKey = keyof typeof en;

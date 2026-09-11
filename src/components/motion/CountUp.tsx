@@ -66,6 +66,15 @@ export function CountUp({
   const parts = useMemo(() => splitFormat(format), [format]);
   const target = Math.round(Math.abs(value));
   const [measured, setMeasured] = useState(false);
+  /**
+   * Animasyon bitince sayı DÜZ metne devredilir.
+   *
+   * Animasyonlu TextInput'un son değeri yalnız Reanimated bir kare daha yazarsa
+   * doğru kalıyor; bileşen yeniden bağlandığında (paywall'da plan listesi gelince
+   * oluyordu) native alan `defaultValue`'suna, yani "₺0"a düşüyordu — sayaç yukarı
+   * sayıp sonunda sıfıra iniyordu. Düz metin bu sınıfın tamamını kapatır.
+   */
+  const [settled, setSettled] = useState(false);
   const progress = useSharedValue(0);
 
   const tickRef = useRef(onTick);
@@ -73,10 +82,14 @@ export function CountUp({
   const doneRef = useRef(onDone);
   doneRef.current = onDone;
   const tick = useCallback(() => tickRef.current?.(), []);
-  const done = useCallback(() => doneRef.current?.(), []);
+  const done = useCallback(() => {
+    setSettled(true);
+    doneRef.current?.();
+  }, []);
 
   useEffect(() => {
     if (!measured) return;
+    setSettled(false);
     if (reduced) {
       progress.value = 1;
       done();
@@ -115,7 +128,15 @@ export function CountUp({
       <Text style={[style, { opacity: 0 }]} onLayout={() => setMeasured(true)} allowFontScaling={false}>
         {finalText}
       </Text>
-      {measured && (
+      {settled && (
+        <Text
+          style={[style, { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, textAlign: 'right' }]}
+          allowFontScaling={false}
+        >
+          {finalText}
+        </Text>
+      )}
+      {measured && !settled && (
         <AnimatedTextInput
           editable={false}
           allowFontScaling={false}

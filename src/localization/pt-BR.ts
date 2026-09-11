@@ -294,4 +294,10 @@ export const ptBR: Record<CopyKey, string> = {
   tariffPool: 'Compartilhar tarifas',
   tariffPoolHint: 'Sua tarifa é sugerida a quem estaciona no mesmo lugar, e a deles a você. Viaja o preço de um local, nada sobre você. Desligado: nenhuma das duas.',
   savedSoFarLead: 'Foi isso que o ParkIQ já economizou para você.',
+  // Soru akışı ilerletme + bitirme onayı (§7.3, §7.8)
+  nextStep: 'Avançar',
+  endQuestion: 'Encerrar esta sessão?',
+  endAndSave: 'Encerrar e economizar {amount}',
+  keep: 'Continuar estacionado',
+  alarmStop: 'Parar',
 };

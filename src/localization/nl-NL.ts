@@ -294,4 +294,10 @@ export const nlNL: Record<CopyKey, string> = {
   tariffPool: 'Tarieven delen',
   tariffPoolHint: 'Jouw tarief wordt voorgesteld aan bestuurders bij dezelfde parkeerplaats, en dat van hen aan jou. Het gaat om de prijs van een plek, niet om jou. Uit betekent geen van beide.',
   savedSoFarLead: 'Dit heeft ParkIQ je al bespaard.',
+  // Soru akışı ilerletme + bitirme onayı (§7.3, §7.8)
+  nextStep: 'Volgende',
+  endQuestion: 'Deze sessie beëindigen?',
+  endAndSave: 'Beëindigen en {amount} besparen',
+  keep: 'Blijf staan',
+  alarmStop: 'Stop',
 };

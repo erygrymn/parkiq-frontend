@@ -349,6 +349,12 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       }
       active = null;
     }
+
+    // Aktif oturum yoksa hayalet alarm da olmamalı: app öldürülmüşken oturum silinmiş
+    // ya da bitmiş olabilir; kurulu bir sistem alarmı kalırsa park bitmiş olmasına
+    // rağmen telefon çalar.
+    if (!active) void cancelSessionAlerts();
+
     set(
       active
         ? {

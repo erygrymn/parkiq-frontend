@@ -273,9 +273,11 @@ foto seçici). Aynı anda tek aktif oturum. Cold start aktif oturum varsa doğru
 - "I Parked" → `impactMedium` → oturum ≤2 sn'de persist, ağ beklenmez. Bütün iş, ekstra detay
   eklenmezse, **10–15 saniyede** biter: I Parked + en fazla üç çip dokunuşu.
 - Sheet morph: `PARKED.` damgası (yeşil nokta, ekranın tek odağı) → "Undo" text (10 sn) → **form
-  değil, sırayla üç soru**. Her soru bir overline + 17/600 soru cümlesi + çip satırı; sağ üstte
-  "Skip". Çip = cevap (seçili durum yok); dokunuş seçimi 180 ms gösterir, sonra sıradaki soru
-  `CROSSFADE` ile gelir, yükseklik `LinearTransition`. Sorular bitince oturum aktife geçer.
+  değil, sırayla üç soru**. Her soru bir overline + 17/600 soru cümlesi + çip satırı; solda geri oku
+  (ilk sorudan sonra), sağ üstte "Skip". **Çip seçer, İLERLETMEZ:** ilerleten tek şey alttaki siyah
+  buton ("Next", son soruda "Done") ya da "Skip". Otomatik ilerleme kat seçip fotoğraf eklemeyi
+  imkânsız kılıyordu. Seçili çip oturumdan okunur, yani geri dönen kullanıcı kendi cevabını görür.
+  Geçişler `CROSSFADE`, yükseklik `LinearTransition`. Sorular bitince oturum aktife geçer.
   1. **Kat** — "Which level?": Ground · −1 · −2 · Other, TEK satır. Aynı yerde daha önce kat
      girildiyse o kat ilk çiptir (yeşil ton, kat hafızası). "Other" inline input açar (tek metin
      girişi bu) ve −4, C2, P3 gibi her şeyi karşılar; uzun kat listesi tarama işi çıkarıyordu.
@@ -388,6 +390,9 @@ açılmaz; foto/kat kartı oradaki doğru araçtır.
 
 ### 7.8 Bitirme + Kutlama (`ended`)
 
+- **Bitirme ONAY ister:** "End" / "Found it" / AR "Found it" panelin İÇİNDE bir onay bloğu açar —
+  soru satırı + ödenen/kazanılan + siyah "End & save ₺X" + ghost "Keep parking". Sistem alert yok,
+  ayrı ekran yok. Yanlışlıkla dokunmak sayacı sessizce kapatıyordu.
 - **Bitiş anı her zaman gerçek bir sayıdır:** `endSession` argümansız çağrılır; sayı olmayan her
   giriş "şimdi"ye düşer. Aksi hâlde kayıt yazılamıyor, oturum kapanmıyor ve sayaç yeniden açılışta
   devam ediyordu.
@@ -502,8 +507,14 @@ yoktur (yer adı ve kat da orada): park anından sonra girilen kat kilit ekranı
   animasyonsuz.
 - Bildirim: "Tier 2 in 15 min. Now ₺50, after ₺100." local, eşikten önce zamanlanır; ünlem yok.
   Dilim uyarısı **zaman duyarlıdır** (Odak modunu deler) ama sessizdir; ses kullanıcının hatırlatıcı
-  türü seçimidir ("Sesli"/"Her ikisi" → `sound: default`, app açıkken de duyulur). Sessiz moda
-  rağmen çalan gerçek alarm AlarmKit ister (iOS 26); kopya bunu dürüstçe söyler.
+  türü seçimidir.
+- **"Sesli" / "Her ikisi" GERÇEK alarm kurar** (Apple AlarmKit, iOS 26+): kilit ekranında çalar,
+  sessiz modu deler, app kapalıyken gelir. Bildirim sessizdeki telefonu uyandıramıyor, o yüzden
+  sözü tutan tek yol bu. Alarm kurulduysa aynı ana ayrıca sesli bildirim konmaz (çift ötme yok).
+  iOS 26 altında ve Expo Go'da alarm yoktur, sesli + zaman duyarlı bildirime düşülür.
+  **Alarmlar tek seferliktir** (mutlak zaman damgası, tekrar yok) ve kimlikleri cihazda saklanır;
+  oturum bitince, geri alınınca, silinince ve aktif oturumsuz her soğuk açılışta durdurulur.
+  Ertelemesi yoktur: park hatırlatıcısını ertelemek kullanıcıyı bir sonraki dilimin içinde bırakır.
 
 ## 9. Paylaşım kartları
 

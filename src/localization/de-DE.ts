@@ -294,4 +294,10 @@ export const deDE: Record<CopyKey, string> = {
   tariffPool: 'Tarife teilen',
   tariffPoolHint: 'Dein Tarif wird anderen Fahrern im selben Parkhaus vorgeschlagen, ihrer dir. Übertragen wird der Preis eines Ortes, nichts über dich. Aus heißt: beides nicht.',
   savedSoFarLead: 'So viel hat ParkIQ dir schon gespart.',
+  // Soru akışı ilerletme + bitirme onayı (§7.3, §7.8)
+  nextStep: 'Weiter',
+  endQuestion: 'Parkvorgang beenden?',
+  endAndSave: 'Beenden & {amount} sparen',
+  keep: 'Weiter parken',
+  alarmStop: 'Stopp',
 };

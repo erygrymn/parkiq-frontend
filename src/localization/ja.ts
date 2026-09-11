@@ -294,4 +294,10 @@ export const ja: Record<CopyKey, string> = {
   tariffPool: '料金を共有',
   tariffPoolHint: '入力した料金は同じ駐車場に停める人へ、相手の料金はあなたへ提案されます。送られるのは場所の料金で、あなたの情報ではありません。オフにすると両方とも行われません。',
   savedSoFarLead: 'ParkIQ がこれだけ節約しました。',
+  // Soru akışı ilerletme + bitirme onayı (§7.3, §7.8)
+  nextStep: '次へ',
+  endQuestion: 'この駐車を終了しますか？',
+  endAndSave: '終了して{amount}節約',
+  keep: '駐車を続ける',
+  alarmStop: '停止',
 };

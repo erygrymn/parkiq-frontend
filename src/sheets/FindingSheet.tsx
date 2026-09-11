@@ -17,6 +17,7 @@ import { getLocale, t } from '../localization';
 import { isArAvailable } from '../screens/ArFindMyCar';
 import { useIsPremium } from '../state/premiumStore';
 import { useSessionStore, type ParkSession } from '../state/sessionStore';
+import { EndConfirm } from './SessionSheets';
 import { useUiStore } from '../state/uiStore';
 import { useTheme } from '../theme';
 import { SPRING } from '../theme/motion';
@@ -148,7 +149,9 @@ export function FindingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   const locale = getLocale();
   const isPremium = useIsPremium();
   const session = useSessionStore((s) => s.session);
-  const { stopFinding, endSession } = useSessionStore.getState();
+  const { stopFinding } = useSessionStore.getState();
+  const endConfirm = useUiStore((s) => s.endConfirm);
+  const askEnd = useUiStore((s) => s.askEnd);
   const userFix = useUiStore((s) => s.userFix);
   const openAr = useUiStore((s) => s.openAr);
   const { denied } = useUserFix(true);
@@ -265,16 +268,20 @@ export function FindingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
         <StatusLine label={t('compassLocked')} onPress={onOpenPaywall} />
       )}
 
-      <View style={{ gap: spacing.s8 }}>
-        {/* Aramanın bittiği an oturum biter; kutlama kapağındaki Undo emniyet kemeridir (§7.8). */}
-        <PrimaryCta label={t('foundIt')} onPress={() => endSession()} />
-        <View style={{ flexDirection: 'row', gap: spacing.s8 }}>
-          {isPremium && !indoor && carCoords !== null && isArAvailable && (
-            <GhostButton label={t('arMode')} onPress={openAr} style={{ flex: 1 }} />
-          )}
-          <GhostButton label={t('openInMaps')} onPress={() => openInMaps(session)} disabled={!carCoords} style={{ flex: 1 }} />
+      {endConfirm ? (
+        <EndConfirm session={session} />
+      ) : (
+        <View style={{ gap: spacing.s8 }}>
+          {/* Aramanın bittiği an onay ister; blok aynı panelde açılır (§7.8). */}
+          <PrimaryCta label={t('foundIt')} onPress={askEnd} />
+          <View style={{ flexDirection: 'row', gap: spacing.s8 }}>
+            {isPremium && !indoor && carCoords !== null && isArAvailable && (
+              <GhostButton label={t('arMode')} onPress={openAr} style={{ flex: 1 }} />
+            )}
+            <GhostButton label={t('openInMaps')} onPress={() => openInMaps(session)} disabled={!carCoords} style={{ flex: 1 }} />
+          </View>
         </View>
-      </View>
+      )}
     </View>
   );
 }

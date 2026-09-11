@@ -35,9 +35,14 @@ interface UiStore {
   /** `finding` fazında kullanıcının son GPS düzeltmesi. FindingSheet yazar; harita çizgisi ve AR okur. */
   userFix: UserFix | null;
   setUserFix: (fix: UserFix | null) => void;
-  /** Panelin ekrandaki üst kenarı (px). Mapbox imzası bunun hemen üstüne oturur. */
-  sheetTop: number;
-  setSheetTop: (top: number) => void;
+  /**
+   * Bitirme onayı (§7.8). Tek dokunuşla bitirmek yanlışlıkla basıldığında sayacı
+   * sessizce kapatıyordu; onay panelin İÇİNDE bir blok olarak açılır, ayrı ekran yok.
+   * AR'dan "buldum" da buraya düşer.
+   */
+  endConfirm: boolean;
+  askEnd: () => void;
+  cancelEnd: () => void;
   /** §7.9 Geçmiş: kök sheet sahnesi. Noktalar haritada; seçili oturuma kamera uçar. */
   historyOpen: boolean;
   historySelectedId: string | null;
@@ -61,8 +66,9 @@ export const useUiStore = create<UiStore>((set) => ({
   closeAr: () => set({ arOpen: false }),
   userFix: null,
   setUserFix: (fix) => set({ userFix: fix }),
-  sheetTop: 0,
-  setSheetTop: (top) => set({ sheetTop: top }),
+  endConfirm: false,
+  askEnd: () => set({ endConfirm: true }),
+  cancelEnd: () => set({ endConfirm: false }),
   historyOpen: false,
   historySelectedId: null,
   historySpots: [],

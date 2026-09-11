@@ -13,7 +13,7 @@ export function ArOverlay() {
   const session = useSessionStore((s) => s.session);
   const userFix = useUiStore((s) => s.userFix);
   const closeAr = useUiStore((s) => s.closeAr);
-  const { endSession } = useSessionStore.getState();
+
 
   if (!session || session.latitude == null || session.longitude == null) return null;
   const car = { latitude: session.latitude, longitude: session.longitude };
@@ -33,8 +33,9 @@ export function ArOverlay() {
         floor={session.floor || null}
         onClose={closeAr}
         onFound={() => {
+          // AR kapanır, onay bloğu Arabamı Bul panelinde açılır — kamera üstünde soru sorulmaz.
           closeAr();
-          endSession();
+          useUiStore.getState().askEnd();
         }}
       />
     </Animated.View>

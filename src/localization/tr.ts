@@ -282,4 +282,10 @@ export const tr: Record<CopyKey, string> = {
   tariffPool: 'Tarifeleri paylaş',
   tariffPoolHint: 'Girdiğin tarife aynı otoparka park eden sürücülere önerilir, onlarınki de sana. Giden şey bir yerin fiyatı, sana ait bir şey değil. Kapalıyken ikisi de olmaz.',
   savedSoFarLead: 'ParkIQ bunu senin için biriktirdi.',
+  // Soru akışı ilerletme + bitirme onayı (§7.3, §7.8)
+  nextStep: 'Devam',
+  endQuestion: 'Oturum bitirilsin mi?',
+  endAndSave: 'Bitir ve {amount} biriktir',
+  keep: 'Devam et',
+  alarmStop: 'Durdur',
 };

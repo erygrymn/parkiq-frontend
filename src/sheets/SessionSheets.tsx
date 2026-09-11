@@ -36,6 +36,7 @@ import { computeExitSummary, computeTariffState } from '../lib/tariffMath';
 import { appliesAt } from '../lib/tariffSchedule';
 import { getLocale, t, upper } from '../localization';
 import { useSessionStore, type ParkSession, type ReminderKind } from '../state/sessionStore';
+import { useUiStore } from '../state/uiStore';
 import { useSettingsStore } from '../state/settingsStore';
 import { useTheme } from '../theme';
 import { CROSSFADE_MS, SPRING } from '../theme/motion';
@@ -349,13 +350,38 @@ function parkSteps(hasTariff: boolean): ParkStep[] {
   return hasTariff ? ['level', 'tariff'] : ['level', 'tariff', 'remind'];
 }
 
-/** Soru başlığı satırı: overline + sağda "Atla". */
-function StepHeader({ label, question, onSkip }: { label: string; question: string; onSkip: () => void }) {
+/** Soru başlığı satırı: solda geri oku (ilk sorudan sonra), overline, sağda "Atla". */
+function StepHeader({
+  label,
+  question,
+  onSkip,
+  onBack,
+}: {
+  label: string;
+  question: string;
+  onSkip: () => void;
+  /** Verilirse önceki soruya dönülür — yanlış işaretlenen cevap düzeltilebilsin. */
+  onBack?: () => void;
+}) {
   const { colors } = useTheme();
   return (
     <View style={{ gap: spacing.s4 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Overline>{label}</Overline>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s8 }}>
+          {onBack && (
+            <Pressable accessibilityRole="button" accessibilityLabel={t('back')} onPress={onBack} hitSlop={12}>
+              {({ pressed }) => (
+                <SymbolView
+                  name="chevron.left"
+                  size={13}
+                  tintColor={pressed ? colors.ink : colors.textSecondary}
+                  weight="semibold"
+                />
+              )}
+            </Pressable>
+          )}
+          <Overline>{label}</Overline>
+        </View>
         <Pressable accessibilityRole="button" onPress={onSkip} hitSlop={12} style={{ height: 32, justifyContent: 'center' }}>
           {({ pressed }) => (
             <Text style={{ fontSize: 13, fontWeight: '600', color: pressed ? colors.ink : colors.textSecondary }}>{t('skip')}</Text>
@@ -369,9 +395,6 @@ function StepHeader({ label, question, onSkip }: { label: string; question: stri
   );
 }
 
-/** Seçim görünsün diye cevap 180 ms ekranda kalır, sonra sıradaki soru gelir. */
-const ANSWER_HOLD_MS = 180;
-
 export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   const { colors } = useTheme();
   const session = useSessionStore((s) => s.session);
@@ -379,6 +402,7 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   const suggestedTariff = useSessionStore((s) => s.suggestedTariff);
   const suggestedFloor = useSessionStore((s) => s.suggestedFloor);
   const pooledTariff = useSessionStore((s) => s.pooledTariff);
+  const tariffSource = useSessionStore((s) => s.tariffSource);
   const cameraState = useSessionStore((s) => s.cameraState);
   const autoDetected = useSessionStore((s) => s.autoDetected);
   const dismissAutoPark = useSessionStore((s) => s.dismissAutoPark);
@@ -386,19 +410,14 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
     useSessionStore.getState();
   const cancelPark = useSessionStore((s) => s.cancelPark);
   const [stepIndex, setStepIndex] = useState(0);
-  const [answered, setAnswered] = useState<string | null>(null);
   const [customLevel, setCustomLevel] = useState(false);
   const [tariffOpen, setTariffOpen] = useState(false);
   const [undoVisible, setUndoVisible] = useState(true);
-  const holdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // §7.3: "Undo" 10 sn görünür; sonra sheet'i aşağı çekmek geri alma yolu olarak kalır.
   useEffect(() => {
     const id = setTimeout(() => setUndoVisible(false), 10_000);
-    return () => {
-      clearTimeout(id);
-      if (holdRef.current) clearTimeout(holdRef.current);
-    };
+    return () => clearTimeout(id);
   }, []);
 
   // Pin bırakılırken bu panel tamamen unmount olur; dönüşte sorular baştan başlar (hepsi atlanabilir).
@@ -415,21 +434,22 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
     useSessionStore.getState().startPickingLocation('park');
   };
 
-  // Sıradaki soru; soru kalmadıysa oturum aktife geçer. Adım listesi o anki tarifeye göre hesaplanır
-  // (tarife girildiyse hatırlatma sorusu düşer).
+  /**
+   * Sıradaki soru; soru kalmadıysa oturum aktife geçer.
+   *
+   * Çip seçimi ARTIK kendiliğinden ilerletmiyor: kat seçip fotoğraf eklemek isteyen
+   * kullanıcı soru altından kayıyordu. İlerleten tek şey alttaki buton ya da "Atla".
+   */
   const advance = () => {
     const steps = parkSteps(useSessionStore.getState().session?.tariff != null);
     const next = stepIndex + 1;
-    setAnswered(null);
     setCustomLevel(false);
     if (next >= steps.length) confirmDetails();
     else setStepIndex(next);
   };
-  const answer = (key: string | number, apply: () => void) => {
-    setAnswered(String(key));
-    apply();
-    if (holdRef.current) clearTimeout(holdRef.current);
-    holdRef.current = setTimeout(advance, ANSWER_HOLD_MS);
+  const back = () => {
+    setCustomLevel(false);
+    setStepIndex((i) => Math.max(0, i - 1));
   };
 
   if (!session) return null;
@@ -437,6 +457,24 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   const steps = parkSteps(session.tariff != null);
   const step = steps[Math.min(stepIndex, steps.length - 1)];
   const levelKeys = ['G', '−1', '−2'];
+  const lastStep = stepIndex >= steps.length - 1;
+
+  /* Seçili çip yerel bir "cevapladı" bayrağından değil OTURUMDAN okunur; yoksa geri
+     dönen kullanıcı kendi cevabını göremiyordu. */
+  const groundLabel = t('ground');
+  const levelValue = customLevel
+    ? 'other'
+    : session.floor === ''
+      ? null
+      : session.floor === suggestedFloor
+        ? 'last'
+        : session.floor === groundLabel
+          ? 'G'
+          : levelKeys.includes(session.floor)
+            ? session.floor
+            : 'other';
+  const tariffValue = session.tariff === null ? null : tariffSource === 'pool' ? 'pool' : 'enter';
+  const reminderValue = session.reminder ? session.reminder.minutes : null;
 
   // Yer adı META'dır: nokta hakkı duygu damgasınındır (§2 tie-breaker).
   const overline = [
@@ -491,13 +529,13 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
                   .map((k) => ({ key: k, label: k === 'G' ? t('ground') : k })),
                 { key: 'other', label: t('otherLevel') },
               ]}
-              value={answered ?? (customLevel ? 'other' : null)}
+              value={levelValue}
               onChange={(key) => {
                 if (key === 'other') {
                   setCustomLevel(true);
                   return;
                 }
-                answer(key, () => setFloor(key === 'last' ? (suggestedFloor ?? '') : key === 'G' ? t('ground') : key));
+                setFloor(key === 'last' ? (suggestedFloor ?? '') : key === 'G' ? groundLabel : key);
               }}
             />
             {customLevel && (
@@ -524,7 +562,7 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
 
         {step === 'tariff' && (
           <>
-            <StepHeader label={t('tariff')} question={t('qTariff')} onSkip={advance} />
+            <StepHeader label={t('tariff')} question={t('qTariff')} onSkip={advance} onBack={back} />
             <ChipGroup<string>
               options={[
                 ...(suggestedTariff
@@ -537,18 +575,17 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
                 { key: 'enter', label: t('enterTariff') },
                 { key: 'scan', label: t('scanShort') },
               ]}
-              value={answered}
+              value={tariffValue}
               onChange={(key) => {
                 if (key === 'last') {
-                  answer(key, acceptSuggestedTariff);
+                  acceptSuggestedTariff();
                   return;
                 }
                 if (key === 'pool') {
-                  answer(key, acceptPooledTariff);
+                  acceptPooledTariff();
                   return;
                 }
                 // Form aynı panelin içinde açılır: üst üste binen ikinci bir sheet yok (İlke 9).
-                setAnswered(key);
                 setTariffOpen(true);
                 if (key === 'scan') scanTariff();
               }}
@@ -565,24 +602,26 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
 
         {step === 'remind' && (
           <>
-            <StepHeader label={t('remindMe')} question={t('qRemind')} onSkip={advance} />
+            <StepHeader label={t('remindMe')} question={t('qRemind')} onSkip={advance} onBack={back} />
             <ChipGroup<number>
               options={[
                 // "1 sa" tek başına belirsizdi: park anından mı, fiyat artışından mı sayılıyor?
                 ...[1, 2, 3, 4].map((h) => ({ key: h * 60, label: t('inHoursAfter', { hours: h }) })),
                 { key: 0, label: t('reminderOff') },
               ]}
-              value={answered === null ? null : Number(answered)}
+              value={reminderValue}
               onChange={(minutes) =>
-                answer(minutes, () => setReminder(minutes === 0 ? null : { anchor: 'afterPark', minutes, kind: 'notification' }))
+                setReminder(minutes === 0 ? null : { anchor: 'afterPark', minutes, kind: 'notification' })
               }
             />
           </>
         )}
       </Animated.View>
 
+      {/* Tek siyah buton: sorular bitene kadar ilerletir, son soruda oturumu başlatır.
+          Çipe dokunmak artık ilerletmiyor — kat seçip fotoğraf da eklenebilsin. */}
       <Animated.View layout={layoutSpring}>
-        <PrimaryCta label={t('done')} onPress={confirmDetails} />
+        <PrimaryCta label={lastStep ? t('done') : t('nextStep')} onPress={lastStep ? confirmDetails : advance} />
       </Animated.View>
 
     </Animated.View>
@@ -726,13 +765,56 @@ function reminderSummaryOf(session: ParkSession): string | null {
   );
 }
 
+/**
+ * Bitirme onayı: panelin içinde açılan blok, ayrı ekran ya da sistem alert değil.
+ * Aktif oturumda da, Arabamı Bul'da da aynı blok kullanılır.
+ */
+export function EndConfirm({ session }: { session: ParkSession }) {
+  const { colors } = useTheme();
+  const locale = getLocale();
+  const now = useNow(30_000);
+  const { endSession } = useSessionStore.getState();
+  const cancelEnd = useUiStore((s) => s.cancelEnd);
+  const exit = computeExitSummary(session.tariff, session.startedAtMs, now);
+  const currency = session.tariff?.currency;
+  const saved = exit.saved !== null && exit.saved > 0 && currency;
+
+  return (
+    <Animated.View entering={FadeIn.duration(CROSSFADE_MS)} layout={layoutSpring} style={{ gap: spacing.s12 }}>
+      <View style={{ gap: spacing.s4 }}>
+        <Text style={{ fontSize: 17, fontWeight: '600', color: colors.ink }}>{t('endQuestion')}</Text>
+        {exit.paid !== null && currency && (
+          <Caption>
+            {`${t('paid')} ${formatMoney(exit.paid, currency, locale)}`}
+            {saved && exit.saved !== null ? ` · ${t('avoided')} ${formatMoney(exit.saved, currency, locale)}` : ''}
+          </Caption>
+        )}
+      </View>
+      <PrimaryCta
+        label={
+          saved && exit.saved !== null && currency
+            ? t('endAndSave', { amount: formatMoney(exit.saved, currency, locale) })
+            : t('endSession')
+        }
+        onPress={() => {
+          cancelEnd();
+          endSession();
+        }}
+      />
+      <GhostButton label={t('keep')} onPress={cancelEnd} />
+    </Animated.View>
+  );
+}
+
 export function ActiveSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   const { colors } = useTheme();
   const session = useSessionStore((s) => s.session);
   const notificationState = useSessionStore((s) => s.notificationState);
   const cameraState = useSessionStore((s) => s.cameraState);
-  const { endSession, startFinding, startPickingLocation, setFloor, setNote, setBackdateMinutes, capturePhoto, removePhoto } =
+  const { startFinding, startPickingLocation, setFloor, setNote, setBackdateMinutes, capturePhoto, removePhoto } =
     useSessionStore.getState();
+  const endConfirm = useUiStore((s) => s.endConfirm);
+  const askEnd = useUiStore((s) => s.askEnd);
   const online = useNetworkStore((s) => s.online);
   const warnThresholdMin = useSettingsStore((s) => s.warnThresholdMin);
   const [tariffOpen, setTariffOpen] = useState(false);
@@ -907,20 +989,24 @@ export function ActiveSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
         </Field>
       </View>
 
-      <View style={{ gap: spacing.s8 }}>
-        {/* Ekranın tek siyah CTA'sı: dönüş anı. Arabamı Bul bir sheet fazıdır (§7.6). */}
-        <PrimaryCta label={t('findMyCar')} onPress={startFinding} />
-        <View style={{ flexDirection: 'row', gap: spacing.s8 }}>
-          <GhostButton
-            label={t('shareLocation')}
-            onPress={() => void shareParkedLocation(session, t('shareMessage'))}
-            disabled={!hasLocation}
-            style={{ flex: 1 }}
-          />
-          {/* Tek dokunuşla biter; emniyet kemeri kutlama kapağındaki "Undo" (§7.8). Onay ekranı yok. */}
-          <GhostButton label={t('endSession')} onPress={() => endSession()} style={{ flex: 1 }} />
+      {endConfirm ? (
+        <EndConfirm session={session} />
+      ) : (
+        <View style={{ gap: spacing.s8 }}>
+          {/* Ekranın tek siyah CTA'sı: dönüş anı. Arabamı Bul bir sheet fazıdır (§7.6). */}
+          <PrimaryCta label={t('findMyCar')} onPress={startFinding} />
+          <View style={{ flexDirection: 'row', gap: spacing.s8 }}>
+            <GhostButton
+              label={t('shareLocation')}
+              onPress={() => void shareParkedLocation(session, t('shareMessage'))}
+              disabled={!hasLocation}
+              style={{ flex: 1 }}
+            />
+            {/* Bitirme ONAY ister: yanlışlıkla dokunmak sayacı sessizce kapatıyordu. */}
+            <GhostButton label={t('endSession')} onPress={askEnd} style={{ flex: 1 }} />
+          </View>
         </View>
-      </View>
+      )}
     </Animated.View>
   );
 }
