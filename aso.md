@@ -393,6 +393,9 @@ Sıra: **1 para, 2 araba bulma, 3 tasarruf kanıtı, 4 reklamsızlık, 5 kilit e
 | 4 | Sade tipografik kare (ürün ekranı değil) | **No ads. No account. No sign-up.** | **Reklam yok. Hesap yok. Kayıt yok.** |
 | 5 | Kilit ekranı + Dynamic Island geri sayım | The countdown, without opening the app | Geri sayım, uygulamayı açmadan |
 
+Kare kare ne anlattığı, birebir kopya ve sanat yönetimi kuralları:
+[screenshots-brief.md](screenshots-brief.md).
+
 **Set 2026-09-12'de 5 kareye indi.** Tarife panosu okuma (eski 6) ve harita (eski 7)
 çıkarıldı. Haritanın bedeli açık: "en yakın otopark nerede" — ürünün üç temel
 sorusundan biri — mağazada hiç görünmüyor. Kaydırmayan kullanıcı zaten ilk ikiyi
