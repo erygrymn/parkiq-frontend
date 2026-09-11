@@ -260,6 +260,26 @@ export function saveSession(session: ParkSession): void {
   );
 }
 
+/**
+ * Oturumu kapatan TEK doğruluk kaynağı: hedefli UPDATE.
+ *
+ * `saveSession` tüm satırı INSERT OR REPLACE ile yazıyor; o yazım herhangi bir sebeple
+ * düşerse (bir alan bağlanamaz, kayıt yarıda kalır) kayıt AÇIK kalıyor ve uygulama
+ * yeniden açıldığında park sürüyormuş gibi geri geliyordu. Bu fonksiyon yalnız tek
+ * sütuna dokunur, bu yüzden bağlanamayacak bir şey yok.
+ */
+export function closeSession(id: string, endedAtMs: number): void {
+  getDb().runSync('UPDATE sessions SET endedAtMs = ? WHERE id = ? AND endedAtMs IS NULL', [endedAtMs, id]);
+}
+
+/** Kapanmamış TÜM kayıtlar, yenisi önce. Normalde en fazla bir tane olur. */
+export function listOpenSessions(): ParkSession[] {
+  const rows = getDb().getAllSync<SessionRow>(
+    'SELECT * FROM sessions WHERE endedAtMs IS NULL ORDER BY startedAtMs DESC',
+  );
+  return rows.map(rowToSession);
+}
+
 export function getActiveSession(): ParkSession | null {
   const row = getDb().getFirstSync<SessionRow>(
     'SELECT * FROM sessions WHERE endedAtMs IS NULL ORDER BY startedAtMs DESC LIMIT 1',

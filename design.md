@@ -393,6 +393,7 @@ açılmaz; foto/kat kartı oradaki doğru araçtır.
 - **Bitirme ONAY ister:** "End" / "Found it" / AR "Found it" panelin İÇİNDE bir onay bloğu açar —
   soru satırı + ödenen/kazanılan + siyah "End & save ₺X" + ghost "Keep parking". Sistem alert yok,
   ayrı ekran yok. Yanlışlıkla dokunmak sayacı sessizce kapatıyordu.
+- **Bitiş KALICIDIR:** kapanış hedefli bir UPDATE ile yazılır ve hemen okunarak doğrulanır; satır hâlâ açıksa satır yeniden yazılır, o da tutmazsa silinir. Aynı anda tek aktif oturum kuralı açılışta da uygulanır: birden fazla açık kayıt varsa en yenisi tutulur, yetimler silinir.
 - **Bitiş anı her zaman gerçek bir sayıdır:** `endSession` argümansız çağrılır; sayı olmayan her
   giriş "şimdi"ye düşer. Aksi hâlde kayıt yazılamıyor, oturum kapanmıyor ve sayaç yeniden açılışta
   devam ediyordu.

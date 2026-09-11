@@ -333,7 +333,16 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     if (get().hydrated) return;
     let active: ParkSession | null = null;
     try {
-      active = repo().getActiveSession();
+      /* Aynı anda TEK aktif oturum kuralı: birden fazla açık kayıt ancak bir yazım
+         hatasından doğar (eski sürümlerde bitiş anı NaN olunca kayıt açık kalıyordu).
+         En yenisi tutulur, geri kalan yetimler silinir — yoksa her açılışta sırayla
+         geri gelip "park bitmiyor" gibi görünüyorlar. */
+      const open = repo().listOpenSessions();
+      active = open.length > 0 ? open[0] : null;
+      for (const orphan of open.slice(1)) {
+        if (orphan.photoUri) deleteSpotPhoto(orphan.photoUri);
+        repo().deleteSession(orphan.id);
+      }
     } catch {
       active = null;
     }
@@ -839,6 +848,21 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       typeof endedAtMs === 'number' && Number.isFinite(endedAtMs) ? Math.max(session.startedAtMs, endedAtMs) : Date.now();
     const next = { ...session, endedAtMs: at };
     persist(next);
+    // Kapanış AYRICA hedefli bir UPDATE ile yazılır ve okunarak doğrulanır: "bitirdim ama
+    // uygulamayı açınca park sürüyor" tam olarak bu yazımın sessizce düşmesiydi.
+    try {
+      repo().closeSession(next.id, at);
+      const stillOpen = repo().getActiveSession();
+      if (stillOpen && stillOpen.id === next.id) {
+        // Kayıt hâlâ açık: satırı komple yeniden yaz, o da olmazsa sil — yeniden açılışta
+        // hayalet bir sayaçla dönmesindense kaybolması iyidir.
+        repo().saveSession(next);
+        const check = repo().getActiveSession();
+        if (check && check.id === next.id) repo().deleteSession(next.id);
+      }
+    } catch {
+      /* depo yoksa bellek durumu yine doğru; sonraki açılışta süpürme devreye girer */
+    }
     set({ phase: 'ended', session: next });
     void cancelSessionAlerts(); // §8.4: oturum bitince zamanlanmış uyarılar iptal
     syncLiveActivity('end');
