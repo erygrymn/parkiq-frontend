@@ -29,6 +29,11 @@ if (!MAPBOX_PUBLIC_TOKEN) {
   );
 }
 Mapbox.setAccessToken(MAPBOX_PUBLIC_TOKEN);
+// Mapbox SDK varsayılan olarak kendi telemetrisini toplar (konum + cihaz verisi,
+// Mapbox'ın amaçları için). Kapalı: ParkIQ'nun gizlilik etiketinde "üçüncü taraf
+// konum topluyor" satırı olmasın, kullanıcının konumu yalnız harita karosu
+// isteğinde ve rıza verdiği tarife havuzunda dolaşsın.
+Mapbox.setTelemetryEnabled(false);
 
 const DEFAULT_ZOOM = 15.5;
 
