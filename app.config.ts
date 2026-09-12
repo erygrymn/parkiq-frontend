@@ -25,13 +25,52 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     privacyManifests: {
       NSPrivacyTracking: false,
       NSPrivacyTrackingDomains: [],
+      // Her satır App Store Connect'teki App Privacy etiketiyle BİREBİR aynı olmalı.
+      // RevenueCat kendi manifestini pod'uyla getiriyor (IDFV, app user ID, satın alma);
+      // Twice SDK bizim olduğu için onun topladıkları BURADA beyan ediliyor.
       NSPrivacyCollectedDataTypes: [
         {
+          // Tarife havuzu: rızayla, park koordinatı sunucuya gidiyor.
           NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePreciseLocation',
           // Gönderim otopark başına türetilmiş bir özet taşıyor: kimliğe bağlı değil.
           NSPrivacyCollectedDataTypeLinked: false,
           NSPrivacyCollectedDataTypeTracking: false,
           NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+        },
+        {
+          // Tarife havuzu: kullanıcının girdiği fiyat (kullanıcı içeriği).
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeOtherUserContent',
+          NSPrivacyCollectedDataTypeLinked: false,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+        },
+        {
+          // Twice: rastgele kurulum kimliği (twice_user_id) — hesap yok, kişiye bağlanmıyor.
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeUserID',
+          NSPrivacyCollectedDataTypeLinked: false,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAnalytics'],
+        },
+        {
+          // Twice: park_started / park_ended / paywall_shown gibi ürün olayları.
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeProductInteraction',
+          NSPrivacyCollectedDataTypeLinked: false,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAnalytics'],
+        },
+        {
+          // Twice: satın alma olayları (ürün kimliği, fiyat, para birimi) panoya iletiliyor.
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePurchaseHistory',
+          NSPrivacyCollectedDataTypeLinked: false,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAnalytics'],
+        },
+        {
+          // Twice: tipli hata olayları + OS / uygulama sürümü.
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeOtherDiagnosticData',
+          NSPrivacyCollectedDataTypeLinked: false,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAnalytics'],
         },
       ],
       NSPrivacyAccessedAPITypes: [],
