@@ -65,9 +65,12 @@ export function demoSession(overrides: Partial<ParkSession>): ParkSession {
     floor: '',
     note: '',
     tariff: null,
-    latitude: 41.8827,
-    longitude: -87.6294,
-    placeName: 'Dearborn Garage',
+    // Simülatörün varsayılan konumu SF Union Square. Araba Chicago'dayken Arabamı
+    // Bul haritası ikisini de kadraja alıp Kanada'yı gösteriyordu; mock araba artık
+    // simülatörün kendi konumunun 200 m yakınında.
+    latitude: 37.7872,
+    longitude: -122.4091,
+    placeName: 'Ellis Street Garage',
     photoUri: null,
     reminder: null,
     accuracyM: 8,
@@ -81,11 +84,11 @@ export function demoSession(overrides: Partial<ParkSession>): ParkSession {
  * (üçüncü parti ticari marka) kapısına girer, sokak adı girmez.
  */
 export const DEMO_POIS: ParkingPoi[] = [
-  { id: 'way/1', kind: 'parking', name: 'Dearborn Garage', latitude: 41.8831, longitude: -87.6292, covered: true, hasCharging: true, distanceM: 90 },
-  { id: 'way/2', kind: 'parking', name: 'Franklin Street Parking', latitude: 41.8804, longitude: -87.6351, covered: true, hasCharging: true, distanceM: 340 },
-  { id: 'way/3', kind: 'parking', name: 'Riverside Lot', latitude: 41.8869, longitude: -87.6318, covered: false, hasCharging: true, distanceM: 520 },
-  { id: 'node/4', kind: 'charging', name: 'Adams St Chargers', latitude: 41.8796, longitude: -87.6265, covered: null, hasCharging: true, distanceM: 210 },
-  { id: 'node/5', kind: 'charging', name: 'Wacker Drive Charging', latitude: 41.8873, longitude: -87.6355, covered: null, hasCharging: true, distanceM: 610 },
+  { id: 'way/1', kind: 'parking', name: 'Ellis Street Garage', latitude: 37.7872, longitude: -122.4091, covered: true, hasCharging: true, distanceM: 90 },
+  { id: 'way/2', kind: 'parking', name: 'Mission Street Parking', latitude: 37.7851, longitude: -122.4047, covered: true, hasCharging: true, distanceM: 340 },
+  { id: 'way/3', kind: 'parking', name: 'Stockton Lot', latitude: 37.7903, longitude: -122.4068, covered: false, hasCharging: true, distanceM: 520 },
+  { id: 'node/4', kind: 'charging', name: 'Geary St Chargers', latitude: 37.7869, longitude: -122.4056, covered: null, hasCharging: true, distanceM: 210 },
+  { id: 'node/5', kind: 'charging', name: 'Market St Charging', latitude: 37.7856, longitude: -122.4130, covered: null, hasCharging: true, distanceM: 610 },
 ];
 
 export function resetDemoStores(): void {
