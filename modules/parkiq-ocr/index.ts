@@ -1,11 +1,17 @@
 import { requireNativeModule } from 'expo-modules-core';
 
-// Cihaz üstü OCR köprüsü. Native modül yalnız `expo run:ios` build'inde var;
-// Expo Go'da yükleme başarısız olur → çağıran taraf null alır ve elle girişe düşer.
+// Cihaz üstü OCR köprüsü — iOS'ta Apple Vision, Android'de ML Kit (paketle gelen
+// model). İkisi de tamamen cihazda çalışır: fotoğraf telefondan çıkmaz. Native modül
+// yalnız dev build'de var; Expo Go'da yükleme başarısız olur → çağıran taraf null
+// alır ve elle girişe düşer.
 
 /**
  * Tanınan tek bir metin bloğu. Koordinatlar 0–1 normalize, origin SOL-ALT
  * (Vision'ın kendi uzayı): `y` büyüdükçe yukarı çıkar.
+ *
+ * Bu uzay SÖZLEŞMEDİR: ML Kit sol-ÜST piksel veriyor ve Android modülü çevirerek
+ * gönderiyor. Çeviri bozulursa pano baş aşağı okunur ve her fiyat bir sonraki
+ * dilimle eşleşir — sessizce yanlış tarife üretir.
  */
 export interface OcrBlock {
   text: string;

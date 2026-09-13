@@ -1,6 +1,6 @@
 import { SymbolView, type SFSymbol } from 'expo-symbols';
 import { useEffect, useMemo } from 'react';
-import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PrimaryCta } from '../components/Buttons';
@@ -28,11 +28,18 @@ const PRIVACY_URL = 'https://www.twiceapps.co/privacy';
 // işlevlerini satar. LA, Dynamic Island, widget ve bildirim uyarıları herkese ÜCRETSİZDİR.
 const FEATURES: Array<{
   symbol: SFSymbol;
-  key: 'proFeatureScan' | 'proFeatureFind' | 'proFeatureFilter' | 'proFeaturePool';
+  key: 'proFeatureScan' | 'proFeatureFind' | 'proFeatureCompass' | 'proFeatureFilter' | 'proFeaturePool';
 }> = [
   { symbol: 'camera.viewfinder', key: 'proFeatureScan' },
   { symbol: 'person.2.circle', key: 'proFeaturePool' },
-  { symbol: 'location.north.circle', key: 'proFeatureFind' },
+  {
+    symbol: 'location.north.circle',
+    /* Android'de AR YOK ve satılmıyor: ARCore'da RealityKit'in dengi yok, üstelik
+       arabanın kaybolduğu yer kapalı otopark ve orada AR zaten çalışmıyor. Satır
+       orada yalnız pusulayı söyler — oto-algılamayı kaldırma gerekçesiyle aynı
+       kural: tutulamayacak söz verilmez. */
+    key: Platform.OS === 'android' ? 'proFeatureCompass' : 'proFeatureFind',
+  },
   { symbol: 'line.3.horizontal.decrease.circle', key: 'proFeatureFilter' },
 ];
 

@@ -163,8 +163,18 @@ export const deDE: Record<CopyKey, string> = {
   proFeatureScan: 'Tariftafeln scannen',
   autoRenewNotice: 'Verlängert sich automatisch bis zur Kündigung. Verwaltung in den Einstellungen.',
   proFeatureFind: 'Kompass und AR',
+  // Android sürümünde AR yok: o satır yalnız pusulayı söyler.
+  proFeatureCompass: 'Kompass zurück zum Auto',
   proFeatureFilter: 'Parkplatzfilter',
   proFeaturePool: 'Tarifvorschläge von anderen Fahrern',
+
+  // Android bildirim kanalı adları (sistem ayarlarında görünür)
+
+  chTierAlerts: 'Tarifwarnungen',
+
+  chLoudReminder: 'Lauter Wecker',
+
+  chActiveSession: 'Laufendes Parken',
   planPerMonth: '{price} / Monat',
   planSave: '{percent}% SPAREN',
   terms: 'Nutzungsbedingungen (EULA)',

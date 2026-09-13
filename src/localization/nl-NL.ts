@@ -163,8 +163,18 @@ export const nlNL: Record<CopyKey, string> = {
   proFeatureScan: 'Tarieven scannen',
   autoRenewNotice: 'Verlengt automatisch tot opzegging. Beheer in Instellingen.',
   proFeatureFind: 'Kompas en AR',
+  // Android sürümünde AR yok: o satır yalnız pusulayı söyler.
+  proFeatureCompass: 'Kompas terug naar je auto',
   proFeatureFilter: 'Parkeerfilters',
   proFeaturePool: 'Voorgestelde tarieven van andere bestuurders',
+
+  // Android bildirim kanalı adları (sistem ayarlarında görünür)
+
+  chTierAlerts: 'Tariefmeldingen',
+
+  chLoudReminder: 'Luide herinnering',
+
+  chActiveSession: 'Actief parkeren',
   planPerMonth: '{price} / maand',
   planSave: 'BESPAAR {percent}%',
   terms: 'Voorwaarden (EULA)',

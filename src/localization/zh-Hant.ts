@@ -163,8 +163,18 @@ export const zhHant: Record<CopyKey, string> = {
   proFeatureScan: '掃描費率牌',
   autoRenewNotice: '取消前自動續訂。可在「設定」中管理。',
   proFeatureFind: '指南針與 AR',
+  // Android sürümünde AR yok: o satır yalnız pusulayı söyler.
+  proFeatureCompass: '回到車輛的指南針',
   proFeatureFilter: '停車場篩選',
   proFeaturePool: '其他駕駛提供的費率建議',
+
+  // Android bildirim kanalı adları (sistem ayarlarında görünür)
+
+  chTierAlerts: '費率提醒',
+
+  chLoudReminder: '響鈴提醒',
+
+  chActiveSession: '停車進行中',
   planPerMonth: '每月 {price}',
   planSave: '省 {percent}%',
   terms: '條款 (EULA)',

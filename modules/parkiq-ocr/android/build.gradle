@@ -1,0 +1,23 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'com.twiceapps.parkiq'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.parkiqocr"
+  defaultConfig {
+    versionCode 1
+    versionName '0.1.0'
+  }
+}
+
+dependencies {
+  // PAKETLE GELEN model: cihaz üstünde çalışır, ağ isteği yok, Google Cloud anahtarı
+  // istemez. "Fotoğraf telefondan çıkmaz" sözü Android'de de böyle tutulur.
+  // (Play Services'tan indirilen `text-recognition-*` varyantları ilk kullanımda
+  //  model indirir; bodrum katında sinyal olmaz — bu yüzden bundled olan seçildi.)
+  implementation 'com.google.mlkit:text-recognition:16.0.1'
+}

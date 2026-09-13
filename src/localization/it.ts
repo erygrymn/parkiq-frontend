@@ -164,8 +164,18 @@ export const it: Record<CopyKey, string> = {
   proFeatureScan: 'Scansione tariffe',
   autoRenewNotice: 'Si rinnova automaticamente fino alla disdetta. Gestibile nelle Impostazioni.',
   proFeatureFind: 'Bussola e AR',
+  // Android sürümünde AR yok: o satır yalnız pusulayı söyler.
+  proFeatureCompass: "Bussola per tornare all'auto",
   proFeatureFilter: 'Filtri parcheggio',
   proFeaturePool: 'Tariffe suggerite da altri automobilisti',
+
+  // Android bildirim kanalı adları (sistem ayarlarında görünür)
+
+  chTierAlerts: 'Avvisi tariffa',
+
+  chLoudReminder: 'Promemoria sonoro',
+
+  chActiveSession: 'Sosta in corso',
   planPerMonth: '{price} / mese',
   planSave: 'RISPARMI {percent}%',
   terms: 'Condizioni (EULA)',

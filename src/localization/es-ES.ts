@@ -163,8 +163,18 @@ export const esES: Record<CopyKey, string> = {
   proFeatureScan: 'Escanear tarifas',
   autoRenewNotice: 'Se renueva automáticamente hasta que se cancele. Gestiónalo en Ajustes.',
   proFeatureFind: 'Brújula y RA',
+  // Android sürümünde AR yok: o satır yalnız pusulayı söyler.
+  proFeatureCompass: 'Brújula de vuelta al coche',
   proFeatureFilter: 'Filtros de parking',
   proFeaturePool: 'Tarifas sugeridas por otros conductores',
+
+  // Android bildirim kanalı adları (sistem ayarlarında görünür)
+
+  chTierAlerts: 'Avisos de tarifa',
+
+  chLoudReminder: 'Recordatorio con sonido',
+
+  chActiveSession: 'Aparcamiento activo',
   planPerMonth: '{price} / mes',
   planSave: 'AHORRA {percent} %',
   terms: 'Términos (EULA)',

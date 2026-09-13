@@ -163,8 +163,18 @@ export const ja: Record<CopyKey, string> = {
   proFeatureScan: '料金表スキャン',
   autoRenewNotice: '解約するまで自動更新されます。設定で管理できます。',
   proFeatureFind: 'コンパスとAR',
+  // Android sürümünde AR yok: o satır yalnız pusulayı söyler.
+  proFeatureCompass: '車まで戻るコンパス',
   proFeatureFilter: '駐車場フィルター',
   proFeaturePool: '他のドライバーが入力した料金の提案',
+
+  // Android bildirim kanalı adları (sistem ayarlarında görünür)
+
+  chTierAlerts: '料金アラート',
+
+  chLoudReminder: '音つきリマインダー',
+
+  chActiveSession: '駐車中',
   planPerMonth: '月 {price}',
   planSave: '{percent}% 節約',
   terms: '利用規約 (EULA)',

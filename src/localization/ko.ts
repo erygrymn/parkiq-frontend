@@ -163,8 +163,18 @@ export const ko: Record<CopyKey, string> = {
   proFeatureScan: '요금표 스캔',
   autoRenewNotice: '해지 전까지 자동 갱신됩니다. 설정에서 관리하세요.',
   proFeatureFind: '나침반과 AR',
+  // Android sürümünde AR yok: o satır yalnız pusulayı söyler.
+  proFeatureCompass: '차로 돌아가는 나침반',
   proFeatureFilter: '주차장 필터',
   proFeaturePool: '다른 운전자가 입력한 요금 제안',
+
+  // Android bildirim kanalı adları (sistem ayarlarında görünür)
+
+  chTierAlerts: '요금 알림',
+
+  chLoudReminder: '소리 알림',
+
+  chActiveSession: '주차 중',
   planPerMonth: '월 {price}',
   planSave: '{percent}% 절약',
   terms: '이용약관 (EULA)',

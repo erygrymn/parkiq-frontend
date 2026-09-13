@@ -1,5 +1,5 @@
 import Constants, { ExecutionEnvironment } from 'expo-constants';
-import { REVENUECAT_IOS_KEY } from '../config';
+import { REVENUECAT_KEY } from '../config';
 import { trackPurchase, trackRestore } from './analytics';
 import { t } from '../localization';
 import { PREMIUM_ENTITLEMENT } from './premium';
@@ -43,13 +43,13 @@ if (!isExpoGo) {
   }
 }
 
-export const isPurchasesAvailable = purchases !== null && REVENUECAT_IOS_KEY.length > 0;
+export const isPurchasesAvailable = purchases !== null && REVENUECAT_KEY.length > 0;
 
 let configured = false;
 function ensureConfigured(): boolean {
   if (!isPurchasesAvailable || !purchases) return false;
   if (!configured) {
-    purchases.configure({ apiKey: REVENUECAT_IOS_KEY });
+    purchases.configure({ apiKey: REVENUECAT_KEY });
     configured = true;
   }
   return true;

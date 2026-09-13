@@ -153,8 +153,18 @@ export const tr: Record<CopyKey, string> = {
   proFeatureScan: 'Tarife panosu tarama',
   autoRenewNotice: 'İptal edilene dek otomatik yenilenir. Ayarlar’dan yönetilir.',
   proFeatureFind: 'Pusula ve AR',
+  // Android sürümünde AR yok: o satır yalnız pusulayı söyler.
+  proFeatureCompass: 'Arabana dönüş pusulası',
   proFeatureFilter: 'Otopark filtreleri',
   proFeaturePool: 'Diğer sürücülerden gelen tarife önerisi',
+
+  // Android bildirim kanalı adları (sistem ayarlarında görünür)
+
+  chTierAlerts: 'Tarife uyarıları',
+
+  chLoudReminder: 'Sesli hatırlatıcı',
+
+  chActiveSession: 'Süren park',
   planPerMonth: 'ayda {price}',
   planSave: '%{percent} TASARRUF',
   terms: 'Şartlar (EULA)',

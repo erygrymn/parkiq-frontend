@@ -162,8 +162,18 @@ export const en = {
   proFeatureScan: 'Scan tariff boards',
   autoRenewNotice: 'Renews automatically until cancelled. Manage in Settings.',
   proFeatureFind: 'Compass and AR',
+  // Android sürümünde AR yok: o satır yalnız pusulayı söyler.
+  proFeatureCompass: 'Compass back to your car',
   proFeatureFilter: 'Parking filters',
   proFeaturePool: 'Suggested tariffs from other drivers',
+
+  // Android bildirim kanalı adları (sistem ayarlarında görünür)
+
+  chTierAlerts: 'Tariff alerts',
+
+  chLoudReminder: 'Loud reminder',
+
+  chActiveSession: 'Active parking',
   planPerMonth: '{price} / month',
   planSave: 'SAVE {percent}%',
   terms: 'Terms (EULA)',

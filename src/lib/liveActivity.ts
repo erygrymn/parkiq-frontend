@@ -8,6 +8,7 @@ import {
 } from '../../modules/parkiq-live-activity';
 import { formatDurationStamp, formatMoney } from './format';
 import { monthlySavings } from './monthlyStats';
+import { hideOngoingSession, showOngoingSession } from './ongoingNotification';
 import { computeExitSummary, computeTariffState } from './tariffMath';
 import { getLocale, t } from '../localization';
 import type { ParkSession } from '../state/sessionStore';
@@ -21,6 +22,11 @@ import type { ParkSession } from '../state/sessionStore';
 // dokunmak gerekmez.
 //
 // §4.10: Live Activity/widget işletim sistemi yetenekleridir — premium kapısı YOK.
+//
+// ANDROID: ActivityKit yok; aynı payload kalıcı bir bildirime basılır
+// (ongoingNotification.ts). Buradaki her fonksiyon iki yüzeyi birlikte sürer;
+// karşı platformun çağrısı kendi içinde anında dönen bir no-op'tur. Böylece
+// çağıran taraf (sessionStore, App) platform bilmek zorunda kalmaz.
 
 export { isLiveActivityAvailable };
 
@@ -104,7 +110,9 @@ export function syncWidget(session: ParkSession | null, warnThresholdMin = 15): 
 }
 
 export function startSessionActivity(session: ParkSession, warnThresholdMin: number): void {
-  void startLiveActivity(buildPayload(session, warnThresholdMin));
+  const payload = buildPayload(session, warnThresholdMin);
+  void startLiveActivity(payload);
+  void showOngoingSession(payload);
   syncWidget(session, warnThresholdMin);
 }
 
@@ -113,7 +121,9 @@ export { isLiveActivityRunning } from '../../modules/parkiq-live-activity';
 export function refreshSessionActivity(session: ParkSession, warnThresholdMin: number): void {
   // Kilit ekranı ve widget aynı anda tazelenir: ikisi de aynı payload'dan beslenir,
   // yoksa yer adı geç geldiğinde widget'ta boş kalıyordu.
-  void updateLiveActivity(buildPayload(session, warnThresholdMin));
+  const payload = buildPayload(session, warnThresholdMin);
+  void updateLiveActivity(payload);
+  void showOngoingSession(payload);
   syncWidget(session, warnThresholdMin);
 }
 
@@ -126,6 +136,7 @@ export function refreshSessionActivity(session: ParkSession, warnThresholdMin: n
  */
 export function clearSessionSurfaces(): void {
   void endLiveActivity(null);
+  void hideOngoingSession();
   syncWidget(null);
 }
 
@@ -146,5 +157,7 @@ export function endSessionActivity(session: ParkSession): void {
     floor: session.floor || null,
     finalStampText: stamp,
   });
+  // Android'de bitiş karesi diye bir şey yok: kart kalkar. Kutlama zaten app içinde.
+  void hideOngoingSession();
   syncWidget(null);
 }

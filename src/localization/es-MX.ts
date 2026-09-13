@@ -57,8 +57,18 @@ export const esMX: Partial<Record<CopyKey, string>> = {
   proFeatureScan: 'Escanea los letreros de tarifas con la cámara',
   autoRenewNotice: 'Las suscripciones se renuevan automáticamente hasta que las canceles. El cargo se hace en tu Apple ID al confirmar y en cada renovación. Puedes gestionarla o cancelarla en Configuración.',
   proFeatureFind: 'Brújula y AR para volver al carro',
+  // Android sürümünde AR yok: o satır yalnız pusulayı söyler.
+  proFeatureCompass: 'Brújula de vuelta al carro',
   proFeatureFilter: 'Filtra estacionamientos por recarga, techado y distancia',
   proFeaturePool: 'Tarifas sugeridas por otros conductores',
+
+  // Android bildirim kanalı adları (sistem ayarlarında görünür)
+
+  chTierAlerts: 'Avisos de tarifa',
+
+  chLoudReminder: 'Recordatorio con sonido',
+
+  chActiveSession: 'Estacionamiento activo',
   plansError: 'No se pudieron cargar los planes. Revisa tu conexión.',
   noPurchases: 'No se encontraron compras.',
   purchaseFailed: 'La compra no se completó.',

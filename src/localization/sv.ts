@@ -163,8 +163,18 @@ export const sv: Record<CopyKey, string> = {
   proFeatureScan: 'Skanna taxor',
   autoRenewNotice: 'Förnyas automatiskt tills den sägs upp. Hantera i Inställningar.',
   proFeatureFind: 'Kompass och AR',
+  // Android sürümünde AR yok: o satır yalnız pusulayı söyler.
+  proFeatureCompass: 'Kompass tillbaka till bilen',
   proFeatureFilter: 'Parkeringsfilter',
   proFeaturePool: 'Föreslagna taxor från andra förare',
+
+  // Android bildirim kanalı adları (sistem ayarlarında görünür)
+
+  chTierAlerts: 'Taxevarningar',
+
+  chLoudReminder: 'Ljudpåminnelse',
+
+  chActiveSession: 'Pågående parkering',
   planPerMonth: '{price} / mån',
   planSave: 'SPARA {percent} %',
   terms: 'Villkor (EULA)',

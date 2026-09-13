@@ -1,5 +1,7 @@
 import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 import { cancelParkAlarms, isAlarmAvailable, scheduleParkAlarm } from './alarm';
+import { channelFor, ensureChannels } from './notificationChannels';
 import { formatDurationStamp, formatMoney } from './format';
 import { getLocale, t } from '../localization';
 import { listUpcomingBoundaries } from './tariffMath';
@@ -100,6 +102,10 @@ export async function cancelSessionAlerts(): Promise<void> {
  * sessiz banner üretiyordu. Gerçek bir alarm (sessiz moda rağmen çalan, tam ekran)
  * AlarmKit ister ve o iOS 26'dan itibaren var — bu yüzden şimdilik en yüksek
  * dikkat seviyesi budur.
+ *
+ * Android'de AlarmKit yok ama gerekmiyor da: sesli uyarı ALARM akışını kullanan bir
+ * kanala gider (bkz. `notificationChannels`), o da zil anahtarından ve Rahatsız
+ * Etmeyin'den etkilenmez. iOS'ta `channelId` yok sayılır.
  */
 async function scheduleAt(
   atMs: number,
@@ -134,6 +140,9 @@ async function scheduleAt(
       type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
       seconds,
       repeats: false,
+      // Kanal TETİKLEYİCİDE bildirilir; içeriğe yazılan `channelId` sessizce yok
+      // sayılır ve bildirim varsayılan kanala düşerdi. iOS bu alanı görmez.
+      ...(Platform.OS === 'android' ? { channelId: channelFor(sound) } : null),
     },
   });
 }
@@ -147,6 +156,9 @@ export async function scheduleSessionAlerts(
   warnThresholdMin: number,
   options: { prompt: boolean } = { prompt: true },
 ): Promise<NotificationPermission> {
+  // Kanallar zamanlamadan ÖNCE var olmalı: sonradan kurulan kanal, önceden
+  // zamanlanmış bildirimi taşımaz (Android onu varsayılana atar ve sessizleşir).
+  await ensureChannels();
   await cancelSessionAlerts();
 
   const permission = await ensureNotificationPermission(options.prompt);

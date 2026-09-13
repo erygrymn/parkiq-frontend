@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 /**
  * Mapbox public token (pk.*). Tasarımı gereği istemciye gömülür — gizli değildir,
  * app binary'sinden zaten okunabilir. Yine de kaynak koda YAZILMAZ: GitHub'ın sır
@@ -35,12 +37,19 @@ export const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com
 export const BACKEND_BASE_URL = 'https://parkiq-backend-beta.vercel.app';
 
 /**
- * RevenueCat iOS public SDK anahtarı (appl_*). İstemciye gömülmek üzere tasarlanmıştır.
+ * RevenueCat public SDK anahtarları. İstemciye gömülmek üzere tasarlanmıştır;
  * Mapbox ile aynı sebeple ortamdan okunur.
  *   export EXPO_PUBLIC_REVENUECAT_IOS_KEY="appl_…"
+ *   export EXPO_PUBLIC_REVENUECAT_ANDROID_KEY="goog_…"
  * Boşken paywall "planlar yüklenemedi" durumuna düşer, app çalışmaya devam eder.
+ *
+ * Mağazalar AYRI anahtar ister: iOS anahtarıyla Play'de `configure` çağırmak
+ * sessizce boş teklif listesi döndürür, paywall boş gelir.
  */
 export const REVENUECAT_IOS_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? '';
+export const REVENUECAT_ANDROID_KEY = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY ?? '';
+/** Çalışılan platformun anahtarı — `purchases.ts` yalnız bunu okur. */
+export const REVENUECAT_KEY = Platform.OS === 'android' ? REVENUECAT_ANDROID_KEY : REVENUECAT_IOS_KEY;
 
 /**
  * Twice proje anahtarı (tw_*). Analytics, remote config, sürüm kontrolü ve gelir
