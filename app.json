@@ -63,6 +63,29 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "scheme": "parkiq"
+    "scheme": "parkiq",
+    "owner": "twiceapps-org",
+    "extra": {
+      "eas": {
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "bundleIdentifier": "com.twiceapps.parkiq.widget",
+                  "targetName": "ParkIQWidget",
+                  "entitlements": {
+                    "com.apple.security.application-groups": [
+                      "group.parkiq.shared"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "projectId": "1eccad80-4427-42c8-98ba-ee487eb46afe"
+      }
+    }
   }
 }

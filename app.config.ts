@@ -101,12 +101,19 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     // expo-image: SDWebImage/AVIF/heic desteği için config plugin
     'expo-image',
-    [
-      '@rnmapbox/maps',
-      {
-        RNMapboxMapsDownloadToken: process.env.MAPBOX_DOWNLOADS_TOKEN,
-      },
-    ],
+    /*
+     * İndirme token'ı buradan GEÇİRİLMEZ.
+     *
+     * `RNMapboxMapsDownloadToken` parametresi kullanımdan kalktı ve token'ı
+     * `gradle.properties` dosyasına yazıyor — plugin'in kendi uyarısı bu dosyanın
+     * sürüm kontrolüne girmemesi gerektiğini söylüyor. Modern yolda gradle token'ı
+     * doğrudan ortamdan okuyor (`RNMAPBOX_MAPS_DOWNLOAD_TOKEN`), dosyaya hiç inmiyor.
+     *
+     * iOS'ta zaten gerekmiyor: Mapbox iOS SDK 11 herkese açık CocoaPods'tan geliyor,
+     * podspec token'ı "no longer required" diye işaretliyor. Yalnız Android'in Maven
+     * deposu kimlik doğrulaması istiyor.
+     */
+    '@rnmapbox/maps',
     // WidgetKit extension target'ı (targets/widget) — prebuild sırasında eklenir
     '@bacons/apple-targets',
     // İzin diyaloglarının yerelleştirilmiş metinleri (<dil>.lproj/InfoPlist.strings)
