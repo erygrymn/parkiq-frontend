@@ -102,6 +102,30 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // expo-image: SDWebImage/AVIF/heic desteği için config plugin
     'expo-image',
     /*
+     * Android bildirim ikonu — YALNIZ Android derlemesinde eklenir.
+     *
+     * Android bildirim ikonunu tek renkli bir silüete indirger: alfa kanalı olmayan
+     * bir görsel beyaz bir kareye dönüşür. Uygulamanın ikonu koyu zeminli olduğu için
+     * dilim uyarıları ve süren park kartı o kareyle çıkardı — bildirim bu üründe
+     * ikincil bir detay değil, ücretsiz kullanıcının TEK uyarı kanalı.
+     * Tema ikonunun monokrom katmanı zaten şeffaf zeminli bir silüet, birebir uyuyor.
+     *
+     * Neden koşullu: plugin'in iOS yarısı `aps-environment` entitlement'ı ekliyor.
+     * ParkIQ uzaktan push kullanmıyor ve iOS tarafı 1.0.0 (6) ile zaten yayında —
+     * imzalama profilini değiştirmemek için o dala hiç girilmiyor.
+     */
+    ...(process.env.EAS_BUILD_PLATFORM === 'android'
+      ? [
+          [
+            'expo-notifications',
+            {
+              icon: './assets/android-icon-monochrome.png',
+              color: '#00A650',
+            },
+          ] as [string, Record<string, unknown>],
+        ]
+      : []),
+    /*
      * İndirme token'ı buradan GEÇİRİLMEZ.
      *
      * `RNMapboxMapsDownloadToken` parametresi kullanımdan kalktı ve token'ı
