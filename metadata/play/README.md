@@ -22,3 +22,18 @@ node ~/.claude/skills/twice-store/scripts/play-iap.mjs push metadata/play/produc
   çevirisi Apple'ınkinden yukarıda olduğu için TR/AU/CA/NZ elle eşitlendi (aso.md §6.4).
 - Abonelikler (monthly/yearly) bu scriptlerde YOK: Play'in ayrı `monetization/subscriptions`
   ucunu istiyor. Ya Play Console'dan ya da ayrı bir çağrıyla kurulur.
+
+## data-safety.csv
+
+Play Console → Data safety → **Import**. Jigfall'ın dışa aktardığı şablondan üretildi
+(`/tmp/ds.js` mantığı burada özetli), cevaplar KODDAN doğrulandı:
+
+| Ne | Nereye | Neden o cevap |
+|---|---|---|
+| Tam koordinat | overpass-api.de | Otopark araması `around:<yarıçap>,<enlem>,<boylam>` gönderiyor. Üçüncü taraf olduğu için **Shared** işaretli — tek "paylaşılan" veri bu. |
+| ~110 m hücre + tarife | api.twiceapps.co | Tarife havuzu. Kendi sunucumuz → **Collected**, shared değil. Rıza sorulmadan gitmiyor, o yüzden "kullanıcı seçebilir". |
+| Kurulum kimliği, olaylar, satın alma, hata | Twice + RevenueCat | Hesap yok; kimlikler anonim. |
+
+Reklam olmadığı için hiçbir satırda `PSL_ADVERTISING` yok — Jigfall'daki en büyük fark bu.
+İçerikteki her satır iOS privacy manifest'iyle (`app.config.ts`) aynı hikâyeyi anlatmalı;
+birini değiştirirsen diğerini de değiştir.
