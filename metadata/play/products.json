@@ -1,0 +1,21 @@
+[
+  {
+    "id": "com.twiceapps.parkiq.pro.lifetime",
+    "price": "29.99",
+    "listings": {
+      "en-US": { "title": "ParkIQ Pro Lifetime", "description": "One payment. Scan rate boards, the compass back to your car, car park filters and suggested tariffs from other drivers, for good." },
+      "en-GB": { "title": "ParkIQ Pro Lifetime", "description": "One payment. Scan tariff boards, the compass back to your car, car park filters and suggested tariffs from other drivers, for good." },
+      "tr-TR": { "title": "ParkIQ Pro Ömür Boyu", "description": "Tek ödeme. Tarife panosu tarama, arabana dönüş pusulası, otopark filtreleri ve diğer sürücülerden gelen tarife önerisi kalıcı olarak açılır." },
+      "de-DE": { "title": "ParkIQ Pro für immer", "description": "Einmal zahlen. Tarifschild scannen, Kompass zurück zum Auto, Parkhaus-Filter und Tarifvorschläge anderer Fahrer — dauerhaft." },
+      "fr-FR": { "title": "ParkIQ Pro à vie", "description": "Un seul paiement. Scan des panneaux de tarifs, boussole vers votre voiture, filtres de parking et tarifs suggérés par d'autres conducteurs." },
+      "es-ES": { "title": "ParkIQ Pro de por vida", "description": "Un solo pago. Escaneo de carteles de tarifas, brújula de vuelta al coche, filtros de aparcamiento y tarifas sugeridas por otros conductores." },
+      "it-IT": { "title": "ParkIQ Pro a vita", "description": "Un solo pagamento. Scansione dei cartelli tariffari, bussola per tornare all'auto, filtri parcheggi e tariffe suggerite da altri automobilisti." },
+      "pt-BR": { "title": "ParkIQ Pro vitalício", "description": "Um pagamento. Escanear placas de tarifas, bússola de volta ao carro, filtros de estacionamento e tarifas sugeridas por outros motoristas." },
+      "ja-JP": { "title": "ParkIQ Pro 買い切り", "description": "一度の支払いで、料金表のスキャン、クルマまで戻るコンパス、駐車場の絞り込み、他のドライバーの料金提案がずっと使えます。" },
+      "ko-KR": { "title": "ParkIQ Pro 평생 이용", "description": "한 번 결제로 요금표 스캔, 차로 돌아가는 나침반, 주차장 필터, 다른 운전자의 요금 제안을 계속 사용합니다." },
+      "zh-TW": { "title": "ParkIQ Pro 買斷", "description": "一次付費，永久使用費率牌掃描、回到車輛的指南針、停車場篩選，以及其他駕駛提供的費率建議。" },
+      "nl-NL": { "title": "ParkIQ Pro voor altijd", "description": "Eén betaling. Tariefborden scannen, kompas terug naar je auto, parkeerfilters en voorgestelde tarieven van andere bestuurders." },
+      "sv-SE": { "title": "ParkIQ Pro för alltid", "description": "En betalning. Skanna taxeskyltar, kompass tillbaka till bilen, parkeringsfilter och föreslagna taxor från andra förare." }
+    }
+  }
+]
