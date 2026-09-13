@@ -40,7 +40,6 @@
     },
     "android": {
       "package": "com.twiceapps.parkiq",
-      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#141416",
         "foregroundImage": "./assets/android-icon-foreground.png",

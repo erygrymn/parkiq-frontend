@@ -3,8 +3,30 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
 // app.json taban config'tir; burada yalnız ortama bağlı parçalar eklenir.
 // MAPBOX_DOWNLOADS_TOKEN (sk.*) yalnız Mac'te prebuild/pod install sırasında gerekir;
 // Windows'ta metro/Expo Go çalışırken yokluğu sorun değildir.
+/**
+ * Android `versionCode` sürüm adından TÜRER: 1.0.0 → 100, 1.0.1 → 101, 1.1.0 → 110.
+ *
+ * Tek kaynak `app.json`'daki `version`; iki yerde elle tutulunca er geç ayrışıyorlar
+ * ve Play aynı versionCode'u ikinci kez kabul etmediği için bu sessiz bir hata değil,
+ * yükleme anında patlayan bir hata oluyor.
+ *
+ * Ara basamaklar 0–9 ile sınırlı: 1.10.0 ile 2.0.0 aynı sayıya düşer. O gün gelirse
+ * çarpan büyütülür — bu yüzden sessizce yanlış üretmek yerine burada duruyoruz.
+ */
+function androidVersionCode(version: string): number {
+  const [major = 0, minor = 0, patch = 0] = version.split('.').map(Number);
+  if ([major, minor, patch].some((n) => !Number.isInteger(n) || n < 0) || minor > 9 || patch > 9) {
+    throw new Error(`versionCode üretilemedi: "${version}" — ara basamaklar 0-9 aralığında olmalı`);
+  }
+  return major * 100 + minor * 10 + patch;
+}
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...(config as ExpoConfig),
+  android: {
+    ...(config.android ?? {}),
+    versionCode: androidVersionCode(config.version ?? '0.0.0'),
+  },
   ios: {
     ...(config.ios ?? {}),
     // Widget extension target'ının imzalanabilmesi için zorunlu (@bacons/apple-targets)
