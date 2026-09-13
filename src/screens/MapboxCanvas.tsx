@@ -1,4 +1,4 @@
-import Mapbox, { Camera, CircleLayer, LineLayer, LocationPuck, MapView, MarkerView, ShapeSource } from '@rnmapbox/maps';
+import Mapbox, { Camera, CircleLayer, LineLayer, LocationPuck, MapView, MarkerView, ShapeSource, SymbolLayer } from '@rnmapbox/maps';
 import * as Location from 'expo-location';
 import { useEffect, useMemo, useRef } from 'react';
 import { AppState, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
@@ -8,6 +8,8 @@ import { Icon } from '../components/Icon';
 import { SPRING } from '../theme/motion';
 import { CarPin } from '../components/CarPin';
 import { MAPBOX_PUBLIC_TOKEN, MAPBOX_STYLE_URL_DARK, MAPBOX_STYLE_URL_LIGHT } from '../config';
+import { distanceMeters, formatDistance } from '../lib/geo';
+import { getLocale } from '../localization';
 import { hapticSelect } from '../lib/haptics';
 import { buildMapStyle } from '../lib/mapStyle';
 import { applyFilter, type PoiKind } from '../lib/parkingPoi';
@@ -107,10 +109,14 @@ export function MapboxCanvas() {
 
   // §4 derinlik davranıştan: sheet büyürken harita 0.97'ye küçülür ve scrim gelir; aktif
   // oturumda scrim sabit kalır. Yalnız transform/opacity — Mapbox view'ı yeniden boyutlanmaz.
-  const activeScrim = useSharedValue(active ? 1 : 0);
+  /* Arabamı Bul DIŞINDA sabit scrim: orada harita arka plandır. `finding` sırasında ise
+     harita aranan şeyin kendisi — kullanıcı kendi noktasıyla arabayı görmek istiyor ve
+     üstüne perde çekmek tam da işi engelliyor. O fazda perde yalnız sheet yükselince gelir. */
+  const scrimBase = active && !finding;
+  const activeScrim = useSharedValue(scrimBase ? 1 : 0);
   useEffect(() => {
-    activeScrim.value = withTiming(active ? 1 : 0, { duration: CROSSFADE_MS });
-  }, [active, activeScrim]);
+    activeScrim.value = withTiming(scrimBase ? 1 : 0, { duration: CROSSFADE_MS });
+  }, [scrimBase, activeScrim]);
   // Sheet yükselirken harita ÖLÇEKLENMEZ: küçültme kenarları açıp "app zoom-out" gibi görünüyordu.
   // Derinlik yalnız scrim'den gelir (§4).
   const scrimStyle = useAnimatedStyle(() => ({
@@ -221,15 +227,25 @@ export function MapboxCanvas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [carCoords?.[0], carCoords?.[1], active, phase]);
 
-  // §7.6 finding: kamera kullanıcı + arabayı birlikte çerçeveler (faza girişte ve ilk düzeltmede).
-  const framedRef = useRef(false);
+  /**
+   * §7.6 finding: kamera kullanıcı + arabayı BİRLİKTE çerçeveler ve kullanıcı yürüdükçe
+   * çerçeveyi tazeler.
+   *
+   * Önceden yalnız bir kez çerçeveleniyordu (`framedRef`): konum canlı akıyor, nokta
+   * ilerliyor ama kamera yerinde kaldığı için kullanıcı birkaç adımda kadrajdan çıkıyordu —
+   * "konumum güncellenmiyor" diye görünen şey buydu. Kullanıcı haritayı kendi elleriyle
+   * kaydırdıysa (`followingRef` kapanır) karışılmaz.
+   */
+  const firstFrameRef = useRef(false);
   useEffect(() => {
     if (!finding) {
-      framedRef.current = false;
+      firstFrameRef.current = false;
       return;
     }
-    if (framedRef.current || !carCoords || !userFix) return;
-    framedRef.current = true;
+    if (!carCoords || !userFix) return;
+    const first = !firstFrameRef.current;
+    if (!first && !followingRef.current) return;
+    firstFrameRef.current = true;
     const lngs = [carCoords[0], userFix.longitude];
     const lats = [carCoords[1], userFix.latitude];
     cameraRef.current?.setCamera({
@@ -238,7 +254,7 @@ export function MapboxCanvas() {
         sw: [Math.min(...lngs), Math.min(...lats)],
       },
       padding: { paddingTop: 140, paddingBottom: 380, paddingLeft: 64, paddingRight: 64 },
-      animationDuration: 600,
+      animationDuration: first ? 600 : 400,
     });
     // carCoords referansı bileşenlerine bağlanır
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -310,11 +326,21 @@ export function MapboxCanvas() {
         }
       : null;
 
+  /* Çizginin üstünde aradaki mesafe: kullanıcı "ne kadar kaldı"yı paneli açmadan görsün.
+     Etiket özelliğin içinde taşınır, SymbolLayer onu çizginin ortasına oturtur. */
   const findLine =
     finding && carCoords && userFix
       ? {
           type: 'Feature' as const,
-          properties: {},
+          properties: {
+            label: formatDistance(
+              distanceMeters(
+                { latitude: userFix.latitude, longitude: userFix.longitude },
+                { latitude: carCoords[1], longitude: carCoords[0] },
+              ),
+              getLocale(),
+            ),
+          },
           geometry: { type: 'LineString' as const, coordinates: [[userFix.longitude, userFix.latitude], carCoords] },
         }
       : null;
@@ -409,6 +435,22 @@ export function MapboxCanvas() {
       {findLine && (
         <ShapeSource id="find-line" shape={findLine}>
           <LineLayer id="find-line-layer" style={{ lineColor: colors.ink, lineWidth: 2, lineOpacity: 0.9, lineCap: 'round' }} />
+          <SymbolLayer
+            id="find-line-label"
+            style={{
+              textField: ['get', 'label'],
+              symbolPlacement: 'line-center',
+              textSize: 13,
+              textFont: ['DIN Offc Pro Medium', 'Arial Unicode MS Regular'],
+              textColor: colors.ink,
+              // Çizginin üstüne biniyor; halka onu her zemin renginde okunur tutuyor.
+              textHaloColor: colors.card,
+              textHaloWidth: 2,
+              textOffset: [0, -0.9],
+              textAllowOverlap: true,
+              textIgnorePlacement: true,
+            }}
+          />
         </ShapeSource>
       )}
 

@@ -58,6 +58,16 @@ const MAX_SHEET_RATIO = 0.88;
 /** Geçmiş sahnesinde harita görünür kalsın diye daha alçak tavan. */
 const HISTORY_SHEET_RATIO = 0.62;
 
+/**
+ * Arabamı Bul'da panelin İNDİRİLEBİLİR kademesi: yalnız başlık satırı görünür,
+ * gerisi haritaya kalır.
+ *
+ * Bu faz tek kademeliydi ve panel içerik yüksekliğinde kilitliydi; kullanıcı ne kendi
+ * noktasını ne arabayı görebiliyordu, indiremiyordu da. Aranan şey haritanın üstünde
+ * olduğu için burada paneli indirebilmek özelliğin kendisi sayılır.
+ */
+const FINDING_COMPACT_HEIGHT = 132;
+
 function FloatingIconButton({
   symbol,
   label,
@@ -233,6 +243,13 @@ function Root() {
     else sheetRef.current?.snapToIndex(0);
   }, [historyOpen]);
 
+  /* Arabamı Bul açık kademede başlar — "Buldum" ilk bakışta elde olmalı. Aşağı çekmek
+     haritayı açar; kullanıcı arabayı görüp geri yükseltir. Kompakt kademede kilitli
+     başlasaydı asıl eylem gizli kalırdı. */
+  useEffect(() => {
+    if (phase === 'finding') sheetRef.current?.expand();
+  }, [phase]);
+
   // §4 derinlik davranıştan: sheet full detent'e giderken yüzen cam kareler çekilir.
   const floatingStyle = useAnimatedStyle(() => ({
     opacity: interpolate(sheetIndex.value, [0.6, 1], [1, 0], 'clamp'),
@@ -318,10 +335,11 @@ function Root() {
   const maxSheetHeight = Math.round(windowHeight * (historyOpen ? HISTORY_SHEET_RATIO : MAX_SHEET_RATIO));
   // Yalnız keşifte ikinci (kompakt) kademe var; dinamik içerik kademesi kütüphane
   // tarafından sona eklenir. Diğer fazlarda tek kademe = içerik yüksekliği.
-  const snapPoints = useMemo(
-    () => (phase === 'idle' ? [IDLE_COMPACT_HEIGHT + insets.bottom] : undefined),
-    [phase, insets.bottom],
-  );
+  const snapPoints = useMemo(() => {
+    if (phase === 'idle') return [IDLE_COMPACT_HEIGHT + insets.bottom];
+    if (phase === 'finding') return [FINDING_COMPACT_HEIGHT + insets.bottom];
+    return undefined;
+  }, [phase, insets.bottom]);
 
   return (
     <BottomSheetModalProvider>
