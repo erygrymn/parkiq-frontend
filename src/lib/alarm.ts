@@ -1,4 +1,5 @@
 import Constants, { ExecutionEnvironment } from 'expo-constants';
+import { Platform } from 'react-native';
 import { t } from '../localization';
 
 /**
@@ -20,10 +21,24 @@ type AlarmKit = typeof import('react-native-nitro-ios-alarm-kit');
 
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
+/**
+ * Paket iOS'a özel ve Android'de YÜKLENMEZ.
+ *
+ * `react-native-nitro-ios-alarm-kit` modül tepesinde `createHybridObject` çağırıyor,
+ * yani `require` anında native tarafa iniyor. Android'de o sınıf derlemeye girmediği
+ * için `ClassNotFoundException` atıyor ve Nitro bunu JS'in yakalayamayacağı şekilde
+ * RN'in global hata kanalına düşürüyor — uygulama açılışta çöküyordu. Buradaki
+ * try/catch yetmiyor; modüle hiç dokunmamak gerekiyor.
+ *
+ * Kaybı yok: Android'de sesli hatırlatıcı zaten AlarmKit'e değil, ALARM akışını
+ * kullanan bildirim kanalına dayanıyor (bkz. `notificationChannels`).
+ */
+const isSupportedPlatform = Platform.OS === 'ios';
+
 let mod: AlarmKit | null | undefined;
 function alarmKit(): AlarmKit | null {
   if (mod === undefined) {
-    if (isExpoGo) {
+    if (isExpoGo || !isSupportedPlatform) {
       mod = null;
     } else {
       try {

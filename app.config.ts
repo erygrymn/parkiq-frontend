@@ -138,6 +138,31 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
      */
     ...(process.env.EAS_BUILD_PLATFORM === 'android'
       ? [
+          /*
+           * Açılış ekranı — YALNIZ Android derlemesinde.
+           *
+           * Onsuz Expo'nun boş varsayılan ekranı geliyor. Zemin `surface/bg` token'ı,
+           * karanlık temada koyu karşılığı; ortada marka işareti. Sistem temasını
+           * izler, yani uygulamanın ilk karesi ile ikinci karesi arasında renk sıçraması
+           * olmaz.
+           *
+           * iOS'a eklenmiyor: 1.0.0 (6) o ekranla yayında ve şu an dokunmamak gerekiyor.
+           * İstenirse ayrı bir kararla açılır.
+           */
+          [
+            'expo-splash-screen',
+            {
+              image: './assets/splash-icon.png',
+              imageWidth: 180,
+              resizeMode: 'contain',
+              /* design.md §2 `surface/bg` — `src/theme/tokens.ts` içindeki
+                  `lightColors.bg` / `darkColors.bg` ile AYNI kalmalı. Buradan import
+                  edilemiyor: Expo bu dosyayı derlerken `.ts` çözümlemesi yok. Ayrışırsa
+                  açılışta uygulamanın ilk karesiyle ikincisi arasında renk sıçraması olur. */
+              backgroundColor: '#F6F6F4',
+              dark: { backgroundColor: '#131315' },
+            },
+          ] as [string, Record<string, unknown>],
           [
             'expo-notifications',
             {
