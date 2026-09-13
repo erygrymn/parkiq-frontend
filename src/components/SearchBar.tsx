@@ -1,11 +1,11 @@
 import * as Location from 'expo-location';
-import { SymbolView, type SFSymbol } from 'expo-symbols';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 import { t } from '../localization';
 import type { Coords } from '../lib/geo';
 import { useTheme } from '../theme';
 import { glass, radius, shadow, spacing } from '../theme/tokens';
+import { Icon, type AppSymbol } from './Icon';
 import { Caption } from './Typography';
 
 // §7.2 "Where to?" — hedefi ara, ORANIN çevresindeki otoparkları gör.
@@ -53,7 +53,7 @@ export function SearchBar({
   onPick: (result: SearchResult) => void;
   /** Sondaki kare butonun eylemi — konuma dön ya da haritadan pin bırak. */
   onLocate: () => void;
-  trailingSymbol?: SFSymbol;
+  trailingSymbol?: AppSymbol;
   trailingLabel?: string;
 }) {
   const { colors, scheme } = useTheme();
@@ -104,7 +104,7 @@ export function SearchBar({
             shadowOpacity: scheme === 'dark' ? 0 : 1,
           }}
         >
-          <SymbolView name="magnifyingglass" size={15} tintColor={colors.textSecondary} weight="regular" />
+          <Icon name="magnifyingglass" size={15} color={colors.textSecondary} weight="regular" />
           <TextInput
             value={query}
             onChangeText={setQuery}
@@ -116,7 +116,7 @@ export function SearchBar({
           {searching && <ActivityIndicator size="small" color={colors.textSecondary} />}
           {query.length > 0 && !searching && (
             <Pressable accessibilityRole="button" onPress={() => setQuery('')} hitSlop={8}>
-              <SymbolView name="xmark.circle.fill" size={15} tintColor={colors.disabled} weight="regular" />
+              <Icon name="xmark.circle.fill" size={15} color={colors.disabled} weight="regular" />
             </Pressable>
           )}
         </View>
@@ -139,7 +139,7 @@ export function SearchBar({
             shadowOpacity: scheme === 'dark' ? 0 : 1,
           })}
         >
-          <SymbolView name={trailingSymbol} size={17} tintColor={colors.ink} weight="light" />
+          <Icon name={trailingSymbol} size={17} color={colors.ink} weight="light" />
         </Pressable>
       </View>
 

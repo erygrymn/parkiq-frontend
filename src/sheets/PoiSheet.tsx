@@ -1,7 +1,7 @@
-import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { GhostButton, PrimaryCta } from '../components/Buttons';
+import { Icon } from '../components/Icon';
 import { PopupSheet } from '../components/PopupSheet';
 import { TariffForm } from '../components/TariffForm';
 import { Caption, Overline } from '../components/Typography';
@@ -79,7 +79,7 @@ export function PoiSheet({ poi }: { poi: ParkingPoi }) {
             backgroundColor: pressed ? colors.insetPressed : colors.inset,
           })}
         >
-          <SymbolView name="chevron.left" size={14} tintColor={colors.ink} weight="semibold" />
+          <Icon name="chevron.left" size={14} color={colors.ink} weight="semibold" />
         </Pressable>
 
         <View style={{ flex: 1, gap: spacing.s4 }}>

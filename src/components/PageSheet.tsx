@@ -1,10 +1,10 @@
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import { SymbolView } from 'expo-symbols';
 import type { ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { upper } from '../localization';
 import { useTheme } from '../theme';
 import { radius, spacing, typeScale } from '../theme/tokens';
+import { Icon } from './Icon';
 
 // design.md §7: Ayarlar iOS pageSheet olarak açılır (Geçmiş kök sheet sahnesi, Paywall tam ekran).
 // Ortak kabuk: ortalanmış 17/600 başlık (sistem nav bar hissi, çift kabuk yok) + kapatma +
@@ -64,7 +64,7 @@ export function PageSheet({
               justifyContent: 'center',
             })}
           >
-            <SymbolView name="xmark" size={14} tintColor={colors.ink} weight="semibold" />
+            <Icon name="xmark" size={14} color={colors.ink} weight="semibold" />
           </Pressable>
         </View>
 

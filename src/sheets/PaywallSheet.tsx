@@ -1,9 +1,9 @@
-import { SymbolView, type SFSymbol } from 'expo-symbols';
 import { useEffect, useMemo } from 'react';
 import { ActivityIndicator, Linking, Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PrimaryCta } from '../components/Buttons';
+import { Icon, type AppSymbol } from '../components/Icon';
 import { CelebrationHero } from '../components/motion/CelebrationHero';
 import { PressScale } from '../components/motion/PressScale';
 import { Caption, Overline } from '../components/Typography';
@@ -27,7 +27,7 @@ const PRIVACY_URL = 'https://www.twiceapps.co/privacy';
 // §4.10: paywall işletim sistemi yeteneğini (Live Activity/widget) DEĞİL, ParkIQ'nun kendi
 // işlevlerini satar. LA, Dynamic Island, widget ve bildirim uyarıları herkese ÜCRETSİZDİR.
 const FEATURES: Array<{
-  symbol: SFSymbol;
+  symbol: AppSymbol;
   key: 'proFeatureScan' | 'proFeatureFind' | 'proFeatureCompass' | 'proFeatureFilter' | 'proFeaturePool';
 }> = [
   { symbol: 'camera.viewfinder', key: 'proFeatureScan' },
@@ -72,7 +72,7 @@ function savingPercent(plans: PurchasePlan[]): number | null {
   return percent >= 5 ? percent : null;
 }
 
-function FeatureRow({ symbol, label, last }: { symbol: SFSymbol; label: string; last: boolean }) {
+function FeatureRow({ symbol, label, last }: { symbol: AppSymbol; label: string; last: boolean }) {
   const { colors } = useTheme();
   return (
     <View
@@ -85,7 +85,7 @@ function FeatureRow({ symbol, label, last }: { symbol: SFSymbol; label: string; 
         borderBottomColor: colors.gridline,
       }}
     >
-      <SymbolView name={symbol} size={20} tintColor={colors.ink} weight="regular" />
+      <Icon name={symbol} size={20} color={colors.ink} weight="regular" />
       <Text style={{ flex: 1, fontSize: 15, fontWeight: '600', color: colors.ink }}>{label}</Text>
     </View>
   );
@@ -278,7 +278,7 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
                 opacity: busy ? 0.4 : 1,
               })}
             >
-              <SymbolView name="xmark" size={13} tintColor={colors.ink} weight="semibold" />
+              <Icon name="xmark" size={13} color={colors.ink} weight="semibold" />
             </Pressable>
           </View>
 

@@ -1,10 +1,10 @@
-import { SymbolView } from 'expo-symbols';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { isArAvailable, ParkiqArView, type ArStatus } from '../../modules/parkiq-ar';
 import { PrimaryCta } from '../components/Buttons';
+import { Icon } from '../components/Icon';
 import { Glass } from '../components/motion/Glass';
 import { PressScale } from '../components/motion/PressScale';
 import type { Coords } from '../lib/geo';
@@ -131,7 +131,7 @@ export function ArFindMyCar({
       <View style={{ position: 'absolute', top: insets.top + spacing.s12, left: spacing.s20 }}>
         <PressScale accessibilityRole="button" accessibilityLabel={t('close')} onPress={onClose} hitSlop={8}>
           <Glass tone="dark" radius={radius.r12} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-            <SymbolView name="xmark" size={18} tintColor={darkColors.ink} weight="light" />
+            <Icon name="xmark" size={18} color={darkColors.ink} weight="light" />
           </Glass>
         </PressScale>
       </View>

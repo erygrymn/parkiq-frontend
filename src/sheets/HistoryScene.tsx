@@ -1,5 +1,5 @@
+import { Icon } from '../components/Icon';
 import { ProBadge } from '../components/ProBadge';
-import { SymbolView } from 'expo-symbols';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
@@ -70,7 +70,7 @@ function SquareButton({ symbol, label, onPress }: { symbol: 'chevron.left' | 'xm
         backgroundColor: pressed ? colors.insetPressed : colors.inset,
       })}
     >
-      <SymbolView name={symbol} size={14} tintColor={colors.ink} weight="semibold" />
+      <Icon name={symbol} size={14} color={colors.ink} weight="semibold" />
     </Pressable>
   );
 }
@@ -272,7 +272,7 @@ export function HistoryScene({ onOpenPaywall }: { onOpenPaywall: () => void }) {
         >
           <ProBadge size={16} />
           <Text style={{ flex: 1, fontSize: 15, fontWeight: '600', color: colors.ink }}>{t('goPro')}</Text>
-          <SymbolView name="chevron.right" size={13} tintColor={colors.disabled} weight="semibold" />
+          <Icon name="chevron.right" size={13} color={colors.disabled} weight="semibold" />
         </Pressable>
       )}
 

@@ -1,10 +1,10 @@
 import * as Location from 'expo-location';
 import { Image } from 'expo-image';
-import { SymbolView } from 'expo-symbols';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useSharedValue, withSpring } from 'react-native-reanimated';
 import { GhostButton, PrimaryCta } from '../components/Buttons';
+import { Icon } from '../components/Icon';
 import { trackPaywallShown } from '../lib/analytics';
 import { CompassDial } from '../components/motion/CompassDial';
 import { PhotoThumb } from '../components/motion/PhotoViewer';
@@ -215,7 +215,7 @@ export function FindingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
             backgroundColor: pressed ? colors.insetPressed : colors.inset,
           })}
         >
-          <SymbolView name="chevron.left" size={14} tintColor={colors.ink} weight="semibold" />
+          <Icon name="chevron.left" size={14} color={colors.ink} weight="semibold" />
         </Pressable>
         <Overline style={{ flex: 1 }} numberOfLines={1}>
           {[session.placeName, session.floor].filter(Boolean).join(' · ')}

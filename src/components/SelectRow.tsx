@@ -1,8 +1,8 @@
-import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useTheme } from '../theme';
 import { radius, spacing } from '../theme/tokens';
+import { Icon } from './Icon';
 
 // Ayar satırı + açılır liste. Çip grubu iki-üç kısa seçenek için doğru araç
 // (görünüm: açık/koyu/sistem), ama para birimi ya da uyarı eşiği gibi listelerde
@@ -51,10 +51,10 @@ export function SelectRow<T extends string | number>({
             <Text numberOfLines={1} style={{ fontSize: 15, color: colors.textSecondary }}>
               {selected?.label ?? '—'}
             </Text>
-            <SymbolView
+            <Icon
               name={open ? 'chevron.up' : 'chevron.down'}
               size={12}
-              tintColor={colors.disabled}
+              color={colors.disabled}
               weight="semibold"
             />
           </View>
@@ -102,7 +102,7 @@ export function SelectRow<T extends string | number>({
                   {option.label}
                 </Text>
                 {isSelected && (
-                  <SymbolView name="checkmark" size={13} tintColor={colors.accentFill} weight="semibold" />
+                  <Icon name="checkmark" size={13} color={colors.accentFill} weight="semibold" />
                 )}
               </Pressable>
             );

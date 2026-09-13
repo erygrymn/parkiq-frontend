@@ -4,7 +4,6 @@ import BottomSheet, {
   useBottomSheetSpringConfigs,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
-import { SymbolView } from 'expo-symbols';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Modal, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -14,6 +13,7 @@ import { useTheme } from '../theme';
 import { SPRING } from '../theme/motion';
 import { radius, spacing, typeScale } from '../theme/tokens';
 import { PrimaryCta } from './Buttons';
+import { Icon } from './Icon';
 
 /**
  * Tek bir ayarı düzenlemek için alttan gelen küçük yüzey (tarife editörü, filtreler).
@@ -127,7 +127,7 @@ export function PopupSheet({
               backgroundColor: pressed ? colors.insetPressed : colors.inset,
             })}
           >
-            <SymbolView name="xmark" size={13} tintColor={colors.ink} weight="semibold" />
+            <Icon name="xmark" size={13} color={colors.ink} weight="semibold" />
           </Pressable>
         </View>
 
@@ -188,10 +188,10 @@ export function DetailRow({
       >
         {filled ? value : placeholder}
       </Text>
-      <SymbolView
+      <Icon
         name={open ? 'chevron.down' : 'chevron.right'}
         size={13}
-        tintColor={colors.disabled}
+        color={colors.disabled}
         weight="semibold"
       />
     </Pressable>

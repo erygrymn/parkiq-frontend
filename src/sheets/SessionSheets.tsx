@@ -1,12 +1,12 @@
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { Image } from 'expo-image';
-import { SymbolView } from 'expo-symbols';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GhostButton, PrimaryCta } from '../components/Buttons';
 import { ChipGroup } from '../components/ChipGroup';
+import { Icon } from '../components/Icon';
 import { MoneyBox } from '../components/MoneyBox';
 import { CelebrationHero } from '../components/motion/CelebrationHero';
 import { PhotoThumb } from '../components/motion/PhotoViewer';
@@ -96,7 +96,7 @@ function IconAction({ symbol, label, onPress }: { symbol: 'camera.viewfinder'; l
         opacity: pressed ? 0.6 : 1,
       })}
     >
-      <SymbolView name={symbol} size={17} tintColor={colors.ink} weight="regular" />
+      <Icon name={symbol} size={17} color={colors.ink} weight="regular" />
       <Text style={{ fontSize: 15, color: colors.ink }}>{label}</Text>
     </Pressable>
   );
@@ -314,7 +314,7 @@ function TariffEditor({ onOpenPaywall, onClose }: { onOpenPaywall: () => void; o
         {ocrState === 'scanning' ? (
           <ActivityIndicator size="small" color={colors.textSecondary} />
         ) : (
-          <SymbolView name="camera.viewfinder" size={17} tintColor={colors.ink} weight="regular" />
+          <Icon name="camera.viewfinder" size={17} color={colors.ink} weight="regular" />
         )}
         <Text style={{ flex: 1, fontSize: 15, color: colors.ink }}>
           {ocrState === 'scanning' ? t('scanning') : t('scanBoard')}
@@ -383,10 +383,10 @@ function StepHeader({
           {onBack && (
             <Pressable accessibilityRole="button" accessibilityLabel={t('back')} onPress={onBack} hitSlop={12}>
               {({ pressed }) => (
-                <SymbolView
+                <Icon
                   name="chevron.left"
                   size={13}
-                  tintColor={pressed ? colors.ink : colors.textSecondary}
+                  color={pressed ? colors.ink : colors.textSecondary}
                   weight="semibold"
                 />
               )}

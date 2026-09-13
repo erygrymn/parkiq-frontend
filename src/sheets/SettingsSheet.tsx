@@ -4,10 +4,10 @@ import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { SymbolView } from 'expo-symbols';
 import { useEffect, useState } from 'react';
 import { Linking, Pressable, Switch, Text, View } from 'react-native';
 import { ConfirmSheet } from '../components/ConfirmSheet';
+import { Icon } from '../components/Icon';
 import { PageSheet, Section } from '../components/PageSheet';
 import { SelectRow } from '../components/SelectRow';
 import { ProBadge } from '../components/ProBadge';
@@ -109,7 +109,7 @@ function SettingRow({
       )}
       {trailing}
       {onPress && !trailing && (
-        <SymbolView name="chevron.right" size={13} tintColor={colors.disabled} weight="semibold" />
+        <Icon name="chevron.right" size={13} color={colors.disabled} weight="semibold" />
       )}
     </View>
   );

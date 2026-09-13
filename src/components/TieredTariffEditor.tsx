@@ -1,5 +1,4 @@
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
-import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { t } from '../localization';
@@ -7,6 +6,7 @@ import { sanitizeTiers, type TariffTier } from '../lib/tariffMath';
 import { formatRangeStart, fromMinutes, minutesOf, type TierUnit } from '../lib/tierUnits';
 import { useTheme } from '../theme';
 import { radius, spacing } from '../theme/tokens';
+import { Icon } from './Icon';
 import { Caption, Overline } from './Typography';
 
 // §7.4 dilimli tarife girişi.
@@ -176,10 +176,10 @@ export function TieredTariffEditor({
               hitSlop={8}
               style={{ width: 30, alignItems: 'center' }}
             >
-              <SymbolView
+              <Icon
                 name="minus.circle"
                 size={19}
-                tintColor={rows.length <= 1 ? colors.disabled : colors.textSecondary}
+                color={rows.length <= 1 ? colors.disabled : colors.textSecondary}
                 weight="regular"
               />
             </Pressable>
@@ -200,7 +200,7 @@ export function TieredTariffEditor({
           paddingHorizontal: spacing.s12,
         })}
       >
-        <SymbolView name="plus" size={15} tintColor={colors.ink} weight="regular" />
+        <Icon name="plus" size={15} color={colors.ink} weight="regular" />
         <Text style={{ fontSize: 15, color: colors.ink }}>{t('addTier')}</Text>
       </Pressable>
 

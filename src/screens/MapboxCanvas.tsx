@@ -1,10 +1,10 @@
 import Mapbox, { Camera, CircleLayer, LineLayer, LocationPuck, MapView, MarkerView, ShapeSource } from '@rnmapbox/maps';
 import * as Location from 'expo-location';
-import { SymbolView } from 'expo-symbols';
 import { useEffect, useMemo, useRef } from 'react';
 import { AppState, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import { Icon } from '../components/Icon';
 import { SPRING } from '../theme/motion';
 import { CarPin } from '../components/CarPin';
 import { MAPBOX_PUBLIC_TOKEN, MAPBOX_STYLE_URL_DARK, MAPBOX_STYLE_URL_LIGHT } from '../config';
@@ -66,7 +66,7 @@ function PoiPin({ kind, selected }: { kind: PoiKind; selected?: boolean }) {
     >
       {/* §5.13: emoji glyph yasak — şarj için SF Symbol bolt.fill */}
       {charging ? (
-        <SymbolView name="bolt.fill" size={11} tintColor={colors.card} weight="regular" />
+        <Icon name="bolt.fill" size={11} color={colors.card} weight="regular" />
       ) : (
         <Text style={{ fontSize: 11, fontWeight: '900', color: colors.card }}>P</Text>
       )}

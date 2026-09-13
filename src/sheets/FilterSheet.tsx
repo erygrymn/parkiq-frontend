@@ -1,7 +1,7 @@
-import { SymbolView } from 'expo-symbols';
 import { Pressable, Text, View } from 'react-native';
 import { GhostButton } from '../components/Buttons';
 import { ChipGroup } from '../components/ChipGroup';
+import { Icon } from '../components/Icon';
 import { PopupSheet } from '../components/PopupSheet';
 import { SearchBar } from '../components/SearchBar';
 import { Caption, Overline } from '../components/Typography';
@@ -158,7 +158,7 @@ export function FilterSheet({ visible, onClose }: { visible: boolean; onClose: (
                 </Text>
                 {/* Şarjlı otopark: EV sürücüsünün aradığı tek ayrım. */}
                 {poi.hasCharging && (
-                  <SymbolView name="bolt.fill" size={14} tintColor={colors.accentFill} weight="regular" />
+                  <Icon name="bolt.fill" size={14} color={colors.accentFill} weight="regular" />
                 )}
                 <Pressable
                   accessibilityRole="button"

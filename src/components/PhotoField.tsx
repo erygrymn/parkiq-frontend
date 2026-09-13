@@ -1,8 +1,8 @@
-import { SymbolView } from 'expo-symbols';
 import { Image, Pressable, Text, View } from 'react-native';
 import { t } from '../localization';
 import { useTheme } from '../theme';
 import { radius, spacing } from '../theme/tokens';
+import { Icon } from './Icon';
 import { Overline } from './Typography';
 
 // §7.3 spot fotoğrafı. Foto yokken 44pt eylem satırı, varken 88pt önizleme +
@@ -36,7 +36,7 @@ export function PhotoField({
             paddingHorizontal: spacing.s12,
           })}
         >
-          <SymbolView name="camera" size={17} tintColor={colors.ink} weight="regular" />
+          <Icon name="camera" size={17} color={colors.ink} weight="regular" />
           <Text style={{ fontSize: 15, color: colors.ink }}>{t('addPhoto')}</Text>
         </Pressable>
       </View>

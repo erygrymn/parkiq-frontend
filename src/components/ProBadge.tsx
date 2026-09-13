@@ -1,7 +1,7 @@
-import { SymbolView } from 'expo-symbols';
 import { View } from 'react-native';
 import { useTheme } from '../theme';
 import { radius, spacing } from '../theme/tokens';
+import { Icon } from './Icon';
 
 // Premium işareti: altın taç. Kilitli her yüzeyde AYNI işaret durur — kullanıcı ikinci
 // gördüğünde ne demek olduğunu bilir. Yalnız `!isPremium` iken çizilir; satın alma
@@ -13,7 +13,7 @@ import { radius, spacing } from '../theme/tokens';
 /** Metnin/ikonun yanına giren satır içi taç. */
 export function ProBadge({ size = 12 }: { size?: number }) {
   const { colors } = useTheme();
-  return <SymbolView name="crown.fill" size={size} tintColor={colors.proFill} weight="semibold" />;
+  return <Icon name="crown.fill" size={size} color={colors.proFill} weight="semibold" />;
 }
 
 /**

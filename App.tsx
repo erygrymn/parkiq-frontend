@@ -5,9 +5,9 @@ import BottomSheet, {
 } from '@gorhom/bottom-sheet';
 import Animated, { FadeIn, interpolate, useAnimatedStyle } from 'react-native-reanimated';
 import { StatusBar } from 'expo-status-bar';
-import { SymbolView, type SFSymbol } from 'expo-symbols';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Linking, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Icon, type AppSymbol } from './src/components/Icon';
 import { t } from './src/localization';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -64,7 +64,7 @@ function FloatingIconButton({
   onPress,
   locked,
 }: {
-  symbol: SFSymbol;
+  symbol: AppSymbol;
   label: string;
   onPress: () => void;
   /** Premium: köşeye altın taç. Satın alma sonrası çağıran taraf bunu geçmez, rozet düşer. */
@@ -86,7 +86,7 @@ function FloatingIconButton({
       }}
     >
       <Glass radius={radius.r12} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-        <SymbolView name={symbol} size={22} tintColor={colors.ink} weight="light" />
+        <Icon name={symbol} size={22} color={colors.ink} weight="light" />
       </Glass>
       {locked && <ProCorner />}
     </PressScale>
@@ -165,7 +165,7 @@ function PickLocationLayer({ target }: { target: PickTarget }) {
                 justifyContent: 'center',
               }}
             >
-              <SymbolView name="magnifyingglass" size={17} tintColor={colors.card} weight="regular" />
+              <Icon name="magnifyingglass" size={17} color={colors.card} weight="regular" />
             </View>
           )}
           <View style={{ width: 5, height: 5, borderRadius: 3, marginTop: 3, backgroundColor: colors.accentFill }} />

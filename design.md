@@ -207,6 +207,14 @@ harflerden kurulmaz.
 | Durum satırı | 32pt (eylemli 44pt), 6pt `warn-fill` nokta + 13/400 `text-secondary`; "Offline — timer still running", "Location off · Turn on". |
 | Boş durum | 3 iskelet satır + 15/600 başlık + 13 açıklama. İllüstrasyon yok. |
 | İkonlar | SF Symbols; metin yanı Regular, hero/cam kare Light. Emoji glyph yasak. |
+
+**İkon çağrısı `src/components/Icon.tsx` üzerinden yapılır, `SymbolView` doğrudan kullanılmaz.**
+iOS'ta o bileşen zaten SF Symbols çiziyor — kural değişmedi. Android'de `expo-symbols` hiçbir şey
+çizmediği (hata da vermediği) için orada Material karşılığı çizilir; eşleme tablosu o dosyadadır ve
+tek yerdedir. Tabloda olmayan sembol DERLEME HATASI verir (`AppSymbol` tipi kasıtlı olarak dar):
+yoksa iOS'ta çalışan yeni bir ikon Android'de sessizce boş kalır ve bu ancak cihazda fark edilirdi.
+Eşleme kuralı aynı görünen ikon değil, aynı İŞİ anlatan ikon — `camera.viewfinder` "panoyu tara"
+demek olduğu için Material'da `document-scanner`.
 | **Damga** (`Stamp`) | display-M/S + renkli nokta; §3 damga sekansı gömülü; Reduce Motion'da crossfade. |
 | **CountUp** | tabular display-XL, shared value → `useAnimatedProps` (TextInput) ile UI thread'de; 3 detent haptik; Reduce Motion'da düz fade. |
 | **Pusula kadranı** | 96pt hairline halka (`gridline` 1.5pt); ibre = 8pt ink nokta, halka üzerinde göreli yöne yürür (`SPRING`, kısa yay); ≤20 m'de nokta merkeze iner, 12pt yeşil olur ("buradasın"). Heading güvenilmezse (accuracy ≤1) nokta %45 opak; heading yoksa kadran hiç çizilmez. |
