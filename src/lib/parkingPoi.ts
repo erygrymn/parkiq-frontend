@@ -1,9 +1,31 @@
+import Constants from 'expo-constants';
 import { distanceMeters, type Coords } from './geo';
 
 // Otopark + şarj istasyonu verisi: OpenStreetMap Overpass API.
 // Ücretsiz, anahtarsız (CLAUDE.md: Google API yasak). Sunucumuza uğramaz.
 
-const OVERPASS_ENDPOINT = 'https://overpass-api.de/api/interpreter';
+/**
+ * Overpass ANLAMLI bir User-Agent şart koşuyor ve yoksa isteği motora hiç
+ * sokmadan reddediyor: overpass-api.de 406, aynalar 429 "Please include a
+ * meaningful User-Agent string".
+ *
+ * Android'de "yakındaki otoparklar yüklenemedi" hatasının sebebi buydu: iOS'ta
+ * RN'in fetch'i uygulama adını taşıyan bir UA gönderiyor, Android'de `okhttp/4.x`
+ * gönderiyor ve o jenerik olduğu için engelleniyor. Bağlantıyla ilgisi yoktu.
+ *
+ * OSM görgü kuralları kimliğe ek olarak iletişim bilgisi de istiyor.
+ */
+const USER_AGENT = `ParkIQ/${Constants.expoConfig?.version ?? '1.0'} (https://www.twiceapps.co; info@twiceapps.co)`;
+
+/**
+ * Sırayla denenen uçlar. Ana örnek gün içinde sık sık 504 döndürüyor ve tek uçta
+ * ilk hatada pes etmek haritayı sebepsiz boş bırakıyordu; ilk başarılı yanıt kazanır.
+ */
+const OVERPASS_ENDPOINTS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
+] as const;
 /** Yarıçap seçenekleri (metre) — filtre popup'ındaki mesafe kademesi. */
 export const RADIUS_OPTIONS = [500, 1000, 2000, 5000] as const;
 export const DEFAULT_RADIUS_M = 1000;
@@ -114,19 +136,25 @@ export async function fetchNearbyParking(
   radiusM: number = DEFAULT_RADIUS_M,
   signal?: AbortSignal,
 ): Promise<ParkingPoi[] | null> {
-  try {
-    const response = await fetch(OVERPASS_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: buildQuery(center, radiusM),
-      signal,
-    });
-    if (!response.ok) return null;
-    return parseOverpass(await response.json(), center);
-  } catch {
-    // Overpass yoğunken 429/504 dönebilir; harita boş kalır, app çalışmaya devam eder.
-    return null;
+  const body = buildQuery(center, radiusM);
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain', 'User-Agent': USER_AGENT },
+        body,
+        signal,
+      });
+      // 504 (motor meşgul) sık: bir sonraki aynayı dene, kullanıcıya hata gösterme.
+      if (!response.ok) continue;
+      return parseOverpass(await response.json(), center);
+    } catch {
+      // Kullanıcı ekranı terk ettiyse yeniden denemenin anlamı yok.
+      if (signal?.aborted) return null;
+    }
   }
+  // Hiçbir ayna cevap vermedi; harita boş kalır, app çalışmaya devam eder.
+  return null;
 }
 
 export type PoiFilter = 'all' | 'charging' | 'covered';

@@ -37,3 +37,23 @@ Play Console → Data safety → **Import**. Jigfall'ın dışa aktardığı şa
 Reklam olmadığı için hiçbir satırda `PSL_ADVERTISING` yok — Jigfall'daki en büyük fark bu.
 İçerikteki her satır iOS privacy manifest'iyle (`app.config.ts`) aynı hikâyeyi anlatmalı;
 birini değiştirirsen diğerini de değiştir.
+
+## Abonelikler
+
+`play-iap.mjs` yalnız tek seferlik ürünleri biliyor; abonelikler ayrı uçta
+(`monetization/subscriptions`) ve iki katmanlı: ÜRÜN + BASE PLAN. `play-subs.mjs`
+onu yapıyor:
+
+```bash
+export PLAY_KEY=... PLAY_PKG=com.twiceapps.parkiq
+export PLAY_API="file:///C:/Users/eray/.claude/skills/twice-store/scripts/play-api.mjs"
+node metadata/play/play-subs.mjs create    # ürün + base plan (taslak)
+node metadata/play/play-subs.mjs activate  # base plan'ı yayına al
+node metadata/play/play-subs.mjs list      # doğrula
+```
+
+Tuzaklar: `legacyCompatible: true` şart (RevenueCat eski Play Billing akışını
+kullanıyor, bayraksız ürün SDK'ya görünmüyor) · avantaj satırları dil başına
+**40 karakter** ile sınırlı · fiyatlar App Store'da canlı olanlarla eşitlendi.
+
+RevenueCat tarafında Play aboneliğinin kimliği `productId:basePlanId` biçiminde.

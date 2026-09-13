@@ -1,0 +1,42 @@
+[
+  {
+    "productId": "com.twiceapps.parkiq.pro.monthly",
+    "price": "4.99",
+    "basePlanId": "monthly",
+    "period": "P1M",
+    "listings": {
+      "en-US": { "title": "ParkIQ Pro Monthly", "benefits": ["Scan rate boards with the camera", "Compass back to your car", "Filter car parks", "Suggested tariffs from other drivers"] },
+      "tr-TR": { "title": "ParkIQ Pro Aylık", "benefits": ["Tarife panosunu kamerayla tara", "Arabana dönüş pusulası", "Otopark filtreleri", "Diğer sürücülerden tarife önerisi"] },
+      "de-DE": { "title": "ParkIQ Pro monatlich", "benefits": ["Tarifschild mit der Kamera scannen", "Kompass zurück zum Auto", "Parkhaus-Filter", "Tarifvorschläge anderer Fahrer"] },
+      "fr-FR": { "title": "ParkIQ Pro mensuel", "benefits": ["Scanner le panneau de tarifs", "Boussole vers votre voiture", "Filtres de parking", "Tarifs suggérés par d'autres conducteurs"] },
+      "es-ES": { "title": "ParkIQ Pro mensual", "benefits": ["Escanear el cartel de tarifas", "Brújula de vuelta al coche", "Filtros de aparcamiento", "Tarifas sugeridas por otros conductores"] },
+      "it-IT": { "title": "ParkIQ Pro mensile", "benefits": ["Scansiona il cartello delle tariffe", "Bussola per tornare all'auto", "Filtri parcheggi", "Tariffe suggerite da altri automobilisti"] },
+      "pt-BR": { "title": "ParkIQ Pro mensal", "benefits": ["Escanear a placa de tarifas", "Bússola de volta ao carro", "Filtros de estacionamento", "Tarifas sugeridas por outros motoristas"] },
+      "ja-JP": { "title": "ParkIQ Pro 月額", "benefits": ["料金表をカメラでスキャン", "クルマまで戻るコンパス", "駐車場の絞り込み", "他のドライバーの料金提案"] },
+      "ko-KR": { "title": "ParkIQ Pro 월간", "benefits": ["요금표 카메라 스캔", "차로 돌아가는 나침반", "주차장 필터", "다른 운전자의 요금 제안"] },
+      "zh-TW": { "title": "ParkIQ Pro 月費", "benefits": ["用相機掃描費率牌", "回到車輛的指南針", "停車場篩選", "其他駕駛的費率建議"] },
+      "nl-NL": { "title": "ParkIQ Pro maandelijks", "benefits": ["Tariefbord scannen met de camera", "Kompas terug naar je auto", "Parkeerfilters", "Tarieven van andere bestuurders"] },
+      "sv-SE": { "title": "ParkIQ Pro månadsvis", "benefits": ["Skanna taxeskylten med kameran", "Kompass tillbaka till bilen", "Parkeringsfilter", "Föreslagna taxor från andra förare"] }
+    }
+  },
+  {
+    "productId": "com.twiceapps.parkiq.pro.yearly",
+    "price": "24.99",
+    "basePlanId": "yearly",
+    "period": "P1Y",
+    "listings": {
+      "en-US": { "title": "ParkIQ Pro Yearly", "benefits": ["Scan rate boards with the camera", "Compass back to your car", "Filter car parks", "Suggested tariffs from other drivers"] },
+      "tr-TR": { "title": "ParkIQ Pro Yıllık", "benefits": ["Tarife panosunu kamerayla tara", "Arabana dönüş pusulası", "Otopark filtreleri", "Diğer sürücülerden tarife önerisi"] },
+      "de-DE": { "title": "ParkIQ Pro jährlich", "benefits": ["Tarifschild mit der Kamera scannen", "Kompass zurück zum Auto", "Parkhaus-Filter", "Tarifvorschläge anderer Fahrer"] },
+      "fr-FR": { "title": "ParkIQ Pro annuel", "benefits": ["Scanner le panneau de tarifs", "Boussole vers votre voiture", "Filtres de parking", "Tarifs suggérés par d'autres conducteurs"] },
+      "es-ES": { "title": "ParkIQ Pro anual", "benefits": ["Escanear el cartel de tarifas", "Brújula de vuelta al coche", "Filtros de aparcamiento", "Tarifas sugeridas por otros conductores"] },
+      "it-IT": { "title": "ParkIQ Pro annuale", "benefits": ["Scansiona il cartello delle tariffe", "Bussola per tornare all'auto", "Filtri parcheggi", "Tariffe suggerite da altri automobilisti"] },
+      "pt-BR": { "title": "ParkIQ Pro anual", "benefits": ["Escanear a placa de tarifas", "Bússola de volta ao carro", "Filtros de estacionamento", "Tarifas sugeridas por outros motoristas"] },
+      "ja-JP": { "title": "ParkIQ Pro 年額", "benefits": ["料金表をカメラでスキャン", "クルマまで戻るコンパス", "駐車場の絞り込み", "他のドライバーの料金提案"] },
+      "ko-KR": { "title": "ParkIQ Pro 연간", "benefits": ["요금표 카메라 스캔", "차로 돌아가는 나침반", "주차장 필터", "다른 운전자의 요금 제안"] },
+      "zh-TW": { "title": "ParkIQ Pro 年費", "benefits": ["用相機掃描費率牌", "回到車輛的指南針", "停車場篩選", "其他駕駛的費率建議"] },
+      "nl-NL": { "title": "ParkIQ Pro jaarlijks", "benefits": ["Tariefbord scannen met de camera", "Kompas terug naar je auto", "Parkeerfilters", "Tarieven van andere bestuurders"] },
+      "sv-SE": { "title": "ParkIQ Pro årligen", "benefits": ["Skanna taxeskylten med kameran", "Kompass tillbaka till bilen", "Parkeringsfilter", "Föreslagna taxor från andra förare"] }
+    }
+  }
+]
