@@ -201,9 +201,8 @@ export const zhHant: Record<CopyKey, string> = {
   updateRequiredBody: '這個版本已經算不準停車費用。更新後才能繼續。',
   updateNow: '更新',
   // Konum izni daveti (§7.2): kapı değil, keşif panelinin üstünde bir satır.
-  locationInviteTitle: '開啟定位',
-  locationInviteBody: 'ParkIQ 會記住車停在哪，也會找出附近的停車場。不開也可以自己在地圖上放一個標記。',
-  locationInviteBlocked: 'iOS 只會問一次。打開「設定」，為 ParkIQ 開啟定位。',
+  locationInviteTitle: '定位已關閉',
+  locationInviteBlocked: 'ParkIQ 無法記住你把車停在哪。請到「設定」為 ParkIQ 開啟定位，或自己在地圖上放一個標記。',
   allowLocation: '允許定位',
   openLocationSettings: '打開設定',
   settings: '設定',

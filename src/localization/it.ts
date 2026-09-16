@@ -202,9 +202,8 @@ export const it: Record<CopyKey, string> = {
   updateRequiredBody: 'Questa versione non calcola più i costi in modo corretto. Aggiorna per continuare.',
   updateNow: 'Aggiorna',
   // Konum izni daveti (§7.2): kapı değil, keşif panelinin üstünde bir satır.
-  locationInviteTitle: 'Attiva la posizione',
-  locationInviteBody: 'ParkIQ segna dove hai lasciato l’auto e trova i parcheggi intorno a te. Senza, puoi comunque mettere il segnaposto a mano sulla mappa.',
-  locationInviteBlocked: 'iOS lo chiede una volta sola. Apri Impostazioni e attiva Posizione per ParkIQ.',
+  locationInviteTitle: 'Posizione disattivata',
+  locationInviteBlocked: 'ParkIQ non può salvare dove hai parcheggiato. Attiva Posizione per ParkIQ in Impostazioni — o metti il segnaposto a mano sulla mappa.',
   allowLocation: 'Consenti posizione',
   openLocationSettings: 'Apri Impostazioni',
   settings: 'Impostazioni',

@@ -374,10 +374,13 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
         {/* S3: bu ekranın kendisi pre-prompt'tur — ayrı açıklama kartı yok (§7.1) */}
         {page === 2 && (
           <Animated.View entering={FadeIn.duration(CROSSFADE_MS)} style={{ gap: spacing.s8 }}>
+            {/* TEK aksiyon, ve o aksiyon her zaman sistem penceresine gider.
+                "Şimdi değil" burada duruyordu ve 5.1.1(iv) ile reddedildi: özel
+                bir mesajla izni ERTELEYEBİLMEK yasak — mesajdan sonra kullanıcı
+                sistem sorusuna varmalı. Reddetme hakkı kaybolmuyor, sistem
+                penceresindeki "Don't Allow"a taşınıyor; app izinsiz de tam
+                çalışıyor (haritadan pin bırakma, §7.12). */}
             <PrimaryCta label={t('enableLocation')} onPress={requestLocation} />
-            <Pressable accessibilityRole="button" onPress={onDone} hitSlop={8} style={{ alignSelf: 'center' }}>
-              <Text style={{ fontSize: 15, color: scheme === 'dark' ? '#9B9BA4' : '#6E6E78' }}>{t('notNow')}</Text>
-            </Pressable>
           </Animated.View>
         )}
 

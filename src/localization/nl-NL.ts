@@ -201,9 +201,8 @@ export const nlNL: Record<CopyKey, string> = {
   updateRequiredBody: 'Deze versie rekent je parkeerkosten niet meer goed uit. Werk bij om verder te gaan.',
   updateNow: 'Bijwerken',
   // Konum izni daveti (§7.2): kapı değil, keşif panelinin üstünde bir satır.
-  locationInviteTitle: 'Locatie aanzetten',
-  locationInviteBody: 'ParkIQ onthoudt waar je de auto achterliet en vindt parkeerplekken in de buurt. Zonder locatie zet je de speld gewoon zelf op de kaart.',
-  locationInviteBlocked: 'iOS vraagt het maar één keer. Open Instellingen en zet Locatie aan voor ParkIQ.',
+  locationInviteTitle: 'Locatie staat uit',
+  locationInviteBlocked: 'ParkIQ kan niet bewaren waar je geparkeerd staat. Zet Locatie aan voor ParkIQ in Instellingen — of zet de speld zelf op de kaart.',
   allowLocation: 'Locatie toestaan',
   openLocationSettings: 'Instellingen openen',
   settings: 'Instellingen',

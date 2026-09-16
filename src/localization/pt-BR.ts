@@ -201,9 +201,8 @@ export const ptBR: Record<CopyKey, string> = {
   updateRequiredBody: 'Esta versão não calcula mais os valores de estacionamento corretamente. Atualize para continuar.',
   updateNow: 'Atualizar',
   // Konum izni daveti (§7.2): kapı değil, keşif panelinin üstünde bir satır.
-  locationInviteTitle: 'Ativar a localização',
-  locationInviteBody: 'O ParkIQ marca onde você deixou o carro e encontra estacionamentos por perto. Sem ela, você ainda pode colocar o pino no mapa à mão.',
-  locationInviteBlocked: 'O iOS pergunta uma vez só. Abra os Ajustes e ative Localização para o ParkIQ.',
+  locationInviteTitle: 'Localização desativada',
+  locationInviteBlocked: 'O ParkIQ não consegue salvar onde você estacionou. Ative Localização para o ParkIQ nos Ajustes — ou coloque o pino no mapa à mão.',
   allowLocation: 'Permitir localização',
   openLocationSettings: 'Abrir Ajustes',
   settings: 'Ajustes',

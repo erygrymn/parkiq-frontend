@@ -200,9 +200,8 @@ export const en = {
   updateRequiredBody: 'This version can no longer keep your parking costs accurate. Update to continue.',
   updateNow: 'Update',
   // Konum izni daveti (§7.2): kapı değil, keşif panelinin üstünde bir satır.
-  locationInviteTitle: 'Turn on location',
-  locationInviteBody: 'ParkIQ saves where you left the car and finds parking around you. Without it you can still drop a pin on the map by hand.',
-  locationInviteBlocked: 'iOS only asks once. Open Settings and turn Location on for ParkIQ.',
+  locationInviteTitle: 'Location is off',
+  locationInviteBlocked: 'ParkIQ can’t save where you parked. Turn Location on for ParkIQ in Settings — or drop the pin on the map by hand.',
   allowLocation: 'Allow Location',
   openLocationSettings: 'Open Settings',
   settings: 'Settings',

@@ -201,9 +201,8 @@ export const frFR: Record<CopyKey, string> = {
   updateRequiredBody: 'Cette version ne calcule plus vos montants de stationnement correctement. Mettez à jour pour continuer.',
   updateNow: 'Mettre à jour',
   // Konum izni daveti (§7.2): kapı değil, keşif panelinin üstünde bir satır.
-  locationInviteTitle: 'Activer la localisation',
-  locationInviteBody: 'ParkIQ retient où vous avez laissé la voiture et trouve les parkings autour de vous. Sans cela, vous pouvez toujours poser le repère à la main sur la carte.',
-  locationInviteBlocked: 'iOS ne le demande qu’une seule fois. Ouvrez Réglages et activez Position pour ParkIQ.',
+  locationInviteTitle: 'Localisation désactivée',
+  locationInviteBlocked: 'ParkIQ ne peut pas enregistrer où vous êtes garé. Activez Position pour ParkIQ dans Réglages — ou posez le repère à la main sur la carte.',
   allowLocation: 'Autoriser la position',
   openLocationSettings: 'Ouvrir Réglages',
   settings: 'Réglages',

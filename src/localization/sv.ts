@@ -201,9 +201,8 @@ export const sv: Record<CopyKey, string> = {
   updateRequiredBody: 'Den här versionen kan inte längre räkna ut dina parkeringskostnader rätt. Uppdatera för att fortsätta.',
   updateNow: 'Uppdatera',
   // Konum izni daveti (§7.2): kapı değil, keşif panelinin üstünde bir satır.
-  locationInviteTitle: 'Slå på plats',
-  locationInviteBody: 'ParkIQ märker ut var du lämnade bilen och hittar parkeringar i närheten. Utan den kan du fortfarande sätta nålen på kartan för hand.',
-  locationInviteBlocked: 'iOS frågar bara en gång. Öppna Inställningar och slå på Plats för ParkIQ.',
+  locationInviteTitle: 'Plats är av',
+  locationInviteBlocked: 'ParkIQ kan inte spara var du parkerade. Slå på Plats för ParkIQ i Inställningar — eller sätt nålen på kartan för hand.',
   allowLocation: 'Tillåt plats',
   openLocationSettings: 'Öppna Inställningar',
   settings: 'Inställningar',

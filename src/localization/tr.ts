@@ -190,9 +190,8 @@ export const tr: Record<CopyKey, string> = {
   updateRequiredBody: 'Bu sürüm park tutarlarını doğru hesaplayamıyor. Devam etmek için güncelle.',
   updateNow: 'Güncelle',
   // Konum izni daveti (§7.2): kapı değil, keşif panelinin üstünde bir satır.
-  locationInviteTitle: 'Konumu aç',
-  locationInviteBody: 'ParkIQ arabayı nereye bıraktığını kaydeder ve çevrendeki otoparkları bulur. Onsuz da haritaya elle pin bırakabilirsin.',
-  locationInviteBlocked: 'iOS bunu yalnız bir kez sorar. Ayarlar’ı açıp ParkIQ için Konum’u aç.',
+  locationInviteTitle: 'Konum kapalı',
+  locationInviteBlocked: 'ParkIQ arabayı nereye bıraktığını kaydedemiyor. Ayarlar’dan ParkIQ için Konum’u aç — ya da pini haritaya elle bırak.',
   allowLocation: 'Konuma İzin Ver',
   openLocationSettings: 'Ayarları Aç',
   settings: 'Ayarlar',

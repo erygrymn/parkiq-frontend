@@ -201,9 +201,8 @@ export const deDE: Record<CopyKey, string> = {
   updateRequiredBody: 'Diese Version berechnet die Parkkosten nicht mehr korrekt. Aktualisiere, um weiterzumachen.',
   updateNow: 'Aktualisieren',
   // Konum izni daveti (§7.2): kapı değil, keşif panelinin üstünde bir satır.
-  locationInviteTitle: 'Standort einschalten',
-  locationInviteBody: 'ParkIQ merkt sich, wo dein Auto steht, und findet Parkplätze in der Nähe. Ohne Standort kannst du den Punkt weiterhin von Hand auf die Karte setzen.',
-  locationInviteBlocked: 'iOS fragt nur ein einziges Mal. Öffne die Einstellungen und aktiviere Standort für ParkIQ.',
+  locationInviteTitle: 'Standort ist aus',
+  locationInviteBlocked: 'ParkIQ kann nicht speichern, wo du geparkt hast. Aktiviere Standort für ParkIQ in den Einstellungen — oder setze den Punkt von Hand auf die Karte.',
   allowLocation: 'Standort erlauben',
   openLocationSettings: 'Einstellungen öffnen',
   settings: 'Einstellungen',

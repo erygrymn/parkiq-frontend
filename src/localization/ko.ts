@@ -201,9 +201,8 @@ export const ko: Record<CopyKey, string> = {
   updateRequiredBody: '이 버전은 주차 요금을 더 이상 정확히 계산하지 못해요. 계속하려면 업데이트하세요.',
   updateNow: '업데이트',
   // Konum izni daveti (§7.2): kapı değil, keşif panelinin üstünde bir satır.
-  locationInviteTitle: '위치 권한 켜기',
-  locationInviteBody: 'ParkIQ는 차를 세운 자리를 기록하고 근처 주차장을 찾아줘요. 없어도 지도에 직접 핀을 찍을 수 있어요.',
-  locationInviteBlocked: 'iOS는 한 번만 물어봐요. 설정을 열어 ParkIQ의 위치를 켜 주세요.',
+  locationInviteTitle: '위치 권한이 꺼져 있어요',
+  locationInviteBlocked: 'ParkIQ가 주차한 자리를 저장할 수 없어요. 설정에서 ParkIQ의 위치를 켜거나, 지도에 직접 핀을 찍어 주세요.',
   allowLocation: '위치 허용',
   openLocationSettings: '설정 열기',
   settings: '설정',

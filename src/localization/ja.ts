@@ -201,9 +201,8 @@ export const ja: Record<CopyKey, string> = {
   updateRequiredBody: 'このバージョンでは駐車料金を正しく計算できません。続けるにはアップデートしてください。',
   updateNow: 'アップデート',
   // Konum izni daveti (§7.2): kapı değil, keşif panelinin üstünde bir satır.
-  locationInviteTitle: '位置情報をオンにする',
-  locationInviteBody: 'ParkIQ は車をとめた場所を記録し、近くの駐車場を探します。オフのままでも、地図にピンを手で置けます。',
-  locationInviteBlocked: 'iOS が尋ねるのは一度だけです。設定を開いて ParkIQ の位置情報をオンにしてください。',
+  locationInviteTitle: '位置情報がオフです',
+  locationInviteBlocked: 'ParkIQ は駐車した場所を記録できません。設定で ParkIQ の位置情報をオンにするか、地図にピンを手で置いてください。',
   allowLocation: '位置情報を許可',
   openLocationSettings: '設定を開く',
   settings: '設定',

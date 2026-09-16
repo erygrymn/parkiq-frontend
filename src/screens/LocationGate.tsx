@@ -73,17 +73,24 @@ function useLocationPermission(): { state: GateState; request: () => void } {
 }
 
 /**
- * Keşif panelinin en üstündeki davet satırı. İzin verilmişse, okuma sürüyorsa ya
- * da kullanıcı bu oturumda kapattıysa hiç çizilmez. Siyah hap KULLANMAZ: bu
- * yüzeydeki tek siyah CTA "Park Ettim"dir (İlke 4).
+ * Keşif panelinin en üstündeki durum satırı — YALNIZ izin REDDEDİLMİŞKEN.
+ *
+ * Eskiden izin henüz sorulmamışken de çıkıyor ve "izin ver / şimdi değil"
+ * sunuyordu; 5.1.1(iv) bunu reddetti, çünkü özel bir mesajın izni erteleyebilen
+ * bir çıkışı olamaz. Sorulmamış durumda artık hiçbir şey çizilmiyor: sistem
+ * penceresi zaten onboarding'de ya da "Park Ettim"e basıldığı anda bağlamıyla
+ * geliyor. Reddedilmiş durumda ise bu bir ÖN mesaj değil, olan biteni söyleyen
+ * bir durum satırı — Apple'ın kendi önerisi de bu ("inform the user and provide
+ * a link to the Settings app"), o yüzden kapatılabilir olması sorun değil.
+ *
+ * Siyah hap KULLANMAZ: bu yüzeydeki tek siyah CTA "Park Ettim"dir (İlke 4).
  */
 export function LocationInvite() {
   const { colors } = useTheme();
   const { state, request } = useLocationPermission();
   const dismissed = useUiStore((s) => s.locationInviteDismissed);
 
-  if (state === 'checking' || state === 'granted' || dismissed) return null;
-  const blocked = state === 'blocked';
+  if (state !== 'blocked' || dismissed) return null;
 
   return (
     <Animated.View
@@ -96,12 +103,10 @@ export function LocationInvite() {
       }}
     >
       <Text style={{ fontSize: 17, fontWeight: '600', color: colors.ink }}>{t('locationInviteTitle')}</Text>
-      <Caption>{t(blocked ? 'locationInviteBlocked' : 'locationInviteBody')}</Caption>
+      <Caption>{t('locationInviteBlocked')}</Caption>
       <View style={{ flexDirection: 'row', gap: spacing.s20, paddingTop: spacing.s4 }}>
         <Pressable accessibilityRole="button" onPress={request} hitSlop={8}>
-          <Text style={{ fontSize: 15, fontWeight: '600', color: colors.ink }}>
-            {t(blocked ? 'openLocationSettings' : 'allowLocation')}
-          </Text>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: colors.ink }}>{t('openLocationSettings')}</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
