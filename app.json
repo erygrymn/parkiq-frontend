@@ -2,14 +2,14 @@
   "expo": {
     "name": "ParkIQ",
     "slug": "parkiq",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.twiceapps.parkiq",
-      "buildNumber": "7",
+      "buildNumber": "1",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "ParkIQ saves where you parked so you can find your car later, and shows parking around you.",
         "NSCameraUsageDescription": "Take a photo of your parking spot, read a tariff board, and point the camera to see the way back to your car.",
