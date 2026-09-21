@@ -292,7 +292,10 @@ function syncAlerts(
   // Uyarı kaynağı: tarife dilimleri VEYA basit süre hatırlatıcısı. İkisi de yoksa
   // kurulacak bir şey yok → izin de istenmez (bağlamsal izin kuralı).
   if (!session || session.endedAtMs !== null || (!session.tariff && session.reminder === null)) {
-    void cancelSessionAlerts();
+    /* Tepsi YALNIZ oturum gerçekten bittiyse temizlenir. Bu dal sürmekte olan bir
+       parkta da çalışıyor (tarife ve hatırlatıcı yoksa kurulacak uyarı yok); orada
+       tepsiyi silmek Android'in kalıcı park kartını da düşürürdü. */
+    void cancelSessionAlerts({ dismissDelivered: session === null || session.endedAtMs !== null });
     return;
   }
   const threshold = useSettingsStore.getState().warnThresholdMin;
@@ -357,7 +360,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     // Aktif oturum yoksa hayalet alarm, hayalet kilit ekranı kartı ve hayalet widget
     // sayacı da olmamalı: app öldürülmüşken oturum silinmiş ya da bitmiş olabilir.
     if (!active) {
-      void cancelSessionAlerts();
+      void cancelSessionAlerts({ dismissDelivered: true });
       clearSessionSurfaces();
     }
 
@@ -571,7 +574,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     } catch {
       /* silinemezse bellek durumu yine sıfırlanır */
     }
-    void cancelSessionAlerts();
+    void cancelSessionAlerts({ dismissDelivered: true });
     set({
       phase: 'idle',
       session: null,
@@ -811,7 +814,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       /* depo yoksa bellek durumu yine doğru; sonraki açılışta süpürme devreye girer */
     }
     set({ phase: 'ended', session: next });
-    void cancelSessionAlerts(); // §8.4: oturum bitince zamanlanmış uyarılar iptal
+    // Park bitti: gelecektekiler iptal, tepsiye düşmüş uyarılar da silinir.
+    void cancelSessionAlerts({ dismissDelivered: true });
     syncLiveActivity('end');
 
     const exit = computeExitSummary(next.tariff, next.startedAtMs, next.endedAtMs ?? Date.now());
@@ -862,7 +866,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       notificationState: 'idle',
       locationPinnedByUser: false,
     });
-    void cancelSessionAlerts();
+    void cancelSessionAlerts({ dismissDelivered: true });
   },
 
   deleteEndedSession: (id) => {

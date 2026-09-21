@@ -32,13 +32,23 @@ interface DiscoveryStore {
   pinTarget: Coords | null;
   pinToken: number;
   followToken: number;
+  /**
+   * Yalnız ARAMA sonucu artar. `pinToken` bunun için kullanılamıyor: listeden bir
+   * otoparka dokunmak da pin atıyor ve orada panelin yükselmesi istenmiyor —
+   * kullanıcı o an kartı ve haritayı görmek istiyor.
+   */
+  searchToken: number;
   /** Haritada seçili otopark — keşif paneli yerine o kartı gösterir. */
   selectedPoiId: string | null;
   selectPoi: (id: string | null) => void;
   setFilter: (filter: PoiFilter) => void;
   load: (center: Coords, force?: boolean) => void;
-  /** Sabit koordinata git + orada otopark ara (arama sonucu, POI). */
+  /** Sabit koordinata git + orada otopark ara (liste satırı, POI seçimi). */
   pinTo: (center: Coords) => void;
+  /** Arama sonucuna git: pin + oranın otoparkları + panel yarı açık. */
+  pinToSearch: (center: Coords) => void;
+  /** Harita elle kaydırıldı: yeni merkezin otoparklarını getir. */
+  panTo: (center: Coords) => void;
   /** Kullanıcıyı takibe dön (konuma dön butonu). */
   requestFollow: () => void;
   visiblePois: () => ParkingPoi[];
@@ -58,6 +68,7 @@ export const useDiscoveryStore = create<DiscoveryStore>((set, get) => ({
   pinTarget: null,
   pinToken: 0,
   followToken: 0,
+  searchToken: 0,
   selectedPoiId: null,
 
   selectPoi: (id) => set({ selectedPoiId: id }),
@@ -76,6 +87,22 @@ export const useDiscoveryStore = create<DiscoveryStore>((set, get) => ({
 
   pinTo: (center) => {
     set({ pinTarget: center, pinToken: get().pinToken + 1 });
+    get().load(center);
+  },
+
+  pinToSearch: (center) => {
+    set({ pinTarget: center, pinToken: get().pinToken + 1, searchToken: get().searchToken + 1 });
+    // `force`: aranan yer eldeki merkeze yakınsa `load` sessizce vazgeçiyor ve
+    // kullanıcı "aradım ama bir şey çıkmadı" görüyordu. Arama her zaman sorar.
+    get().load(center, true);
+  },
+
+  /**
+   * Haritayı elle kaydırmak da bir arama niyetidir — kullanıcı oraya bakıyor.
+   * Önceden yalnız kullanıcının KENDİ konumu ve arama sonucu sorgu tetikliyordu,
+   * bu yüzden haritayı bir semte kaydırınca orası boş kalıyordu.
+   */
+  panTo: (center) => {
     get().load(center);
   },
 

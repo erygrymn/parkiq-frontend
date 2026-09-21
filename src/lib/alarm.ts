@@ -98,18 +98,31 @@ export async function scheduleParkAlarm(atMs: number, title: string): Promise<st
   }
 }
 
-/** Kurulmuş alarmları durdurur; kimliği bilinmeyen kalıntı varsa süpürür. */
+/**
+ * Kurulmuş alarmları durdurur; kimliği bilinmeyen kalıntı varsa süpürür.
+ *
+ * Her çağrı KENDİ try/catch'inde. Hepsi tek blokta olduğu için ilk `stopAlarm`
+ * hata verdiğinde (alarm çoktan çalmış ya da kimlik bilinmiyorsa olur) döngü
+ * kopuyor ve arkasındaki SÜPÜRME hiç çalışmıyordu: geri kalan alarmlar hayalet
+ * olarak hayatta kalıyordu. Park bitmişken çalan alarm, bu üründe en rahatsız
+ * edici hata sınıfı.
+ */
 export async function cancelParkAlarms(ids: string[]): Promise<void> {
   const m = alarmKit();
   if (!m) return;
-  try {
-    for (const id of ids) {
-      if (id) await m.stopAlarm(id);
+  for (const id of ids) {
+    if (!id) continue;
+    try {
+      await m.stopAlarm(id);
+    } catch {
+      /* zaten çalmış ya da bilinmiyor — sıradakini denemeye devam */
     }
+  }
+  try {
     // Süpürme: app öldürülmüşken kimlik listesi kaybolduysa bile çalacak alarm kalmasın.
     // ParkIQ'da aynı anda tek oturum var, başka birinin alarmını kapatma riski yok.
     await m.stopAllAlarms();
   } catch {
-    /* alarm zaten çalmış ya da bilinmiyor */
+    /* süpürme başarısızsa bir sonraki iptalde tekrar denenir */
   }
 }

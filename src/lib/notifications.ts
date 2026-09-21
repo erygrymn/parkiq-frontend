@@ -81,12 +81,30 @@ export async function ensureNotificationPermission(prompt: boolean): Promise<Not
   }
 }
 
-/** §8.4 oto-algılama onayı: "Park kaydedildi. Sayaç başlasın mı?" */
-export async function cancelSessionAlerts(): Promise<void> {
+/**
+ * Oturumun tüm uyarılarını iptal eder.
+ *
+ * `dismissDelivered`: ZATEN DÜŞMÜŞ bildirimleri de siler. `cancelAllScheduled…`
+ * yalnız gelecektekileri iptal ediyor; tepsiye düşmüş bir dilim uyarısı park
+ * bittikten sonra da orada duruyordu — kullanıcı için bu, bitmiş bir parkın hâlâ
+ * sürdüğü anlamına geliyor. Yalnız BİTİŞ yollarında açılır: uyarılar yeniden
+ * kurulurken (tarife değişimi) açılırsa Android'deki kalıcı park kartını da
+ * silerdi, oysa oturum sürüyor.
+ */
+export async function cancelSessionAlerts(
+  options: { dismissDelivered?: boolean } = {},
+): Promise<void> {
   try {
     await Notifications.cancelAllScheduledNotificationsAsync();
   } catch {
     // Bildirim katmanı yoksa sessizce geç: sayaç ve tarife çubuğu etkilenmez.
+  }
+  if (options.dismissDelivered) {
+    try {
+      await Notifications.dismissAllNotificationsAsync();
+    } catch {
+      /* tepsi temizlenemezse oturum durumu yine doğru */
+    }
   }
   // Sistem alarmları bildirimlerden AYRI yaşar: park erken bitirilince ikisi de susmalı.
   const ids = readAlarmIds();

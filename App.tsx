@@ -22,7 +22,7 @@ import { HistoryScene } from './src/sheets/HistoryScene';
 import { useUiStore } from './src/state/uiStore';
 import { refreshSessionActivity } from './src/lib/liveActivity';
 import { CROSSFADE_MS, SPRING } from './src/theme/motion';
-import { sheetIndex } from './src/theme/sheetMotion';
+import { sheetIndex, sheetTop } from './src/theme/sheetMotion';
 import { PressScale } from './src/components/motion/PressScale';
 import { ProCorner } from './src/components/ProBadge';
 import { Caption } from './src/components/Typography';
@@ -67,6 +67,9 @@ const HISTORY_SHEET_RATIO = 0.62;
  * olduğu için burada paneli indirebilmek özelliğin kendisi sayılır.
  */
 const FINDING_COMPACT_HEIGHT = 132;
+
+/** Keşifte arama sonrası açılan orta kademe: liste görünür, harita da yarı yarıya kalır. */
+const IDLE_HALF_RATIO = 0.55;
 
 function FloatingIconButton({
   symbol,
@@ -245,10 +248,22 @@ function Root() {
 
   /* Arabamı Bul açık kademede başlar — "Buldum" ilk bakışta elde olmalı. Aşağı çekmek
      haritayı açar; kullanıcı arabayı görüp geri yükseltir. Kompakt kademede kilitli
-     başlasaydı asıl eylem gizli kalırdı. */
+     başlasaydı asıl eylem (ve AR/pusula) gizli kalırdı: kullanıcı paneli genişletip
+     orada ne olduğunu tahmin edemiyor. */
   useEffect(() => {
     if (phase === 'finding') sheetRef.current?.expand();
   }, [phase]);
+
+  /* Arama sonucu → panel YARI açık kademeye gelir ve oradaki otoparkları listeler.
+     Sorgu zaten atılıyordu ama panel kompakt kaldığı için liste ekranın altında
+     kalıyor, kullanıcı "arama bir şey getirmedi" sanıyordu. Yalnız aramada tetiklenir:
+     listeden bir otoparka dokunmak da pin atıyor, orada panelin zıplaması istenmez. */
+  const searchToken = useDiscoveryStore((s) => s.searchToken);
+  useEffect(() => {
+    if (searchToken > 0 && phase === 'idle') sheetRef.current?.snapToIndex(1);
+    // Faz değişimi bu etkiyi tetiklemez: yalnız yeni bir arama paneli oynatır.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchToken]);
 
   // §4 derinlik davranıştan: sheet full detent'e giderken yüzen cam kareler çekilir.
   const floatingStyle = useAnimatedStyle(() => ({
@@ -336,10 +351,13 @@ function Root() {
   // Yalnız keşifte ikinci (kompakt) kademe var; dinamik içerik kademesi kütüphane
   // tarafından sona eklenir. Diğer fazlarda tek kademe = içerik yüksekliği.
   const snapPoints = useMemo(() => {
-    if (phase === 'idle') return [IDLE_COMPACT_HEIGHT + insets.bottom];
+    // Keşifte üç kademe: kompakt (arama + CTA) · yarı açık (otopark listesi) · içerik.
+    if (phase === 'idle') {
+      return [IDLE_COMPACT_HEIGHT + insets.bottom, Math.round(windowHeight * IDLE_HALF_RATIO)];
+    }
     if (phase === 'finding') return [FINDING_COMPACT_HEIGHT + insets.bottom];
     return undefined;
-  }, [phase, insets.bottom]);
+  }, [phase, insets.bottom, windowHeight]);
 
   return (
     <BottomSheetModalProvider>
@@ -393,6 +411,8 @@ function Root() {
         // §3: yükseklik tek genel spring ile; index shared value'su harita ve kareleri sürer.
         animationConfigs={sheetSprings}
         animatedIndex={sheetIndex}
+        // Harita, panelin üstünde kalan şeridi buradan ölçer (çerçeveleme).
+        animatedPosition={sheetTop}
         backgroundStyle={backgroundStyle}
         handleIndicatorStyle={{ backgroundColor: colors.insetPressed, width: 36, height: 4.5 }}
       >

@@ -140,7 +140,7 @@ export function IdleSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   const filter = useDiscoveryStore((s) => s.filter);
   const discoveryState = useDiscoveryStore((s) => s.state);
   const pois = useDiscoveryStore((s) => s.pois);
-  const { setFilter, load, pinTo, requestFollow } = useDiscoveryStore.getState();
+  const { setFilter, load, pinTo, pinToSearch, requestFollow } = useDiscoveryStore.getState();
 
   // Kullanıcı konumu alınınca yakındakiler çekilir (mesafe eşiğiyle tekrar sorgu engellenir).
   useEffect(() => {
@@ -174,7 +174,7 @@ export function IdleSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
       <LocationInvite />
 
       {/* Hedefi ara → ORANIN çevresindeki otoparklar (evden çıkmadan planlama). */}
-      <SearchBar onPick={(result) => pinTo(result.coords)} onLocate={locateMe} />
+      <SearchBar onPick={(result) => pinToSearch(result.coords)} onLocate={locateMe} />
 
       {/* CTA doğrudan aramanın altında: kompakt kademede görünen tek şey bu ikisi. */}
       <PrimaryCta
@@ -216,7 +216,7 @@ export function IdleSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
       )}
 
       {/* §7.2 en yakın otoparklar: editöryal satırlar, gri kutu yok. */}
-      {visible.slice(0, 3).map((poi, index) => {
+      {visible.slice(0, POI_ROWS).map((poi, index) => {
         const remembered = rememberedTariffFor(poi);
         return (
           <Animated.View
@@ -354,6 +354,14 @@ function TariffEditor({ onOpenPaywall, onClose }: { onOpenPaywall: () => void; o
     </>
   );
 }
+
+/**
+ * Keşif panelinde listelenen otopark sayısı.
+ *
+ * Üçtü; yarı açık kademede o kadarı paneli boş bırakıyordu ve arama sonrası
+ * "oradaki otoparkları listele" beklentisini karşılamıyordu. Panel kaydırılabilir.
+ */
+const POI_ROWS = 8;
 
 /** Park anı soruları: yalnız cevabı bir dokunuş olanlar. Tarife varsa dilim uyarıları zaten kurulur → hatırlatma sorulmaz. */
 type ParkStep = 'level' | 'tariff' | 'remind';

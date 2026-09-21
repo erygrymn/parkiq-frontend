@@ -1,9 +1,17 @@
 import Mapbox, { Camera, CircleLayer, LineLayer, LocationPuck, MapView, MarkerView, ShapeSource, SymbolLayer } from '@rnmapbox/maps';
 import * as Location from 'expo-location';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, {
+  interpolate,
+  runOnJS,
+  useAnimatedReaction,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { Icon } from '../components/Icon';
 import { SPRING } from '../theme/motion';
 import { CarPin } from '../components/CarPin';
@@ -17,9 +25,9 @@ import { useDiscoveryStore } from '../state/discoveryStore';
 import { useSessionStore } from '../state/sessionStore';
 import { useUiStore } from '../state/uiStore';
 import { CROSSFADE_MS } from '../theme/motion';
-import { sheetIndex } from '../theme/sheetMotion';
+import { sheetIndex, sheetTop } from '../theme/sheetMotion';
 import { useTheme } from '../theme';
-import { lightColors } from '../theme/tokens';
+import { lightColors, spacing } from '../theme/tokens';
 
 // Gerçek harita katmanı — YALNIZ native build'de yüklenir (MapCanvas koruması).
 // Expo Go bu dosyayı hiç require etmez.
@@ -36,6 +44,9 @@ Mapbox.setAccessToken(MAPBOX_PUBLIC_TOKEN);
 // konum topluyor" satırı olmasın, kullanıcının konumu yalnız harita karosu
 // isteğinde ve rıza verdiği tarife havuzunda dolaşsın.
 Mapbox.setTelemetryEnabled(false);
+
+/** Kaydırma durduktan sonra sorgu için beklenen süre (ms). */
+const PAN_SETTLE_MS = 700;
 
 const DEFAULT_ZOOM = 15.5;
 
@@ -125,6 +136,9 @@ export function MapboxCanvas() {
 
   // Callback'ler içinden güncel değeri okumak için ref'ler (kapanış tuzağı yok).
   const followingRef = useRef(true);
+  /** Kaydırma bitmeden sorgu atmamak için; her olay sayacı sıfırlar. */
+  const panTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (panTimer.current) clearTimeout(panTimer.current); }, []);
   const userCoordsRef = useRef<[number, number] | null>(null);
   const hasCarRef = useRef(false);
   const carCoordsRef = useRef<[number, number] | null>(null);
@@ -236,6 +250,16 @@ export function MapboxCanvas() {
    * "konumum güncellenmiyor" diye görünen şey buydu. Kullanıcı haritayı kendi elleriyle
    * kaydırdıysa (`followingRef` kapanır) karışılmaz.
    */
+  /* Panel kademesi değişince çerçeve tazelenir: kullanıcı paneli indirip kaldırdığında
+     harita yeni boşluğa göre yeniden ortalanır. Sürekli değil, kademe başına bir kez. */
+  const [sheetStep, setSheetStep] = useState(0);
+  useAnimatedReaction(
+    () => Math.round(sheetIndex.value),
+    (step, previous) => {
+      if (previous !== null && step !== previous) runOnJS(setSheetStep)(step);
+    },
+  );
+
   const firstFrameRef = useRef(false);
   useEffect(() => {
     if (!finding) {
@@ -248,17 +272,23 @@ export function MapboxCanvas() {
     firstFrameRef.current = true;
     const lngs = [carCoords[0], userFix.longitude];
     const lats = [carCoords[1], userFix.latitude];
+    /* Alt boşluk PANELİN GERÇEK yüksekliğinden gelir: kullanıcı ve araba, panelin
+       üstünde kalan şeride ortalanır. Sabit 380 px'ti — panel bundan yüksekken araba
+       panelin altında kalıyordu, alçakken harita boşuna sıkışıyordu. Panel henüz
+       ölçülmediyse (0) eski sabit kullanılır. */
+    const top = sheetTop.value;
+    const paddingBottom = top > 0 ? Math.round(windowHeight - top + spacing.s24) : 380;
     cameraRef.current?.setCamera({
       bounds: {
         ne: [Math.max(...lngs), Math.max(...lats)],
         sw: [Math.min(...lngs), Math.min(...lats)],
       },
-      padding: { paddingTop: 140, paddingBottom: 380, paddingLeft: 64, paddingRight: 64 },
+      padding: { paddingTop: insets.top + spacing.s40, paddingBottom, paddingLeft: 64, paddingRight: 64 },
       animationDuration: first ? 600 : 400,
     });
     // carCoords referansı bileşenlerine bağlanır
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [finding, carCoords?.[0], carCoords?.[1], userFix?.latitude, userFix?.longitude]);
+  }, [finding, sheetStep, carCoords?.[0], carCoords?.[1], userFix?.latitude, userFix?.longitude]);
 
   // §7.9 Geçmiş: noktalar tek ShapeSource (native daire katmanı), seçili olan gerçek araba pini.
   // Açılışta hepsi çerçevelenir, satır seçilince kamera o noktaya uçar; sheet %62'de olduğu
@@ -368,14 +398,25 @@ export function MapboxCanvas() {
         compassEnabled={false}
         // Pin bırakma modunda konumu haritanın MERKEZİ belirler: kullanıcı
         // haritayı kaydırır, artı işareti sabit durur.
-        onCameraChanged={
-          pickingLocation
-            ? (state) => {
-                const [longitude, latitude] = state.properties.center;
-                useSessionStore.getState().setPickedCenter({ latitude, longitude });
-              }
-            : undefined
-        }
+        onCameraChanged={(state) => {
+          const [longitude, latitude] = state.properties.center;
+          if (pickingLocation) {
+            useSessionStore.getState().setPickedCenter({ latitude, longitude });
+            return;
+          }
+          /* Kullanıcı haritayı kendi kaydırdıysa oraya bakıyor demektir: o merkezin
+             otoparklarını getir. Önceden sorgu YALNIZ kullanıcının konumundan ve arama
+             sonucundan tetikleniyordu, bu yüzden haritayı bir semte kaydırmak orayı boş
+             bırakıyordu. Kamera bizim komutumuzla hareket ettiyse (takip, çerçeveleme)
+             karışılmaz — `followingRef` onu ayırır.
+             Gecikme şart: kaydırma sırasında saniyede onlarca olay geliyor ve Overpass
+             zaten yavaş; yalnız el çekildikten sonra tek sorgu atılır. */
+          if (followingRef.current || phase !== 'idle') return;
+          if (panTimer.current) clearTimeout(panTimer.current);
+          panTimer.current = setTimeout(() => {
+            useDiscoveryStore.getState().panTo({ latitude, longitude });
+          }, PAN_SETTLE_MS);
+        }}
       >
       {/* Kamera YALNIZ ref üzerinden sürülür (yukarıdaki efektler). Kontrollü
           zoomLevel/centerCoordinate + followUserLocation birlikteyken takibi
