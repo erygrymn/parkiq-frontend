@@ -6,6 +6,7 @@ import {
   isDemoPlanId,
   isPurchasesAvailable,
   loadPlans,
+  onEntitlementChange,
   purchasePlan,
   restorePurchases,
   type PurchasePlan,
@@ -16,7 +17,7 @@ import {
 
 export type PlansState = 'idle' | 'loading' | 'ready' | 'error';
 export type PurchaseState = 'idle' | 'purchasing' | 'restoring';
-export type PurchaseNotice = null | 'restored' | 'none' | 'failed';
+export type PurchaseNotice = null | 'restored' | 'none' | 'failed' | 'pending' | 'restoreFailed';
 
 const DEV_UNLOCK_KEY = 'devPremiumUnlock';
 
@@ -63,6 +64,8 @@ interface PremiumStore {
   consumeJustPurchased: () => void;
 }
 
+let listening = false;
+
 export const usePremiumStore = create<PremiumStore>((set, get) => ({
   isPremium: false,
   hasEntitlement: false,
@@ -79,9 +82,17 @@ export const usePremiumStore = create<PremiumStore>((set, get) => ({
     const devUnlock = readDevUnlock();
     set({ devUnlock, isPremium: resolvePremium(get().hasEntitlement, devUnlock) });
     if (!isPurchasesAvailable) return;
-    void fetchEntitlement().then((active) =>
-      set({ hasEntitlement: active, isPremium: resolvePremium(active, get().devUnlock) }),
-    );
+    void fetchEntitlement().then((active) => {
+      if (active === null) return;
+      set({ hasEntitlement: active, isPremium: resolvePremium(active, get().devUnlock) });
+    });
+    if (listening) return;
+    listening = true;
+    onEntitlementChange((active) => {
+      set({ hasEntitlement: active, isPremium: resolvePremium(active, get().devUnlock) });
+      // Onay bekleyen satın alma tamamlandı: "onay bekleniyor" satırı kalkar.
+      if (active && get().notice === 'pending') set({ notice: null });
+    });
   },
 
   /**
@@ -91,9 +102,11 @@ export const usePremiumStore = create<PremiumStore>((set, get) => ({
    */
   refreshEntitlement: () => {
     if (!isPurchasesAvailable) return;
-    void fetchEntitlement().then((active) =>
-      set({ hasEntitlement: active, isPremium: resolvePremium(active, get().devUnlock) }),
-    );
+    // Okunamayan yetki "yok" sayılmaz: son bilinen durum korunur.
+    void fetchEntitlement().then((active) => {
+      if (active === null) return;
+      set({ hasEntitlement: active, isPremium: resolvePremium(active, get().devUnlock) });
+    });
   },
 
   setDevUnlock: (value) => {
@@ -122,8 +135,10 @@ export const usePremiumStore = create<PremiumStore>((set, get) => ({
         plans,
         plansAreDemo: demo !== null,
         plansState: 'ready',
-        // §7.10: yıllık plan varsayılan seçili
-        selectedPlanId: plans.find((p) => p.period === 'yearly')?.id ?? plans[0].id,
+        // Ömür boyu varsayılan seçili (aso.md §6.3, 2026-10-04): bu nişin kullanıcısı abonelikten
+        // hoşlanmıyor ve fiyat merdiveni onu yıllığın hemen üstüne koyuyor.
+        selectedPlanId:
+          plans.find((p) => p.period === 'lifetime')?.id ?? plans.find((p) => p.period === 'yearly')?.id ?? plans[0].id,
       });
     });
   },
@@ -159,8 +174,12 @@ export const usePremiumStore = create<PremiumStore>((set, get) => ({
         set({ purchaseState: 'idle', hasEntitlement: true, isPremium: true, notice: 'restored' });
         return;
       }
-      // İptal sessizdir: kullanıcı zaten bilinçli vazgeçti (§7.10 durum listesi).
-      set({ purchaseState: 'idle', notice: result === 'failed' ? 'failed' : null });
+      // İptal sessizdir: kullanıcı zaten bilinçli vazgeçti (§7.10 durum listesi). Onay bekleyen
+      // ödeme başarısız DEĞİLDİR: onay gelince dinleyici yetkiyi kendisi açar.
+      set({
+        purchaseState: 'idle',
+        notice: result === 'failed' ? 'failed' : result === 'pending' ? 'pending' : null,
+      });
     });
   },
 
@@ -172,7 +191,7 @@ export const usePremiumStore = create<PremiumStore>((set, get) => ({
         set({ purchaseState: 'idle', hasEntitlement: true, isPremium: true, notice: 'restored' });
         return;
       }
-      set({ purchaseState: 'idle', notice: result === 'none' ? 'none' : 'failed' });
+      set({ purchaseState: 'idle', notice: result === 'none' ? 'none' : 'restoreFailed' });
     });
   },
 

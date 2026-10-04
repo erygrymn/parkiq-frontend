@@ -66,6 +66,8 @@ export function SearchBar({
     const trimmed = query.trim();
     if (trimmed.length < 3) {
       setResults([]);
+      // Bekleyen arama iptal edildi: döner simge kalırsa temizleme düğmesi de geri gelmiyordu.
+      setSearching(false);
       return;
     }
     let cancelled = false;

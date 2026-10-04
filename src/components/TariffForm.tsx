@@ -23,7 +23,10 @@ export function TariffForm({
   onChange: (tariff: Tariff | null) => void;
 }) {
   const { colors } = useTheme();
-  const currency = useSettingsStore((s) => s.currency);
+  const settingsCurrency = useSettingsStore((s) => s.currency);
+  // Var olan tarifenin para birimi korunur: panodan okunan € tarifede bir rakamı düzeltmek
+  // onu ayarlardaki ₺ ile yeniden damgalıyordu.
+  const currency = value?.currency ?? settingsCurrency;
   const [mode, setMode] = useState<FormMode>(value?.type ?? 'none');
   const [amount, setAmount] = useState(value?.price != null ? String(value.price) : '');
   // Günlük tavan: çok günlük parkta fiyatın donmasını engelleyen tek bilgi.

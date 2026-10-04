@@ -10,6 +10,7 @@ import { Icon } from '../components/Icon';
 import { MoneyBox } from '../components/MoneyBox';
 import { CelebrationHero } from '../components/motion/CelebrationHero';
 import { PhotoThumb } from '../components/motion/PhotoViewer';
+import { PressScale } from '../components/motion/PressScale';
 import { PhotoField } from '../components/PhotoField';
 import { RatePrompt } from '../components/RatePrompt';
 import { DetailRow } from '../components/PopupSheet';
@@ -18,7 +19,7 @@ import { SearchBar } from '../components/SearchBar';
 import { ShareCardRenderer } from '../components/ShareCardRenderer';
 import { trackPaywallShown, trackShareCard } from '../lib/analytics';
 import { hapticCommit, hapticSelect, hapticStamp } from '../lib/haptics';
-import { shouldAskForReview, shouldShowCelebrationPaywall } from '../lib/review';
+import { celebrationMoments, deferReviewPrompt, markReviewPromptShown } from '../lib/review';
 import { useIsPremium } from '../state/premiumStore';
 import { ProBadge } from '../components/ProBadge';
 import { openAppSettings, StatusLine } from '../components/StatusLine';
@@ -27,16 +28,18 @@ import { TariffForm } from '../components/TariffForm';
 import { Caption, DisplayStamp, Overline } from '../components/Typography';
 import { formatClock, formatDurationStamp, formatElapsed, formatMoney, formatTariffSummary } from '../lib/format';
 import { formatDistance } from '../lib/geo';
-import { captureCurrentPlace } from '../lib/location';
+import { roughPosition } from '../lib/location';
 import { openCoordsInMaps } from '../lib/maps';
 import { applyFilter, walkMinutes, type PoiFilter } from '../lib/parkingPoi';
 import { useDiscoveryStore } from '../state/discoveryStore';
 import { useNetworkStore } from '../state/networkStore';
 import { shareParkedLocation } from '../lib/share';
-import { computeExitSummary, computeTariffState } from '../lib/tariffMath';
-import { appliesAt } from '../lib/tariffSchedule';
+import { computeExitSummary, computeTariffState, type Tariff } from '../lib/tariffMath';
+import { appliesAt, type ScheduleKind } from '../lib/tariffSchedule';
+import { formatRangeStart, fromMinutes } from '../lib/tierUnits';
 import { getLocale, t, upper } from '../localization';
-import { useSessionStore, type ParkSession, type ReminderKind } from '../state/sessionStore';
+import { useSessionStore, type OcrDraft, type ParkSession, type ReminderKind } from '../state/sessionStore';
+import type { PooledTariff } from '../lib/tariffPool';
 import { useUiStore } from '../state/uiStore';
 import { useSettingsStore } from '../state/settingsStore';
 import { ConfirmSheet } from '../components/ConfirmSheet';
@@ -81,7 +84,7 @@ function TextButton({ label, onPress }: { label: string; onPress: () => void }) 
 }
 
 /** İkonlu metin eylemi (fotoğraf çek gibi): dolgu yok, 44pt hedef, ikon 17pt. */
-function IconAction({ symbol, label, onPress }: { symbol: 'camera.viewfinder'; label: string; onPress: () => void }) {
+function IconAction({ symbol, label, onPress }: { symbol: 'camera'; label: string; onPress: () => void }) {
   const { colors } = useTheme();
   return (
     <Pressable
@@ -99,6 +102,46 @@ function IconAction({ symbol, label, onPress }: { symbol: 'camera.viewfinder'; l
       <Icon name={symbol} size={17} color={colors.ink} weight="regular" />
       <Text style={{ fontSize: 15, color: colors.ink }}>{label}</Text>
     </Pressable>
+  );
+}
+
+/**
+ * Zayıf GPS'te (kapalı otopark) fotoğraf daveti — kat sorusunun en üstünde, büyük. Orada GPS
+ * dönüşte de yalan söyleyecek; arabayı bulduracak tek gerçek kanıt fotoğraf.
+ */
+function PhotoPrompt({ uri, onPress }: { uri: string | null; onPress: () => void }) {
+  const { colors } = useTheme();
+  return (
+    <PressScale
+      accessibilityRole="button"
+      accessibilityLabel={uri ? t('retakePhoto') : t('photoSpotPrompt')}
+      onPress={onPress}
+      style={(pressed) => ({
+        minHeight: 56,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.s12,
+        paddingHorizontal: spacing.s12,
+        paddingVertical: spacing.s8,
+        borderRadius: radius.r16,
+        borderCurve: 'continuous',
+        backgroundColor: pressed ? colors.insetPressed : colors.inset,
+      })}
+    >
+      {uri ? (
+        <Image
+          source={{ uri }}
+          style={{ width: 40, height: 40, borderRadius: radius.r8, backgroundColor: colors.card }}
+          contentFit="cover"
+          accessibilityIgnoresInvertColors
+        />
+      ) : (
+        <Icon name="camera" size={22} color={colors.ink} weight="regular" />
+      )}
+      <Text style={{ flex: 1, fontSize: 15, fontWeight: '600', color: colors.ink }}>
+        {uri ? `${t('photoAdded')} · ${t('retakePhoto')}` : t('photoSpotPrompt')}
+      </Text>
+    </PressScale>
   );
 }
 
@@ -142,12 +185,13 @@ export function IdleSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   const pois = useDiscoveryStore((s) => s.pois);
   const { setFilter, load, pinTo, pinToSearch, requestFollow } = useDiscoveryStore.getState();
 
-  // Kullanıcı konumu alınınca yakındakiler çekilir (mesafe eşiğiyle tekrar sorgu engellenir).
+  /* Henüz hiçbir yer sorulmadıysa kullanıcının çevresi çekilir. Her açılışta sorulmaz: panel
+     bir otopark kartından dönünce yeniden kuruluyor ve kullanıcının haritada kaydırıp baktığı
+     semtin otoparklarını kendi konumununkilerle eziyordu. */
   useEffect(() => {
-    void captureCurrentPlace().then((outcome) => {
-      if (outcome.status === 'ok') {
-        load({ latitude: outcome.place.latitude, longitude: outcome.place.longitude });
-      }
+    if (useDiscoveryStore.getState().center !== null) return;
+    void roughPosition().then((position) => {
+      if (position && useDiscoveryStore.getState().center === null) load(position);
     });
   }, [load]);
 
@@ -210,6 +254,9 @@ export function IdleSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
       )}
 
       {discoveryState === 'error' && <StatusLine label={t('poiError')} />}
+
+      {/* Sorgu döndü ama bu çevrede OSM'de otopark yok: boş liste "çalışmıyor" gibi okunuyordu. */}
+      {discoveryState === 'ready' && pois.length === 0 && <Caption>{t('noResults')}</Caption>}
 
       {discoveryState === 'ready' && pois.length > 0 && visible.length === 0 && (
         <Caption>{t('noNearbyForFilter')}</Caption>
@@ -279,6 +326,88 @@ export function IdleSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
 /** Park formunda inline açık olan alan. */
 type ParkField = 'floor' | 'note' | 'photo' | 'backdate' | 'reminder';
 
+function scheduleCopy(kind: ScheduleKind): string {
+  return t(
+    kind === 'weekday' ? 'scheduleWeekday' : kind === 'weekend' ? 'scheduleWeekend' : kind === 'day' ? 'scheduleDay' : 'scheduleNight',
+  );
+}
+
+/** Tarifenin okunur satırları: "0–1 sa · ₺50". Onay görünümü okur; editördeki aralık diliyle aynı. */
+function tariffRows(tariff: Tariff, locale: string): Array<{ label: string; value: string }> {
+  const money = (value: number) => formatMoney(value, tariff.currency, locale);
+  if (tariff.type === 'hourly') return [{ label: t('tariffHourly'), value: t('perHour', { amount: money(tariff.price ?? 0) }) }];
+  if (tariff.type === 'flat') return [{ label: t('tariffFlat'), value: money(tariff.price ?? 0) }];
+  const unitLabel = (unit: 'min' | 'hour') => (unit === 'hour' ? t('unitHourShort') : t('unitMinShort'));
+  const rows: Array<{ label: string; value: string }> = [];
+  let previous = 0;
+  for (const tier of tariff.tiers ?? []) {
+    const end = fromMinutes(tier.endMin);
+    rows.push({
+      label: `${formatRangeStart(previous, end.unit, ` ${t('unitMinShort')}`)}–${end.amount} ${unitLabel(end.unit)}`,
+      value: money(tier.cumulativePrice),
+    });
+    previous = tier.endMin;
+  }
+  if (tariff.dailyMax != null) rows.push({ label: t('dailyMaxLabel'), value: money(tariff.dailyMax) });
+  return rows;
+}
+
+/** Onay görünümünde gösterilen en fazla satır; zincirli panolar onlarca satır üretebiliyor. */
+const OCR_REVIEW_ROWS = 8;
+
+/**
+ * Tarama sonucunun onayı: okunan dilimler hairline satırlarda, kullanıcı "kullan" demeden
+ * oturuma yazılmaz. Eğik çekilmiş panoda satırlar kayabiliyor; yanlış okunan bir tarife sayacı
+ * sessizce yönetmek yerine burada yakalanır.
+ */
+function OcrReview({ draft }: { draft: OcrDraft }) {
+  const { colors } = useTheme();
+  const locale = getLocale();
+  const { confirmOcrDraft, discardOcrDraft, scanTariff } = useSessionStore.getState();
+  const rows = tariffRows(draft.tariff, locale);
+  const shown = rows.slice(0, OCR_REVIEW_ROWS);
+  return (
+    <Animated.View entering={FadeIn.duration(CROSSFADE_MS)} style={{ gap: spacing.s12 }}>
+      <Overline>{t('ocrReviewTitle')}</Overline>
+      {draft.partial && <Caption color={colors.warnText}>{t('scanPartial')}</Caption>}
+      {draft.schedule !== null && <Caption color={colors.accentText}>{scheduleCopy(draft.schedule)}</Caption>}
+      <View style={{ borderTopWidth: 1, borderTopColor: colors.gridline }}>
+        {shown.map((row, index) => (
+          <View
+            key={`${index}-${row.label}`}
+            style={{
+              minHeight: 44,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: spacing.s12,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.gridline,
+            }}
+          >
+            <Text style={{ fontSize: 15, color: colors.ink }}>{row.label}</Text>
+            <Text style={{ fontSize: 15, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'] }}>
+              {row.value}
+            </Text>
+          </View>
+        ))}
+      </View>
+      {rows.length > shown.length && <Caption>{t('ocrMore', { count: rows.length - shown.length })}</Caption>}
+      <View style={{ flexDirection: 'row', gap: spacing.s8 }}>
+        <GhostButton label={t('ocrUse')} onPress={confirmOcrDraft} style={{ flex: 1 }} />
+        <GhostButton
+          label={t('ocrRetake')}
+          onPress={() => {
+            discardOcrDraft();
+            scanTariff();
+          }}
+          style={{ flex: 1 }}
+        />
+      </View>
+    </Animated.View>
+  );
+}
+
 /** Tarife formu + tarama satırı + OCR durumları — park ve aktif sheet'lerde aynı. */
 function TariffEditor({ onOpenPaywall, onClose }: { onOpenPaywall: () => void; onClose?: () => void }) {
   const isPremium = useIsPremium();
@@ -288,8 +417,11 @@ function TariffEditor({ onOpenPaywall, onClose }: { onOpenPaywall: () => void; o
   const ocrState = useSessionStore((s) => s.ocrState);
   const ocrSchedule = useSessionStore((s) => s.ocrSchedule);
   const ocrPartial = useSessionStore((s) => s.ocrPartial);
+  const ocrDraft = useSessionStore((s) => s.ocrDraft);
+  const cameraState = useSessionStore((s) => s.cameraState);
   const { setTariff, scanTariff } = useSessionStore.getState();
   if (!session) return null;
+  if (ocrDraft) return <OcrReview draft={ocrDraft} />;
 
   return (
     <>
@@ -323,24 +455,16 @@ function TariffEditor({ onOpenPaywall, onClose }: { onOpenPaywall: () => void; o
         {!isPremium && <ProBadge size={14} />}
       </Pressable>
 
-      {ocrSchedule !== null && (
-        <Caption color={colors.accentText}>
-          {t(
-            ocrSchedule === 'weekday'
-              ? 'scheduleWeekday'
-              : ocrSchedule === 'weekend'
-                ? 'scheduleWeekend'
-                : ocrSchedule === 'day'
-                  ? 'scheduleDay'
-                  : 'scheduleNight',
-          )}
-        </Caption>
-      )}
+      {ocrSchedule !== null && <Caption color={colors.accentText}>{scheduleCopy(ocrSchedule)}</Caption>}
       {ocrPartial && <Caption color={colors.warnText}>{t('scanPartial')}</Caption>}
       {ocrState === 'not_detected' && <Caption color={colors.warnText}>{t('scanNotDetected')}</Caption>}
       {ocrState === 'failed' && <Caption color={colors.warnText}>{t('scanFailed')}</Caption>}
       {ocrState === 'unavailable' && <Caption>{t('scanUnavailable')}</Caption>}
-      {ocrState === 'locked' && (
+      {/* Kamera izni kapalıyken tarama sessizce hiçbir şey yapmıyordu: yol Ayarlar'a gider. */}
+      {cameraState === 'denied' && <StatusLine label={t('cameraOff')} onPress={openAppSettings} />}
+      {/* Satın alma sonrası panel aynı editöre döner: "Pro'da" satırı orada kalıp tekrar
+          paywall açıyordu. Kilit yalnız gerçekten kilitliyken görünür. */}
+      {ocrState === 'locked' && !isPremium && (
         <StatusLine
           label={t('scanPro')}
           pro
@@ -436,12 +560,23 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   // Havuz rızası. Tam olarak tarifenin GİRİLDİĞİ anda sorulur: paylaşılacak bir şey
   // ancak o an doğar ve park kaydının ilk iki saniyesi bölünmez. Tarife hiç girmeyen
   // kullanıcıya hiç sorulmaz — ona zaten hiçbir şey gönderilmiyor.
-  const tariffPoolAsked = useSettingsStore((s) => s.tariffPoolAsked);
-  const hasTariff = session?.tariff != null;
+  // Soru tarifenin İLK tuşunda çıkıyordu ve "50" yazan kullanıcının "5"ten sonra klavyesinin
+  // üstüne biniyordu; artık tarife sorusundan çıkarken (İleri/Bitti/Atla) sorulur.
   const [poolAsk, setPoolAsk] = useState(false);
-  useEffect(() => {
-    if (hasTariff && !tariffPoolAsked) setPoolAsk(true);
-  }, [hasTariff, tariffPoolAsked]);
+  const afterPoolAsk = useRef<(() => void) | null>(null);
+  const askPoolThen = (next: () => void): boolean => {
+    const current = useSessionStore.getState().session;
+    if (current?.tariff == null || useSettingsStore.getState().tariffPoolAsked) return false;
+    afterPoolAsk.current = next;
+    setPoolAsk(true);
+    return true;
+  };
+
+  /* Kabul edilen öneri çipi yerinde ve SEÇİLİ kalır. Kabul öneriyi store'dan sildiği için çip
+     kayboluyordu: tek dokunuşun sonucu görünmüyor, "Geçen sefer"de ise "Gir" seçili oluyordu.
+     Kullanıcı tarifeyi elle değiştirirse kabul düşer (tarife nesnesi değişir). */
+  const [acceptedLast, setAcceptedLast] = useState<Tariff | null>(null);
+  const [acceptedPool, setAcceptedPool] = useState<PooledTariff | null>(null);
 
   // §7.3: "Undo" 10 sn görünür; sonra sheet'i aşağı çekmek geri alma yolu olarak kalır.
   useEffect(() => {
@@ -471,10 +606,16 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
    */
   const advance = () => {
     const steps = parkSteps(useSessionStore.getState().session?.tariff != null);
+    if (steps[Math.min(stepIndex, steps.length - 1)] === 'tariff' && askPoolThen(advance)) return;
     const next = stepIndex + 1;
     setCustomLevel(false);
     if (next >= steps.length) confirmDetails();
     else setStepIndex(next);
+  };
+  const finishForm = () => {
+    const steps = parkSteps(useSessionStore.getState().session?.tariff != null);
+    if (steps[Math.min(stepIndex, steps.length - 1)] === 'tariff' && askPoolThen(finishForm)) return;
+    confirmDetails();
   };
   const back = () => {
     setCustomLevel(false);
@@ -485,6 +626,7 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
 
   const steps = parkSteps(session.tariff != null);
   const step = steps[Math.min(stepIndex, steps.length - 1)];
+  const indoorish = locationState === 'weak' || locationState === 'unavailable';
   const levelKeys = ['G', '−1', '−2'];
   const lastStep = stepIndex >= steps.length - 1;
 
@@ -502,7 +644,11 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
           : levelKeys.includes(session.floor)
             ? session.floor
             : 'other';
-  const tariffValue = session.tariff === null ? null : tariffSource === 'pool' ? 'pool' : 'enter';
+  const lastAccepted = acceptedLast !== null && session.tariff === acceptedLast;
+  const lastChip = suggestedTariff ?? (lastAccepted ? acceptedLast : null);
+  const poolChip = pooledTariff ?? (acceptedPool !== null && tariffSource === 'pool' ? acceptedPool : null);
+  const tariffValue =
+    session.tariff === null ? null : tariffSource === 'pool' ? 'pool' : lastAccepted ? 'last' : 'enter';
   const reminderValue = session.reminder ? session.reminder.minutes : null;
 
   // Yer adı META'dır: nokta hakkı duygu damgasınındır (§2 tie-breaker).
@@ -545,6 +691,8 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
         {step === 'level' && (
           <>
             <StepHeader label={t('floor')} question={t('qLevel')} onSkip={advance} />
+            {/* Zayıf ya da hiç GPS yok = büyük ihtimalle kapalı otopark: fotoğraf öne geçer. */}
+            {indoorish && <PhotoPrompt uri={session.photoUri} onPress={capturePhoto} />}
             {/* Tek satır: en sık üç kat + "Başka". Uzun kat listesi tarama işi çıkarıyordu —
                 −4, C2, P3 gibi her şey "Başka"nın klavyesinden girilir. */}
             <ChipGroup<string>
@@ -578,11 +726,9 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
               />
             )}
             {/* Fotoğraf kat değildir: soruyu cevaplamaz, kata ek olarak alınır. */}
-            <IconAction
-              symbol="camera.viewfinder"
-              label={session.photoUri ? t('photoAdded') : t('addPhoto')}
-              onPress={capturePhoto}
-            />
+            {!indoorish && (
+              <IconAction symbol="camera" label={session.photoUri ? t('photoAdded') : t('addPhoto')} onPress={capturePhoto} />
+            )}
             {cameraState === 'denied' && <StatusLine label={t('cameraOff')} onPress={openAppSettings} />}
           </>
         )}
@@ -592,25 +738,28 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
             <StepHeader label={t('tariff')} question={t('qTariff')} onSkip={advance} onBack={back} />
             <ChipGroup<string>
               options={[
-                ...(suggestedTariff
-                  ? [{ key: 'last', label: t('lastTimeChip', { summary: formatTariffSummary(suggestedTariff, getLocale()) }), tone: 'accent' as const }]
+                ...(lastChip
+                  ? [{ key: 'last', label: t('lastTimeChip', { summary: formatTariffSummary(lastChip, getLocale()) }), tone: 'accent' as const }]
                   : []),
                 // Havuz önerisi: yalnız bu otopark için veri varsa çıkar (§ tarife havuzu).
-                ...(pooledTariff
+                ...(poolChip
                   ? [
                       {
                         key: 'pool',
-                        label: t('pooledChip', { summary: formatTariffSummary(pooledTariff.tariff, getLocale()) }),
+                        label: t('pooledChip', { summary: formatTariffSummary(poolChip.tariff, getLocale()) }),
                         locked: !isPremium,
                       },
                     ]
                   : []),
                 { key: 'enter', label: t('enterTariff') },
-                { key: 'scan', label: t('scanShort') },
+                // Tarama premium: taç dokunmadan önce görünür, dokunuş doğrudan paywall'a gider.
+                { key: 'scan', label: t('scanShort'), locked: !isPremium },
               ]}
               value={tariffValue}
               onChange={(key) => {
                 if (key === 'last') {
+                  if (lastAccepted) return;
+                  setAcceptedLast(suggestedTariff);
                   acceptSuggestedTariff();
                   return;
                 }
@@ -620,7 +769,14 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
                     onOpenPaywall();
                     return;
                   }
+                  if (tariffSource === 'pool') return;
+                  setAcceptedPool(pooledTariff);
                   acceptPooledTariff();
+                  return;
+                }
+                if (key === 'scan' && !isPremium) {
+                  trackPaywallShown('feature');
+                  onOpenPaywall();
                   return;
                 }
                 // Form aynı panelin içinde açılır: üst üste binen ikinci bir sheet yok (İlke 9).
@@ -629,7 +785,11 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
               }}
             />
             {/* Önerinin nereden geldiği SÖYLENİR: rakamı biz uydurmuyoruz, sürücüler girdi. */}
-            {pooledTariff && <Caption>{t('pooledFrom', { count: pooledTariff.count })}</Caption>}
+            {poolChip && (
+              <Caption>
+                {t(poolChip.count === 1 ? 'pooledFromOne' : 'pooledFrom', { count: poolChip.count })}
+              </Caption>
+            )}
             {tariffOpen && (
               <Animated.View entering={FadeIn.duration(CROSSFADE_MS)} layout={layoutSpring} style={{ gap: spacing.s12 }}>
                 <TariffEditor onOpenPaywall={onOpenPaywall} />
@@ -678,7 +838,7 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
       {/* Tek siyah buton: sorular bitene kadar ilerletir, son soruda oturumu başlatır.
           Çipe dokunmak artık ilerletmiyor — kat seçip fotoğraf da eklenebilsin. */}
       <Animated.View layout={layoutSpring}>
-        <PrimaryCta label={lastStep ? t('done') : t('nextStep')} onPress={lastStep ? confirmDetails : advance} />
+        <PrimaryCta label={lastStep ? t('done') : t('nextStep')} onPress={lastStep ? finishForm : advance} />
       </Animated.View>
 
       {/* Kaçırmak da bir cevaptır ve "hayır"a sayılır: rıza sorusunda sessizlik izin değildir. */}
@@ -692,6 +852,10 @@ export function ParkingSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
         onClose={() => {
           setPoolAsk(false);
           if (!useSettingsStore.getState().tariffPoolAsked) useSettingsStore.getState().setTariffPool(false);
+          // Cevap verildi: kullanıcının bastığı İleri/Bitti kaldığı yerden sürer.
+          const next = afterPoolAsk.current;
+          afterPoolAsk.current = null;
+          next?.();
         }}
       />
     </Animated.View>
@@ -952,7 +1116,7 @@ export function ActiveSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
       {scheduleExpired && <StatusLine label={t('scheduleChanged')} />}
       {state.beyondSchedule && <StatusLine label={t('beyondSchedule')} />}
       {!online && <StatusLine label={t('offlineTimer')} />}
-      {notificationState === 'denied' && session.tariff !== null && (
+      {notificationState === 'denied' && (session.tariff !== null || session.reminder !== null) && (
         <StatusLine label={t('notificationsOff')} onPress={openAppSettings} />
       )}
       {now - session.startedAtMs > 86_400_000 && <Caption>{t('stillParkedShort')}</Caption>}
@@ -1168,11 +1332,22 @@ export function EndedSheet({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   useEffect(() => {
     if (!session?.endedAtMs || celebrationPaywall.current !== null) return;
     const saved = exit.saved !== null && exit.saved > 0;
-    celebrationPaywall.current = saved && shouldShowCelebrationPaywall(isPremium);
-    if (celebrationPaywall.current || !shouldAskForReview()) return;
-    const id = setTimeout(() => setRateOpen(true), 2500);
-    return () => clearTimeout(id);
-  }, [session?.id, session?.endedAtMs, exit.saved, isPremium]);
+    const moments = celebrationMoments(session.id, saved, isPremium);
+    celebrationPaywall.current = moments.paywall;
+    if (!moments.review) return;
+    let shown = false;
+    const id = setTimeout(() => {
+      shown = true;
+      markReviewPromptShown();
+      setRateOpen(true);
+    }, 2500);
+    return () => {
+      clearTimeout(id);
+      if (!shown) deferReviewPrompt();
+    };
+    // Karar park başına bir kez verilir; isPremium/exit sonradan değişse de yeniden sorulmaz.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.id, session?.endedAtMs]);
 
   const done = () => {
     finish();

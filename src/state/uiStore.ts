@@ -21,7 +21,15 @@ export interface UserFix {
   latitude: number;
   longitude: number;
   accuracy: number | null;
+  /** Ölçüm anı (ms, epoch). AR füzyonu düzeltmeyi kameranın o andaki yeriyle eşler. */
+  timestamp: number | null;
 }
+
+/**
+ * AR açılamadı ya da kapandı ve sebebi Arabamı Bul panelinde söylenmeli (§7.7: "haritaya
+ * düşer + durum satırı"). Eskiden reddedilmiş kamera izni siyah bir ekranda bitiyordu.
+ */
+export type ArNotice = 'camera' | 'tracking';
 
 interface UiStore {
   /** Tam ekran foto: thumbnail'in ekran konumundan büyür. */
@@ -30,8 +38,16 @@ interface UiStore {
   closePhoto: () => void;
   /** AR kamera overlay'i (yalnız `finding` fazında açılır). */
   arOpen: boolean;
+  /** Son AR denemesinin bıraktığı not; yeni deneme ya da faz değişimi siler. */
+  arNotice: ArNotice | null;
   openAr: () => void;
-  closeAr: () => void;
+  closeAr: (notice?: ArNotice) => void;
+  /**
+   * Arabamı Bul'da kamera kullanıcı + arabayı takip ediyor mu. Haritayı elle kaydırmak kapatır;
+   * "ortala" düğmesi ya da paneli indirip kaldırmak geri açar.
+   */
+  findFollow: boolean;
+  setFindFollow: (follow: boolean) => void;
   /** `finding` fazında kullanıcının son GPS düzeltmesi. FindingSheet yazar; harita çizgisi ve AR okur. */
   userFix: UserFix | null;
   setUserFix: (fix: UserFix | null) => void;
@@ -71,8 +87,11 @@ export const useUiStore = create<UiStore>((set) => ({
   openPhoto: (uri, origin) => set({ photo: { uri, origin } }),
   closePhoto: () => set({ photo: null }),
   arOpen: false,
-  openAr: () => set({ arOpen: true }),
-  closeAr: () => set({ arOpen: false }),
+  arNotice: null,
+  openAr: () => set({ arOpen: true, arNotice: null }),
+  closeAr: (notice) => set({ arOpen: false, arNotice: notice ?? null }),
+  findFollow: true,
+  setFindFollow: (follow) => set({ findFollow: follow }),
   userFix: null,
   setUserFix: (fix) => set({ userFix: fix }),
   endConfirm: false,

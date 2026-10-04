@@ -375,6 +375,23 @@ tr:    İlk sürüm. Tarifeni gir, ücret artmadan önce uyarıl,
 
 Bunu ayda bir değiştir — Apple güncellik sinyali olarak okuyor ve build gerektirmiyor.
 
+### 3.5 What's New — 1.2.0 (2026-10-03)
+
+Tek ana cümle; ayrıntı listesi yok. 18 dilin tamamı `metadata/version/1.2.0/` altında.
+
+```
+en-US: Finding your car is steadier now: the AR marker holds still, your spot
+       photo is right on the card, and price alerts, sharing and the map are
+       more reliable.
+
+tr:    Arabanı bulmak artık daha kolay: AR işareti yerinde duruyor, park yerinin
+       fotoğrafı doğrudan kartta, fiyat uyarıları, paylaşım ve harita daha
+       güvenilir çalışıyor.
+```
+
+1.1.0'ın "Bug fixes and performance improvements" metni bir daha kullanılmaz: her uygulamaya
+yazılabilecek bir cümle, sürümün ne getirdiğini söylemiyor.
+
 ---
 
 ## 4. Ekran görüntüleri
@@ -479,6 +496,8 @@ Yıllık, aylığın 5 katı — pazar medyanı 3 kat. Yani ParkIQ yıllığı f
 
 ### 6.3 Önerilen fiyat merdiveni
 
+> ⚠️ **2026-10-04: §6.3 ve §6.4 geçersiz** — ucuz konumlandırmaya geçildi, canlı fiyatlar §6.7'de.
+
 | Ürün | Öneri | Çerçeve |
 |---|---|---|
 | Aylık | **$4.99** | Denemek isteyen için, öne çıkarılmaz |
@@ -560,6 +579,72 @@ Ulaşılabilir yol: **parking timer + maliyet** konumlandırması + 7 mağazada 
 
 ParkUsher kanıtı: **3 şehir, $30/yıl, 20k indirme = $10k/ay.** ParkIQ'nun bunun beşte birine ihtiyacı var.
 
+### 6.7 Ucuz konumlandırma — araştırma ve karar (2026-10-04, CANLI)
+
+Karar (kullanıcı): ParkIQ rakiplerin altında fiyatlanır — marjinal maliyet yok. Önce ABD tabanı, sonra bölgesel.
+
+**Rakiplerin canlı US fiyatları** (SensorTower `top_in_app_purchases`, 2026-10-04):
+
+| Uygulama | Aylık | Yıllık | Tek seferlik | Not |
+|---|---|---|---|---|
+| SpotAngels | $2.99–6.99 | $29.99–49.99 | — | ~$20k/ay |
+| ParkUsher | $4–6 | $25–45 (çoğu $30) | — | ~$10k/ay |
+| Find My Car – Car Tracker | — | $29.99 | $49.99 | 7 gün deneme |
+| Find My Car: Auto Park GPS | $2.99–5.99 | $19.99–24.99 | — | 7 gün deneme |
+| GPS Car Tracker: Find My Car | $9.99 | $59.99 | — | yorumları iade talebi |
+| Find My Car – Vehicle Tracker | $1.99 | $5.99–9.99 | $1.99–29.99 | |
+| Find My Parked Car (terk edilmiş lider) | — | — | $1.99 | |
+| Diğer tek seferlik kilitler (AR/basit) | — | — | $0.99–7.99 | çoğu reklam kaldırma |
+| **ParkIQ şu an** | **$4.99** | **$24.99** | **$29.99** | |
+
+Abonelik satan rakiplerde medyan: aylık ~$4.99, yıllık ~$29.99, ömür boyu $29.99–49.99. Adapty 2026:
+aylık plan fiyata en duyarlı plan (düşükten orta fiyata geçişte dönüşüm ~%53 düşüyor); orta fiyatlı
+yıllıklar hem ucuz hem pahalı uçların gerisinde kalıyor ("net bir fırsat ya da net bir premium").
+
+**Öneri — net fırsat merdiveni (US):** Aylık **$1.99** · Yıllık **$9.99** · Ömür boyu **$14.99** ⭐
+
+- Aylık nişin en ucuz aboneliğiyle eşit; yıllık rakip medyanının üçte biri; ömür boyu en ucuz
+  gerçek ömür boyu teklifin ($29.99) yarısı.
+- Ömür boyu = 1,5 × yıllık: 18 ayda kendini öder; öne çıkan plan olarak açık ara mantıklı seçim.
+- Ele geçen (küçük işletme %15): $1.69 · $8.49 · $12.74.
+- ⚠️ Ödeyen başına gelir ~%50 düşer: aynı geliri getirmek için dönüşümün kabaca iki katına çıkması
+  gerekir. Ucuz fiyatın kazancı dönüşüm ve yorum puanı — bu niş pahalı aboneliği 1★ ile cezalandırıyor.
+
+**Apple'ın bu fiyatlardan eşitlediği yerel fiyatlar** (vergi dahil, `price-points equalizations`):
+
+| Ülke | $1.99 | $9.99 | $14.99 |
+|---|---|---|---|
+| GB | £1.99 | £9.99 | £14.99 |
+| DE/FR/IT/ES/NL/PT | €1.99 | €9.99 | €17.99 |
+| CA / AU | C$2.99 / A$2.99 | C$12.99 / A$14.99 | C$19.99 / A$22.99 |
+| JP / KR / TW | ¥300 / ₩3,300 / NT$60 | ¥1,500 / ₩17,000 / NT$320 | ¥2,500 / ₩25,000 / NT$490 |
+| TR | ₺99.99 | ₺499.99 | ₺799.99 |
+| BR / MX | R$12.90 / MX$39 | R$59.90 / MX$199 | R$99.90 / MX$299 |
+| IN / ID | ₹199 / Rp39.000 | ₹999 / Rp199.000 | ₹1,499 / Rp299.000 |
+
+**Bölgesel karar:** Apple eşitlemesi varsayılan; ucuz konumlandırmada Avrupa'ya ek 1.2 endeks
+UYGULANMAZ (eşitleme zaten KDV dahil). Alım gücü düşük beş pazar elle, eşitlenmiş fiyatın ~%45'ine indirildi:
+
+| Ülke | Aylık | Yıllık | Ömür boyu |
+|---|---|---|---|
+| TR | ₺49.99 | ₺249.99 | ₺349.99 |
+| BR | R$5.90 | R$27.90 | R$44.90 |
+| MX | MX$19 | MX$89 | MX$139 |
+| IN | ₹89 | ₹449 | ₹699 |
+| ID | Rp19.000 | Rp89.000 | Rp139.000 |
+
+Euro bölgesinde ömür boyu Apple'ın çevirisinde (€17.99) kaldı.
+
+**Uygulama (2026-10-04):** Lifetime yeni fiyat takvimiyle hemen geçerli (taban USA $14.99 + beş elle fiyat,
+geri kalanı otomatik). Abonelikler 2 × 175 ülkede tarihli kayıtla 2026-10-05'ten geçerli: onaylı abonelikte
+"initial price" yeniden yazılamıyor ve en erken başlangıç ertesi gün. Fiyat düşüşü mevcut abonelere bir
+sonraki yenilemede kendiliğinden yansır.
+
+**Play (2026-10-04):** aynı merdiven canlı — ömür boyu $14.99, abonelikler $1.99 / $9.99, hepsi AKTİF.
+App Store'un aynı para biriminde sattığı 59 ülkede Play fiyatı App Store'unkine eşit (TR/BR/MX/IN/ID
+dahil); geri kalan bölgeler Google'ın çevirisinde. Mevcut Play aboneleri `migratePrices` ile bir
+sonraki yenilemede yeni fiyata taşındı. Dosyalar: `metadata/play/prices.json`, `prices-subs.json`.
+
 ---
 
 ## 7. Uygulama sırası
@@ -571,8 +656,8 @@ ParkUsher kanıtı: **3 şehir, $30/yıl, 20k indirme = $10k/ay.** ParkIQ'nun bu
 - [x] Kategori: Navigation (birincil) + Travel (ikincil)
 - [ ] 🔴 **Uygulama i18n'i 10 dile genişletilir** (§2.4 sonundaki risk) — yapılmazsa ilgili locale'ler silinmeli
 - [ ] Ekran görüntüleri: 7 kare (§4) — **eksik olan tek zorunlu alan**. Metin içermeyen kareler tüm locale'lerde paylaşılabilir; altyazılı kareler dil başına üretilir.
-- [ ] RevenueCat + ASC fiyatları güncellenir (§6.3, §6.4) — build gerektirmez
-- [ ] Paywall: lifetime varsayılan seçili, "iki park aşımı kadar" çerçevesi
+- [x] ASC fiyatları güncellendi — ucuz merdiven §6.7 (2026-10-04); RevenueCat fiyatı mağazadan okur
+- [x] Paywall: lifetime varsayılan seçili ve tek rozet onda (2026-10-04). "İki park aşımı kadar" çerçevesi paywall'da YOK — rozet kısa kalmalı; mağaza metninde kullanılabilir
 - [ ] ja/ko/zh-Hant/sv/nl metinleri ana dil kontrolünden geçirilir
 - [x] **AR lansman metninin dışında tutuldu** — ürün kararı, eksiklik değil (§2.1). AR kodda hazır; öne çıkarma kararı ilk yorumlar geldikten sonra yeniden değerlendirilir.
 

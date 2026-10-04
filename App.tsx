@@ -3,10 +3,17 @@ import BottomSheet, {
   BottomSheetScrollView,
   useBottomSheetSpringConfigs,
 } from '@gorhom/bottom-sheet';
-import Animated, { FadeIn, interpolate, useAnimatedStyle } from 'react-native-reanimated';
+import Animated, {
+  FadeIn,
+  FadeOut,
+  interpolate,
+  runOnJS,
+  useAnimatedReaction,
+  useAnimatedStyle,
+} from 'react-native-reanimated';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, Linking, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { AppState, Linking, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Icon, type AppSymbol } from './src/components/Icon';
 import { t } from './src/localization';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -21,6 +28,13 @@ import { FindingSheet } from './src/sheets/FindingSheet';
 import { HistoryScene } from './src/sheets/HistoryScene';
 import { useUiStore } from './src/state/uiStore';
 import { refreshSessionActivity } from './src/lib/liveActivity';
+import { hapticCommit } from './src/lib/haptics';
+import {
+  addQuickActionListener,
+  setQuickActions,
+  takePendingQuickAction,
+  type QuickActionType,
+} from './modules/parkiq-quick-actions';
 import { CROSSFADE_MS, SPRING } from './src/theme/motion';
 import { sheetIndex, sheetTop } from './src/theme/sheetMotion';
 import { PressScale } from './src/components/motion/PressScale';
@@ -70,6 +84,18 @@ const FINDING_COMPACT_HEIGHT = 132;
 
 /** Keşifte arama sonrası açılan orta kademe: liste görünür, harita da yarı yarıya kalır. */
 const IDLE_HALF_RATIO = 0.55;
+
+/**
+ * Uygulamayı açan bağlantı (widget'ın `parkiq://park`'ı) YALNIZ BİR KEZ işlenir.
+ *
+ * Root dil değişince yeniden kuruluyor (key) ve `getInitialURL` her seferinde aynı açılış
+ * bağlantısını yeniden veriyor: widget'tan açılmış bir uygulamada dili değiştirmek sessizce
+ * yeni bir park başlatıyordu.
+ */
+let initialUrlHandled = false;
+
+/** Arka planda bundan uzun kalındıysa uyarılar yeniden kurulur (dilim ufku ileri kayar). */
+const RESYNC_AFTER_BACKGROUND_MS = 30 * 60 * 1000;
 
 function FloatingIconButton({
   symbol,
@@ -233,11 +259,18 @@ function Root() {
   const pickingLocation = useSessionStore((s) => s.pickingLocation);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
+  /* Ayarlar (pageSheet) kapanırken paywall (fullScreen) AYNI anda sunulamıyor: UIKit kapanma
+     animasyonu sürerken ikinci sunumu reddediyor, RN modalı ise "açıldı" sayıp bir daha
+     denemiyordu — Ayarlar'daki Pro satırı hiçbir şey açmıyor, ardından uygulama yeniden
+     başlayana kadar HİÇBİR paywall tetikleyicisi çalışmıyordu. Paywall, Ayarlar tamamen
+     kapandıktan sonra açılır. */
+  const paywallAfterSettings = useRef(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const sheetRef = useRef<BottomSheet>(null);
   const insets = useSafeAreaInsets();
   const arOpen = useUiStore((s) => s.arOpen);
   const historyOpen = useUiStore((s) => s.historyOpen);
+  const findFollow = useUiStore((s) => s.findFollow);
   const sheetSprings = useBottomSheetSpringConfigs(SPRING);
 
   // Geçmiş açılınca sheet yükselir ama haritanın üst üçte biri görünür kalır: noktalar orada.
@@ -245,14 +278,6 @@ function Root() {
     if (historyOpen) sheetRef.current?.expand();
     else sheetRef.current?.snapToIndex(0);
   }, [historyOpen]);
-
-  /* Arabamı Bul açık kademede başlar — "Buldum" ilk bakışta elde olmalı. Aşağı çekmek
-     haritayı açar; kullanıcı arabayı görüp geri yükseltir. Kompakt kademede kilitli
-     başlasaydı asıl eylem (ve AR/pusula) gizli kalırdı: kullanıcı paneli genişletip
-     orada ne olduğunu tahmin edemiyor. */
-  useEffect(() => {
-    if (phase === 'finding') sheetRef.current?.expand();
-  }, [phase]);
 
   /* Arama sonucu → panel YARI açık kademeye gelir ve oradaki otoparkları listeler.
      Sorgu zaten atılıyordu ama panel kompakt kaldığı için liste ekranın altında
@@ -269,6 +294,14 @@ function Root() {
   const floatingStyle = useAnimatedStyle(() => ({
     opacity: interpolate(sheetIndex.value, [0.6, 1], [1, 0], 'clamp'),
   }));
+  // Görünmez kareler dokunuş almasın: panel açıkken haritanın sağ üstüne dokunmak Ayarlar'ı açıyordu.
+  const [floatingHidden, setFloatingHidden] = useState(false);
+  useAnimatedReaction(
+    () => sheetIndex.value > 0.85,
+    (hidden, previous) => {
+      if (hidden !== previous) runOnJS(setFloatingHidden)(hidden);
+    },
+  );
 
   // Live Activity dakikada bir tazelenir: sayaç sistemde akar, çubuk/amber burada güncellenir.
   // §4.10: premium kontrolü YOK — Live Activity işletim sistemi yeteneğidir, satılmaz.
@@ -282,9 +315,11 @@ function Root() {
   }, [sessionLive, session, warnThresholdMin]);
 
   // Faz değişince panel ilk kademesine döner: keşifte kompakt çubuk,
-  // diğer fazlarda tek kademe olan içerik yüksekliği.
+  // diğer fazlarda tek kademe olan içerik yüksekliği. Arabamı Bul istisna: açık kademede
+  // başlar ve bunu kendi içeriği yapar (FindingSheet `useOpenExpanded`) — buradan çağrılan
+  // `expand()` eski kademeleri okuyup kompakt kademede kalıyordu.
   useEffect(() => {
-    sheetRef.current?.snapToIndex(0);
+    if (phase !== 'finding') sheetRef.current?.snapToIndex(0);
     // Keşiften çıkarken haritada seçili kalan pin temizlenir.
     if (phase !== 'idle') useDiscoveryStore.getState().selectPoi(null);
     // Faz değişince geçici overlay'ler ve geçmiş sahnesi kapanır (AR yalnız finding'de yaşar).
@@ -302,13 +337,46 @@ function Root() {
   // §5.11 offline satırı için ağ durumu dinlenir.
   useEffect(() => useNetworkStore.getState().subscribe(), []);
 
+  /* Ana ekran kısayolları (ikona uzun basınca): oturum yokken "Park Ettim", varken "Arabamı
+     Bul". Liste faza göre değişir — işe yaramayacak bir kısayol gösterilmez. Root dil değişince
+     yeniden kurulduğu için başlıklar da yeni dilde yazılır. */
+  useEffect(() => {
+    const live = phase === 'active' || phase === 'finding';
+    setQuickActions(
+      live
+        ? [{ type: 'find', title: t('findMyCar'), symbol: 'location.north.fill' }]
+        : [{ type: 'park', title: t('iParked'), symbol: 'car.fill' }],
+    );
+  }, [phase]);
+
+  useEffect(() => {
+    const run = (type: QuickActionType) => {
+      const store = useSessionStore.getState();
+      // Kutlama ekranı açıkken "Park Ettim": önceki park kapanır, yenisi başlar.
+      if (type === 'park' && store.phase === 'ended') store.finish();
+      if (type === 'park' && useSessionStore.getState().phase === 'idle') {
+        hapticCommit();
+        useSessionStore.getState().park();
+      } else if (type === 'find' && store.phase === 'active') {
+        store.startFinding();
+      }
+    };
+    // Soğuk açılış: eylem köprüden önce geldi ve modülde bekliyor (bir kez okunur).
+    const pending = takePendingQuickAction();
+    if (pending) run(pending);
+    return addQuickActionListener(run);
+  }, []);
+
   // Widget kısayolu: parkiq://park app'i açar ve kaydı başlatır. Oturum zaten
   // varsa `park()` kendi içinde yok sayar — tek aktif oturum kuralı korunur.
   useEffect(() => {
     const handle = (url: string | null) => {
       if (url?.startsWith('parkiq://park')) useSessionStore.getState().park();
     };
-    void Linking.getInitialURL().then(handle);
+    if (!initialUrlHandled) {
+      initialUrlHandled = true;
+      void Linking.getInitialURL().then(handle);
+    }
     const sub = Linking.addEventListener('url', (event) => handle(event.url));
     return () => sub.remove();
   }, []);
@@ -320,8 +388,12 @@ function Root() {
     // Soğuk açılışta AppState olayı GELMEZ (app zaten active): kilit ekranı kartı iOS onu
     // kendi bitirdiyse (~8 sa) bir daha hiç geri gelmiyordu.
     useSessionStore.getState().resumeLiveActivity();
+    let backgroundedAt: number | null = null;
     const sub = AppState.addEventListener('change', (next) => {
       if (next === 'background') {
+        backgroundedAt = Date.now();
+        // Sorular cevaplanmadan telefon kilitlendi: park yine de aktif sayılır (2 saniye kuralı).
+        useSessionStore.getState().confirmOnLeave();
         // Son taze veri: para metinleri buradan sonra donar (sayaç ve çubuk kendi akar).
         const live = useSessionStore.getState();
         if (live.session && (live.phase === 'active' || live.phase === 'finding')) {
@@ -331,6 +403,15 @@ function Root() {
       }
       if (next !== 'active') return;
       useSessionStore.getState().resumeLiveActivity();
+      // Dilim uyarıları önden en fazla 8 sınır kurulur; saatlik tarifede uzun bir park
+      // 8. saatten sonra uyarısız kalıyordu. Uzun bir aradan dönüşte ufuk ileri taşınır.
+      // İzin Ayarlar'dan açılıp dönüldüyse de hemen yeniden kurulur: eskiden ancak 30 dk'lık
+      // aradan sonra kuruluyordu, "bildirimler kapalı" satırı da hiç kalkmıyordu.
+      const longAway = backgroundedAt !== null && Date.now() - backgroundedAt >= RESYNC_AFTER_BACKGROUND_MS;
+      if (longAway || useSessionStore.getState().notificationState !== 'granted') {
+        useSessionStore.getState().resyncAlerts();
+      }
+      backgroundedAt = null;
       // Yetki app ömrü boyunca tek kez okunuyordu: iptal, yenileme ya da başka
       // cihazdaki satın alma bu oturumda hiç yansımıyordu.
       usePremiumStore.getState().refreshEntitlement();
@@ -346,6 +427,18 @@ function Root() {
   );
 
   const { height: windowHeight } = useWindowDimensions();
+  /* "Ortala" panelin hemen üstünde durur, kare sütununda değil: Arabamı Bul açık kademede
+     başlıyor ve sütun o kademede silinmiş oluyor — düğme tam gerektiği anda görünmüyordu. */
+  const recenterStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateY: Math.max(
+          insets.top + spacing.s8,
+          (sheetTop.value > 0 ? sheetTop.value : windowHeight * 0.5) - 44 - spacing.s12,
+        ),
+      },
+    ],
+  }));
   // Geçmişte sheet %62'de durur; üstte kalan harita geçmiş noktalarını gösterir.
   const maxSheetHeight = Math.round(windowHeight * (historyOpen ? HISTORY_SHEET_RATIO : MAX_SHEET_RATIO));
   // Yalnız keşifte ikinci (kompakt) kademe var; dinamik içerik kademesi kütüphane
@@ -368,7 +461,10 @@ function Root() {
 
       {/* §5 kare cam ikon butonlar — harita üstünde yüzen kontroller; sheet büyüyünce çekilir */}
       {!pickingLocation && (
-      <Animated.View style={[{ position: 'absolute', top: insets.top + spacing.s8, right: spacing.s12, gap: spacing.s8 }, floatingStyle]}>
+      <Animated.View
+        pointerEvents={floatingHidden ? 'none' : 'box-none'}
+        style={[{ position: 'absolute', top: insets.top + spacing.s8, right: spacing.s12, gap: spacing.s8 }, floatingStyle]}
+      >
         <FloatingIconButton
           symbol="clock.arrow.circlepath"
           label={t('history')}
@@ -427,12 +523,34 @@ function Root() {
       </BottomSheet>
       )}
 
+      {/* Arabamı Bul'da haritayı elle kaydıran kullanıcıyı tek dokunuşla kendine ve arabaya döndürür. */}
+      {phase === 'finding' && !findFollow && !arOpen && !pickingLocation && (
+        <Animated.View
+          entering={FadeIn.duration(CROSSFADE_MS)}
+          exiting={FadeOut.duration(CROSSFADE_MS)}
+          style={[{ position: 'absolute', top: 0, right: spacing.s12 }, recenterStyle]}
+        >
+          <FloatingIconButton
+            symbol="location.north.fill"
+            label={t('recenter')}
+            onPress={() => useUiStore.getState().setFindFollow(true)}
+          />
+        </Animated.View>
+      )}
+
       <SettingsSheet
         visible={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+        onDismissed={() => {
+          if (!paywallAfterSettings.current) return;
+          paywallAfterSettings.current = false;
+          setPaywallOpen(true);
+        }}
         onOpenPaywall={() => {
           setSettingsOpen(false);
-          setPaywallOpen(true);
+          // Android'de modal üst üste binebiliyor ve kapanış olayı güvenilir değil.
+          if (Platform.OS === 'ios') paywallAfterSettings.current = true;
+          else setPaywallOpen(true);
         }}
       />
       {/* Pin bırakılırken filtre GEÇİCİ olarak çekilir; `filterOpen` bozulmadığı

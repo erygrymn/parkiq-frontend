@@ -17,11 +17,15 @@ node ~/.claude/skills/twice-store/scripts/play-iap.mjs push metadata/play/produc
   fiyat tarafı indekste boş, metinler oraya yaslanıyor.
 - Metinler Android'in GERÇEKTE yaptığını anlatır: AR ve ana ekran widget'ı YOK, o yüzden
   hiçbir dilde geçmiyor. Kilit ekranındaki kalıcı park kartı var, o anlatılıyor.
-- `products.json` + `prices.json` — lifetime ürünü. Fiyatlar App Store'da canlı olanlarla
-  BİREBİR aynı: aynı ülkedeki sürücü iki mağazada aynı parayı ödemeli. Google'ın kendi
-  çevirisi Apple'ınkinden yukarıda olduğu için TR/AU/CA/NZ elle eşitlendi (aso.md §6.4).
-- Abonelikler (monthly/yearly) bu scriptlerde YOK: Play'in ayrı `monetization/subscriptions`
-  ucunu istiyor. Ya Play Console'dan ya da ayrı bir çağrıyla kurulur.
+- `products.json` + `prices.json` — lifetime ürünü; `subscriptions.json` + `prices-subs.json` —
+  aylık/yıllık (`play-subs.mjs create | activate | list`, `PLAY_API=<skill>/scripts/play-api.mjs`).
+  Fiyatlar App Store'da canlı olanlarla BİREBİR aynı: aynı ülkedeki sürücü iki mağazada aynı
+  parayı ödemeli. Tablo Google'ın `convertRegionPrices` çıktısıdır; App Store'un aynı para
+  biriminde sattığı 59 ülkede fiyat App Store'un eşitlediği (TR/BR/MX/IN/ID'de elle indirdiği)
+  rakamla değiştirildi (aso.md §6.7, 2026-10-04). Geri kalan bölgeler Google'ın çevirisinde.
+- Abonelik fiyatı düşünce mevcut aboneler Play'de ESKİ fiyat kohortunda kalır; yeni fiyata
+  `basePlans:migratePrices` ile taşınır (düşüşte bildirim/onay gerekmez). iOS'ta Apple bunu
+  kendiliğinden yapıyor.
 
 ## data-safety.csv
 

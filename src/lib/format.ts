@@ -1,11 +1,13 @@
-import { getLocale, t } from '../localization';
+import { getLocale, localeTag, t, type Locale } from '../localization';
 import type { Tariff } from './tariffMath';
 
 // Para/saat/süre biçimleme — tüm yüzeyler aynı biçimden geçer (İlke 5: para rakamla konuşur).
 
 export function formatMoney(amount: number, currency: string, locale: string = 'en'): string {
   try {
-    return new Intl.NumberFormat(locale === 'tr' ? 'tr-TR' : 'en-US', {
+    // Her dil kendi biçimiyle: "50 €" (de), "€50" (en), "₺50" (tr). Eskiden tr dışı her dil
+    // en-US biçimindeydi.
+    return new Intl.NumberFormat(localeTag(locale as Locale), {
       style: 'currency',
       currency,
       maximumFractionDigits: amount % 1 === 0 ? 0 : 2,
@@ -78,7 +80,7 @@ export function isSameDay(aMs: number, bMs: number): boolean {
 /** Gün grubu başlığı için kısa tarih: "22 Jul" / "22 Tem". */
 export function formatDateShort(ms: number, locale: string = 'en'): string {
   try {
-    return new Intl.DateTimeFormat(locale === 'tr' ? 'tr-TR' : 'en-US', {
+    return new Intl.DateTimeFormat(localeTag(locale as Locale), {
       day: 'numeric',
       month: 'short',
     }).format(new Date(ms));

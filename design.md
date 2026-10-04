@@ -279,6 +279,11 @@ ham RN `Modal` ile sheet yazılmaz, `PopupSheet` kullanılır. Aynı anda tek ak
   overline yürüme/mesafe · 21/900 ad · "Directions" text). Arama native geocoder.
 - Pin seçimi → kart o otoparka morph (aynı sheet, 200 ms crossfade + `SPRING` yükseklik); harita
   kamerası pine uçar (600 ms). Yer adı display-M ink nokta (ekranın tek imza noktası).
+- **Harita elle kaydırılınca** (2026-10-03) takip bırakılır ve el çekildikten 700 ms sonra o merkezin
+  otoparkları sorulur (süren sorgu iptal edilir, son niyet kazanır); sorgu sürerken haritanın
+  üstünde düz dolgulu "Burada otopark aranıyor" hapı durur, sonuç boşsa listede "yer bulunamadı"
+  satırı çıkar. Takip modu elle kaydırmayı fark etmiyordu: kullanıcı bir semti görmek için önce
+  adres yazmak zorundaydı. Takibe dönüş arama çubuğundaki konum düğmesidir.
 - Meta satırı yalnız MEVCUT veriyi "·" ile dizer; "Unknown"/"—" yok. Canlı dot yalnız açık/kapalı
   verisi varken.
 - **Scene sheet:** hero = sheet (peek → mid → full) · driver = sheet sürükleme (`animatedIndex`) ·
@@ -299,7 +304,11 @@ ham RN `Modal` ile sheet yazılmaz, `PopupSheet` kullanılır. Aynı anda tek ak
      girildiyse o kat ilk çiptir (yeşil ton, kat hafızası). "Other" inline input açar (tek metin
      girişi bu) ve −4, C2, P3 gibi her şeyi karşılar; uzun kat listesi tarama işi çıkarıyordu.
      Çiplerin altında ayrı bir "Fotoğraf çek" eylemi durur: fotoğraf bir kat değildir, soruyu
-     cevaplamaz, kata ek olarak alınır.
+     cevaplamaz, kata ek olarak alınır. **Zayıf GPS ya da konum yok** (2026-10-03) → fotoğraf
+     daveti sorunun EN ÜSTÜNE çıkar: 56pt inset satır, `r-16`, kamera ikonu (çekildiyse 40pt
+     küçük resim) + "Photo of the spot — your surest way back". Kapalı otoparkta GPS dönüşte de
+     yalan söyler; arabayı bulduracak tek gerçek kanıt fotoğraftır ve kat çiplerinin altında
+     gözden kaçıyordu.
   2. **Tarife** — "What does it cost?": hafızadan gelen "Last time · 0–1h ₺50" yeşil çip (varsa) ·
      **"Suggested · 0–1h ₺50"** (havuzda bu otopark için veri varsa) · Enter · Scan (premium).
      Öneri çipinin altında kaynağı YAZAR: "{n} sürücünün girdiğinden geliyor, panoyla karşılaştır".
@@ -309,6 +318,14 @@ ham RN `Modal` ile sheet yazılmaz, `PopupSheet` kullanılır. Aynı anda tek ak
      çipin kendisi onu söyler ("1 sa sonra"), soru da öyle sorar ("Park'tan ne kadar sonra?").
      Tarife varsa dilim uyarıları zaten kurulur, soru düşer.
 - Zorunlu alan sıfır. "Done" siyah hap her an bitirir; sheet'i aşağı çekmek geri almadır.
+- **Sorular cevaplanmadan uygulama arka plana geçerse park AKTİF sayılır** (2026-10-03): kayıt
+  sessizce onaylanır, izin sorulmaz, kilit ekranı kartı kurulamazsa ön plana dönüşte kurulur.
+  Eskiden "Park Ettim"e basıp telefonu kilitleyen kullanıcının parkı başlamamış sayılıyor ve
+  12 saat sonra fotoğrafıyla birlikte siliniyordu. Konumu ya da fotoğrafı olan kayıt hiçbir
+  koşulda "terk edilmiş" diye silinmez.
+- Konum yalnız dokunma anının çevresinde (−15 sn … +30 sn) ölçülmüş düzeltmeden alınır; koordinat
+  ad çözülmeden yazılır. Pencere dışı düzeltme (telefon kilitliyken bekleyip ofiste teslim edilen)
+  "Mark it on the map" satırına düşer.
 - Not, "aslında … önce park ettim", hatırlatıcı ayrıntıları, foto yeniden çekme: park anında
   sorulmaz, aktif sheet'in **Details** satırında yaşar (§7.5).
 - Araba pini haritaya damgayla aynı anda iner (§3 park anı sekansı).
@@ -319,9 +336,20 @@ ham RN `Modal` ile sheet yazılmaz, `PopupSheet` kullanılır. Aynı anda tek ak
 - Tip: tiered / flat / hourly; tiered'da dilim satırları (süre + kümülatif ₺, tabular sağa hizalı) +
   "+ Add tier"; satır ekleme `LinearTransition`.
 - "Scan tariff board" satırı (`camera.viewfinder`): cihaz üstü Vision, premium. Durumlar dürüst ve
-  gerçek: kamera → "Reading…" (gerçek iş, ≤3 sn, sistem spinner) → forma yazıldı (satırlar stagger
-  ile gelir) / "Couldn't read the board. Enter manually or retake." / kamera izni kapalı satırı.
+  gerçek: kamera → "Reading…" (gerçek iş, ≤3 sn, sistem spinner) → **onay görünümü** /
+  "Couldn't read the board. Enter manually or retake." / kamera izni kapalı satırı.
   Sahte ilerleme çubuğu yok.
+- **Onay görünümü** (2026-10-03): okunan tarife ONAYLANMADAN oturuma yazılmaz. Overline "Read from
+  the board — check it", eksik okuma ve takvim satırları, dilimler hairline satırlarda (aralık
+  solda, kümülatif fiyat sağda 15/800 tabular; en fazla 8 satır, sonra "+N more"; günlük tavan
+  ayrı satır), altta yan yana ghost "Use these prices" · "Scan again". Sebep: eğik çekilmiş panoda
+  satırlar bir alt satırın fiyatıyla eşleşebiliyor ve yanlış okunan tarife sayacı ve uyarıları
+  SESSİZCE yönetiyordu — ürünün tek sözü olan para rakamı yalana dönüyordu.
+- **Pano dilleri** (2026-10-03): tarama mağazanın sattığı her pazarda çalışır — TR, EN, DE, FR, ES,
+  IT, NL, SV, PT, JA, KO, ZH. Ayrıştırıcı yabancı sözcükleri kanonik biçime çevirir
+  (`normalizeLine`); Vision tanıma dilleri cihazın dillerinden ve bölgesinden seçilir (Japonca,
+  Korece, Çince karakterler ancak o dil istenirse tanınıyor). Japon panosunda "30分 200円"
+  tekrar eden ücrettir; satır başına saat penceresi ("8:00～20:00") gündüz/gece seçimi yapar.
 - İlk tarife kaydında "Warn me before next tier" toggle → bildirim izni; red → toggle kapanır +
   "Notifications off · Turn on in Settings".
 
@@ -350,8 +378,22 @@ ham RN `Modal` ile sheet yazılmaz, `PopupSheet` kullanılır. Aynı anda tek ak
      levels" + kadran gizli; harita birincil.
 - Pusula/AR premium; yer, foto, not ve "Open in Maps" herkese açık. Free'de kadran yerine 44pt
   "Compass is Pro · See plans" satırı; paywall akışı kesmez.
-- Aksiyonlar: siyah "I found it" (→ `ending`) · ghost "AR" (yalnız açık alan + destek varsa) · text
-  "Open in Maps". ≤30 m'de CTA metni aynı hapta 200 ms crossfade.
+- Aksiyonlar: siyah "I found it" (→ `ending`) · ghost "Open in Maps". ≤30 m'de CTA metni aynı
+  hapta 200 ms crossfade.
+- **AR girişi başlık satırındadır** (2026-10-03): geri okunun karşısında 36pt inset hap, ikon
+  `arkit` + "AR" (kilitliyken taç + "AR"). Panel kompakt kademedeyken de görünür. Eskiden en
+  alttaki yarım genişlik ikinci satırda "Kamera görünümü" adıyla duruyordu, panel de (aşağıdaki
+  hata yüzünden) kompakt açılıyordu: kullanıcı AR'ın varlığını bulamıyordu.
+- Panel **açık kademede** başlar. Faz değişince gorhom mevcut kademe SIRASINI korur ve [içerik] →
+  [kompakt, içerik] geçişinde panel kompakta iniyordu; açılışı içerik kendisi yapar
+  (`useOpenExpanded`: kademeler ikiye çıktığı an bir kez `expand`).
+- Kapalı otopark kararı yalnız KAYDIN doğruluğuna bakar. Canlı doğruluk da hesaba katılıyordu:
+  ilk düzeltme gelene kadar ve doğruluk her 35 m'yi aştığında kadran foto kartına, AR girişi
+  yok olmaya dönüyordu.
+- Kamera kullanıcı yürüdükçe çerçeveyi tazeler; haritayı elle kaydıran kullanıcıya karışılmaz,
+  paneli indirip kaldırmak takibi geri açar. Elle kaydırınca sağ üstteki kare sütununa **"ortala"
+  karesi** (`location.north.fill`) gelir (2026-10-03): tek dokunuş kullanıcıyı ve arabayı yeniden
+  çerçeveler, takip geri açılır, kare kaybolur. Takip zaten açıkken kare yoktur.
 - Heading yoksa kadran çizilmez; kalibrasyonsuzsa kadran %45 + "Calibrate: move in a figure 8".
 - Konum akışı: `BestForNavigation` yalnız `finding` süresince; faz değişince iptal. Heading ve
   mesafe shared value'da; sayı 1 Hz text güncellemesi.
@@ -380,12 +422,36 @@ açılmaz; foto/kat kartı oradaki doğru araçtır.
   uzaktan okunur, yakında doğal.
 - **Zemin noktası:** monolitin altında yeşil disk Ø 0.5 m + beyaz halka 0.03 m; yakın modda Ø 1.2 m,
   halka 0.06 m: "araba burada". iOS 18+ `GroundingShadowComponent` ile temas gölgesi.
-- **Oklüzyon:** `sceneReconstruction .mesh` + `sceneUnderstanding .occlusion` (LiDAR'da) ve
-  `personSegmentationWithDepth` (destekleniyorsa): araçlar ve insanlar işareti gerçekten örter.
-- **Sapma:** her GPS düzeltmesinde hedef kameranın o anki konumundan yeniden türer (mevcut kalıp);
-  1 m altındaki oynamalar yok sayılır. Anlık zıplama yok; yeniden yerleşimde nesneler `SPRING`
-  benzeri 300 ms lerp ile kayar (native).
-- **Yeşil sütun, halka büyümesi ve chevron'lar silindi.**
+- **Oklüzyon YOK (2026-10-03).** Mesh oklüzyonu yere yapışık diskleri yeniden kurulan zemin ağıyla
+  çakıştırıp titretiyordu; GPS ±5 m iken "arabanın arkasında kalan" işaret çoğu zaman YANLIŞ
+  arabanın arkasında kalıyor ya da arabanın içine gömülüp kayboluyordu. Kişi segmentasyonu her
+  karede bir sinir ağı koşturuyor, 10 dk'lık AR'da telefonu ısıtıyordu. İşaret bir tabeladır,
+  her zaman görünür (Apple Haritalar'ın AR okları da araçların arkasına girmez). Hareket
+  bulanıklığı, alan derinliği ve kamera greni de kapalı: yürürken işareti lekeliyordu.
+- **Konum füzyonu (2026-10-03):** hedef artık tek GPS düzeltmesinden türemez — eskiden her
+  düzeltme işareti GPS gürültüsü kadar (5–15 m) zıplatıyordu. Her düzeltme bir örnektir (kameranın
+  ÖLÇÜM anındaki yeri + GPS yeri + doğruluk) ve araba, örneklerin ağırlıklı katı dönüşüm çözümüdür:
+  ağırlık = 1 / (GPS hatası² + VIO kayması² + pusula payı × uzaklık²); pusula sapması
+  (gravityAndHeading başlangıçta pusulaya hizalanır, otoparkta çelik yüzünden 10–20° kayar) yürünen
+  yol GPS yoluyla karşılaştırılıp tahmin edilir, yürünmeden önsel onu sıfıra çeker. 50 m'den kötü
+  düzeltme kullanılmaz.
+- **Yumuşatma:** hedef kare kare üstel yumuşatılır (τ ≈ 0.45 s; 25 m'den büyük sıçrama
+  yumuşatılmaz). `move(to:)` animasyonu yok: kare başı billboard ve ölçek yazımıyla çakışıp
+  titretiyordu. Monolit yüksekliği ve ölçeği mesafenin SÜREKLİ fonksiyonudur (eski 60/20 m
+  basamakları levhayı 50–60 m arasında yere gömüp sonra sıçratıyordu). Zemin, kameranın altındaki
+  en büyük (varsa "floor" sınıflı) düzlemdir; rakip açıkça daha büyük değilse zemin değişmez
+  (kaldırım/yol arasında sahne yukarı aşağı oynuyordu). Diskler HEDEFE kilitli aralıklarla durur:
+  yürürken yerinde kalır, geride kalan söner, ileride yenisi belirir.
+- **Belirsizlik halkası** (2026-10-03): yakın modda zemin noktasının çevresinde beyaz halka
+  (unlit, %85, bant = yarıçapın %5'i, zeminden 4 mm yukarıda): "araba bu dairenin içinde".
+  Yarıçap = √(tahmin belirsizliği² + kayıt anı GPS doğruluğu²), 3–20 m. Tahmin belirsizliği
+  füzyon ağırlıklarından gelir ve en iyi örneğin yarısının altına inmez (ardışık GPS hataları
+  bağımsız değil). Elle bırakılan pin 3 m sayılır. Halka VERİDİR, süs değil: açılırken bir kez
+  zemin noktasının kenarından yarıçapına büyür (τ 0.35 s; Reduce Motion'da yerinde belirir), nabız
+  ve döngü yok. Sebep: levha "tam burada" diyordu ama tahmin birkaç metre kayık olabiliyor;
+  işaretin dibinde arabayı göremeyen kullanıcı uygulamaya güvenini kaybediyordu. Durum satırı
+  yakında "Your car is inside the circle — look around" der.
+- **Yeşil sütun, nabız atan halka ve chevron'lar silindi.**
 
 **HUD (RN, koyu yüzey token'ları):**
 - Üst sol 44pt cam kare `xmark`. Coaching (sistem `ARCoachingOverlayView`) açıkken HUD gizli.
@@ -393,13 +459,21 @@ açılmaz; foto/kat kartı oradaki doğru araçtır.
   (`#8A8A93`, noktasız) → mesafe **44pt/900 tabular beyaz** → 13pt durum satırı ("Walk toward the
   marker." / "You're close." / "Move slowly, tracking is limited."). Altında 52pt hap `#F0F0F2` + ink
   metin "I found it". Haritaya dönüş üst soldaki kapatma karesidir; ikinci bir çıkış yok.
-- **Kenar göstergesi:** hedef ekran dışındaysa o kenarda 10pt ink nokta + 2pt beyaz halka + 11pt
-  overline mesafe; native `onTarget {x, y, onScreen, distanceM, near}` 6 Hz, RN'de shared value.
+- **Kenar göstergesi:** hedef ekran dışındaysa o kenarda koyu kapsül içinde 10pt ink nokta + 2pt
+  beyaz halka + 11pt overline mesafe; kapatma karesi ile kartın arasında kalan çerçeveye kırpılır.
+  Native `onTarget {x, y, onScreen, distanceM, near, relativeDeg}` 6 Hz, RN'de shared value.
+- **Yön cümlesi:** hedef ekrandaysa "Walk toward the marker"; değilse durum satırı dönülecek yanı
+  söyler — "Turn left / Turn right / Turn around", telefon yere bakarken hedef öndeyse "Raise the
+  phone". Açı, telefon dikken kamera yönünden, eğikken üst kenardan okunur. Eskiden yalnız kenarda
+  10 pt'lik bir nokta vardı ve arkada kalan hedef fark edilmiyordu.
+- **Mesafe** AR dünyasındaki (VIO) mesafedir, GPS'ten türeyen sayı değil: yürürken sakin akar.
+  Yakın modda kaydedilen foto kartın sağında 64pt durur (yakında aranan şey artık bir araba).
 - Yakın eşiğine (≤20 m) ilk girişte tek `impactLight`.
-- Giriş: root'ta tam ekran Reanimated overlay; harita 1→0.6 opaklık, kamera 0→1 (250 ms), HUD kartı
-  alttan `SPRING`. Çıkış tersi. RN `Modal` değil.
-- Durumlar: `initializing` (coaching) · `ready` · `near` · `limited` · `failed` / `unsupported` (haritaya
-  düşer + durum satırı).
+- Giriş: root'ta tam ekran Reanimated overlay; harita 1→0.6 (scrim), kamera ilk kare gelince
+  0→1 (250 ms, native) — siyah ekran yok; HUD kartı alttan `SPRING`. Çıkış tersi. RN `Modal` değil.
+- Durumlar: `initializing` · `ready` · `near` · `limited` (takip toparlanınca geri döner) · son
+  durumlar `cameraDenied` / `failed` / `unsupported`: AR kapanır, Arabamı Bul panelinde durum satırı
+  çıkar (kamera izni → Ayarlar bağlantısı). Koçluk görünürlüğü ayrı bir bayraktır; açıkken HUD gizli.
 - Verimlilik: AR oturumu arka planda ve overlay kapanınca `pause()`; RN'e olay ≤6 Hz; billboard ve
   ölçek native karede.
 
@@ -447,8 +521,14 @@ açılmaz; foto/kat kartı oradaki doğru araçtır.
 
 ### 7.10 Ayarlar (pageSheet)
 
-Veri grubunda **"Tarifeleri paylaş"** anahtarı (varsayılan AÇIK): kapatan kullanıcı ne gönderir
-ne öneri görür — havuz çift yönlü bir alışveriştir, tek yönlü kullanım bedavaya binmektir.
+Veri grubunda **"Tarifeleri paylaş"** anahtarı: rıza sorusu cevaplanana kadar KAPALI görünür
+(önceden işaretli onay rıza değildir); kapatan kullanıcı ne gönderir ne öneri görür — havuz çift
+yönlü bir alışveriştir, tek yönlü kullanım bedavaya binmektir.
+
+**"Tüm oturumları sil"** (2026-10-03): oturumlar, fotoğraf klasörü, yer tarifesi hafızası ve havuz
+tuzu silinir; süren parkın uyarıları, alarmı, kilit ekranı kartı ve widget'ı kapanır. Tercihler,
+onboarding ve "bir daha sorma" cevapları KORUNUR — satır "oturumları sil" diyor; dil/tema sıfırlanıp
+onboarding yeniden açılıyordu, silinmiş park için alarm da çalmaya devam ediyordu.
 
 Tek pageSheet yüzeyi. Koyu temada kart zemini `surface/card` (arkadaki kararmış haritadan bir
 basamak açık); başlık ortalanmış 17/600, sistem nav bar hissi, çift kabuk yok. Liste grupları
@@ -466,14 +546,21 @@ noktasız. Geliştirici bölümü yalnız `__DEV__`.
     (`CelebrationHero`) — "SAVED / ₺340." count-up + nokta en son, yeşil. Altında rakamsız tek satır
     "ParkIQ bunu senin için biriktirdi" `text-secondary` 15/600. Haptik KAPALI: satın alma ekranında
     titretmek zorlamadır, kutlama değil. Display-M başlık bu varyantta ÇIKMAZ (iki hero olmaz).
-  - Rakam yoksa hero satılan şeydir: display-M **noktasız** "PRO DETECTS PARKING", 320 ms fade + yükseliş.
+  - Rakam yoksa hero satılan şeydir: display-M **noktasız** "PRO WALKS YOU BACK" / "PRO SENİ
+    ARABANA GÖTÜRÜR", 320 ms fade + yükseliş. *(2026-10-03: "PRO DETECTS PARKING" yazıyordu — 18
+    dilde, 2026-09-12'de kaldırılmış oto-algılamayı satıyordu; 2.3.1 / 5.6'nın ta kendisi.)*
 - **Sahneleme (≤1,3 sn):** hero → 420 ms (rakamsız varyantta 180 ms) sonra hairline satırlar 50 ms
   stagger → sonra plan karoları 200 ms fade. Aynı anda iki şey hareket etmez. Reduce Motion → hepsi
   200 ms crossfade.
 - 4 hairline satır: SF Symbol Regular 20 + 2–3 kelimelik etiket 15/600
-  ("Auto-detect parking", "Scan tariff boards", "Compass and AR", "Parking filters") → **üç plan
+  ("Scan tariff boards", "Suggested tariffs in one tap", "Compass and AR", "Parking filters"; havuz
+  satırı yalnız TEK DOKUNUŞU satar — öneri rakamı ücretsizde de görünür) → **üç plan
   karosu yan yana** (Monthly · Yearly · Lifetime; `r-16`, hairline, seçili 2pt ink; dönem 13/600,
-  fiyat 17/800 tabular, tek satır alt bilgi; yıllık varsayılan ve "SAVE 56%" rozeti). **Renk paranın
+  fiyat 17/800 tabular, tek satır alt bilgi; **ömür boyu varsayılan seçili ve tek rozet onda**: "BEST
+  VALUE" / "EN AVANTAJLI" (2026-10-04, aso.md §6.3 — bu nişin kullanıcısı abonelikten hoşlanmıyor,
+  fiyat merdiveni ömür boyuyu yıllığın hemen üstüne koyuyor). İki rozet dikkati böldüğü için yıllığın
+  "SAVE 56%" rozeti yalnız ömür boyu teklifte yoksa çıkar; yıllığın değeri alt bilgideki aylık
+  karşılıkta görünür). **Renk paranın
   olduğu yerde:** seçili karo `alert-bg/money` yeşil kâğıda oturur, indirim rozeti `accent-fill`
   dolgudur — dekoratif renk yok, gradyan yok → sabit alt blok:
   tek satır otomatik yenileme beyanı 11pt `text-tertiary` + CTA "Continue — ₺X/year" +
@@ -520,6 +607,13 @@ RN'den gelen güncelleme yalnız para metinleri ve dilim değişimi içindir. Do
 "kalan süre" metni ve kendi kendine ilerlemeyen çubuk yasaktır. ContentState'te değişmez alan
 yoktur (yer adı ve kat da orada): park anından sonra girilen kat kilit ekranında da görünür.
 
+**Sınırdan sonraki hâl önceden gönderilir (2026-10-03).** App arka plandayken fiyat sınırı geçince
+kart "Sonraki dilim ₺100" yazmaya devam ediyordu, oysa ₺100 başlamıştı. ContentState ve App Group
+artık sınır SONRASI etiketi, para satırı, tonu ve bir sonraki sınırı da taşır (tariffMath'ten).
+Live Activity'nin içeriği sınırda bayatlar (staleDate) ve görünüm tarihe bakıp o hâli seçer;
+widget her hâl değişimine (amber anı, sınır, sonraki amber, sonraki sınır) zaman çizelgesi girişi
+koyar. Bilinen son sınır da geçildiyse etiket ve para satırı düşer, yalnız süre akar.
+
 - Tarifeli: hero = sonraki fiyat artışına geri sayım 44/900 tabular (sistem timer); son 15 dk amber.
   Başlıkta ikincil geçen süre 13/heavy muted. Çubuk = içinde bulunulan dilimin kendi kendine dolan
   ilerlemesi. Footer "Now ₺50 · Next ₺100" 13/800. Sağ üstte "End" düğmesi (§8 aşağıda).
@@ -527,6 +621,10 @@ yoktur (yer adı ve kat da orada): park anından sonra girilen kat kilit ekranı
 - Dynamic Island: compact glyph + sayaç; minimal glyph; expanded mini kart.
 - Widget small/medium: hero rakam + yer adı; oturumsuz "₺340 saved this month". Quick Park widget'ı
   `parkiq://park` → app park kaydıyla açılır ve hızlı sorular (§7.3) hemen başlar.
+- **Ana ekran kısayolu** (ikona uzun basınca, 2026-10-03; `modules/parkiq-quick-actions`): TEK
+  kısayol ve faza göre değişir — oturum yokken "I Parked" (`car.fill`, kayıt anında başlar, hızlı
+  sorular açılır), oturum varken "Find My Car" (`location.north.fill`). İşe yaramayacak kısayol
+  gösterilmez; başlıklar uygulamanın dilinde yazılır.
 - **Kilit ekranı widget'ları** (rectangular / inline; dairesel aile YOK — o boyutta yalnız bir halka kalıyor, ne olduğu anlaşılmıyor): oturum yokken marka glyph'i / "Park"
   → `parkiq://park`; oturum varken sayaç → `parkiq://session`. Circular tarife varken geri sayım
   HALKASI (kendi kendine boşalır, ortasında glyph); rectangular: etiket + büyük sayaç + para satırı.
@@ -569,7 +667,8 @@ panik dili yok; önce "şimdi çıkarsan X" seçeneği. 4. TR'de "sen" dili.
 | AR yakın | You're close. | Yaklaştın. |
 | Boş geçmiş | No sessions yet. Your first park will land here. | Henüz oturum yok. İlk parkın burada başlar. |
 | Offline | Offline — timer still running. | Çevrimdışı — sayaç çalışıyor. |
-| Paywall | Pro detects parking. You never think about it. | Pro parkı otomatik algılar. Sen hiç düşünme. |
+| Paywall | PRO WALKS YOU BACK | PRO SENİ ARABANA GÖTÜRÜR |
+| AR yön | Turn left. / Turn around. | Sola dön. / Arkana dön. |
 
 Yasak kelimeler: amazing, unlock, elevate, seamless, süper, harika, hemen şimdi. Ünlem yasak.
 Wordmark "PARKIQ." tek ağırlık; "IQ" ayrılmaz. App içinde navbar/haritada logo yok.

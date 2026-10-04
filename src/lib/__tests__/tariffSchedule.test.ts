@@ -105,3 +105,25 @@ describe('tek tarifeli pano', () => {
     ]);
   });
 });
+
+// Japon/Kore panolarında etiket sözcüğü yok: her satır kendi saat penceresini taşır.
+describe('satır başına saat penceresi', () => {
+  const board = ['8:00～20:00 30分 200円', '20:00～8:00 60分 100円', '最大料金 1,200円'];
+
+  it('gündüz yalnız gündüz satırı + penceresiz tavan okunur', () => {
+    const s = selectSchedule(board, CUMA, normalizeLine);
+    expect(s.kind).toBe('day');
+    const tiers = parseTariffLines(s.lines, 'JPY', s.priceColumn)?.tariff.tiers ?? [];
+    expect(tiers.slice(0, 2)).toEqual([
+      { endMin: 30, cumulativePrice: 200 },
+      { endMin: 60, cumulativePrice: 400 },
+    ]);
+  });
+
+  it('gece yalnız gece satırı okunur', () => {
+    const s = selectSchedule(board, GECE, normalizeLine);
+    expect(s.kind).toBe('night');
+    const tiers = parseTariffLines(s.lines, 'JPY', s.priceColumn)?.tariff.tiers ?? [];
+    expect(tiers[0]).toEqual({ endMin: 60, cumulativePrice: 100 });
+  });
+});

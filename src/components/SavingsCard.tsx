@@ -1,7 +1,7 @@
 import { Image, Text, View } from 'react-native';
 import { formatDurationStamp, formatMoney } from '../lib/format';
 import type { TariffState } from '../lib/tariffMath';
-import { getLocale, t } from '../localization';
+import { getLocale, t, upper } from '../localization';
 
 // §11.1 SAVINGS CARD — kanonik koyu ink kart, TEMA BAĞIMSIZ.
 // 1080×1920 story. Zemin #141416. Partikül/konfeti yok; palet yalnız ink/beyaz/yeşil.
@@ -26,11 +26,21 @@ export interface SavingsCardData {
   tariffState: TariffState | null;
 }
 
+/**
+ * Kartın yer satırı. Kart herkese açık paylaşılır (story): ters geocoder'ın verdiği ad kapı
+ * numaralı bir sokak adresi olabiliyor ("Moda Cd. No:45") ve evin önüne park eden kullanıcı
+ * adresini yayınlıyordu. Rakam taşıyan ad yazılmaz; otopark/AVM adları kalır (§9: tam adres asla).
+ */
+function publicPlaceLabel(name: string | null): string | null {
+  if (!name || /\d/.test(name)) return null;
+  return upper(name);
+}
+
 function Column({ label, value, green }: { label: string; value: string; green?: boolean }) {
   return (
     <View style={{ flex: 1, gap: 8 }}>
       <Text style={{ fontSize: 32, fontWeight: '800', letterSpacing: 32 * 0.14, color: MUTED }}>
-        {label.toUpperCase()}
+        {upper(label)}
       </Text>
       <Text
         style={{
@@ -177,7 +187,7 @@ export function SavingsCard({ data }: { data: SavingsCardData }) {
       <View style={{ gap: 56 }}>
         {/* Overline: konum max semt düzeyi, NOKTASIZ (§11.1.1) */}
         <Text style={{ fontSize: 40, fontWeight: '700', letterSpacing: 40 * 0.14, color: MUTED }}>
-          {[data.placeName?.toUpperCase()].filter(Boolean).join(' · ')}
+          {publicPlaceLabel(data.placeName) ?? ''}
         </Text>
 
         {/* Hero — karttaki TEK imza noktası. Nokta her zaman en son satırda. */}

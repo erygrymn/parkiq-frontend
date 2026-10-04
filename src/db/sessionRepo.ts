@@ -1,4 +1,5 @@
 import { openDatabaseSync, type SQLiteDatabase } from 'expo-sqlite';
+import { resolvePhotoUri } from '../lib/photo';
 import type { Tariff } from '../lib/tariffMath';
 import type { ParkSession } from '../state/sessionStore';
 
@@ -130,21 +131,20 @@ export function writeSetting(key: string, value: string): void {
   getDb().runSync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [key, value]);
 }
 
-/** Ayarlar > Veri: tüm oturumları siler (ayarlar korunur). */
-export function deleteAllSessions(): void {
-  getDb().runSync('DELETE FROM sessions');
-}
-
 /**
- * Ayarlar > Veri "her şeyi sil": oturumlar, yer tarifesi hafızası ve ayarlar.
- * Fotoğraflar dosya sisteminde yaşadığı için çağıran taraf onları ayrıca siler.
- * Amaç, kopyanın verdiği sözü birebir tutmak: geriye hiçbir iz kalmaz.
+ * Ayarlar > Veri "tüm oturumları sil": oturumlar, yer tarifesi hafızası ve havuz tuzu.
+ * Fotoğraflar dosya sisteminde yaşadığı için çağıran taraf klasörü ayrıca siler.
+ *
+ * Tercihler (dil, tema, para birimi, eşik), onboarding ve "bir daha sorma" cevapları KORUNUR.
+ * Satır "oturumları sil" diyor; eskiden ayarlar tablosu da siliniyordu: dil cihaz diline
+ * dönüyor ama metinler eski dilde kalıyor, onboarding yeniden açılıyor, yorum isteğine
+ * "hayır" demiş kullanıcıya yeniden soruluyordu.
  */
-export function deleteEverything(): void {
+export function deleteAllData(): void {
   const database = getDb();
   database.execSync('DELETE FROM sessions');
   database.execSync('DELETE FROM place_tariffs');
-  database.execSync('DELETE FROM settings');
+  database.runSync('DELETE FROM settings WHERE key = ?', ['poolSalt']);
 }
 
 /** Silinmeden önce fotoğrafın temizlenebilmesi için kaydın yolunu verir. */
@@ -153,15 +153,7 @@ export function getSessionPhotoUri(id: string): string | null {
     'SELECT photoUri FROM sessions WHERE id = ?',
     [id],
   );
-  return row?.photoUri ?? null;
-}
-
-/** Geçmişte duran tüm fotoğraf yolları — toplu silmeden önce temizlik için. */
-export function listAllPhotoUris(): string[] {
-  const rows = getDb().getAllSync<{ photoUri: string }>(
-    "SELECT photoUri FROM sessions WHERE photoUri IS NOT NULL AND photoUri != ''",
-  );
-  return rows.map((r) => r.photoUri);
+  return resolvePhotoUri(row?.photoUri ?? null);
 }
 
 /** §7.4b yanlış oto-algılama: tek kaydı tamamen siler. */
@@ -225,7 +217,7 @@ function rowToSession(row: SessionRow): ParkSession {
     latitude: row.latitude,
     longitude: row.longitude,
     placeName: row.placeName,
-    photoUri: row.photoUri,
+    photoUri: resolvePhotoUri(row.photoUri),
     reminder: parseReminder(row.reminderJson),
     tariffSchedule: (row.tariffSchedule as ParkSession['tariffSchedule']) ?? null,
     accuracyM: row.accuracyM,

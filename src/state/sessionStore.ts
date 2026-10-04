@@ -15,7 +15,7 @@ import {
   startSessionActivity,
   syncWidget,
 } from '../lib/liveActivity';
-import { captureCurrentPlace, describeCoords } from '../lib/location';
+import { captureCurrentPlace, describeCoords, parkFixWindow, placeNameAt } from '../lib/location';
 import { cancelSessionAlerts, scheduleSessionAlerts } from '../lib/notifications';
 import { scanTariffBoard } from '../lib/ocr';
 import type { ScheduleKind } from '../lib/tariffSchedule';
@@ -56,9 +56,20 @@ export interface Reminder {
 
 export type SessionPhase = 'idle' | 'parking' | 'active' | 'finding' | 'ended';
 export type LocationState = 'idle' | 'capturing' | 'ok' | 'weak' | 'denied' | 'unavailable';
-export type NotificationState = 'idle' | 'granted' | 'denied';
+export type NotificationState = 'idle' | 'granted' | 'denied' | 'undetermined';
 export type CameraState = 'idle' | 'ok' | 'denied';
 export type OcrState = 'idle' | 'scanning' | 'not_detected' | 'unavailable' | 'locked' | 'failed';
+
+/**
+ * Taranmış ama henüz ONAYLANMAMIŞ tarife. Eğik çekilmiş panoda satırlar bir alt satırın
+ * fiyatıyla eşleşebiliyor ve sessizce yanlış bir tarife sayacı yönetiyordu; artık okunan
+ * dilimler önce gösterilir, kullanıcı "kullan" demeden oturuma yazılmaz.
+ */
+export interface OcrDraft {
+  tariff: Tariff;
+  schedule: ScheduleKind | null;
+  partial: boolean;
+}
 
 export interface ParkSession {
   id: string;
@@ -136,6 +147,10 @@ interface SessionStore {
   ocrSchedule: ScheduleKind | null;
   /** Tarife satırına benzeyen bazı satırlar okunamadıysa true — kullanıcı kontrol etsin. */
   ocrPartial: boolean;
+  /** Onay bekleyen tarama sonucu (bkz. OcrDraft). */
+  ocrDraft: OcrDraft | null;
+  confirmOcrDraft: () => void;
+  discardOcrDraft: () => void;
   hydrate: () => void;
   /** 2 saniye kuralı: dokunulduğu an kayıt biter; konum arkadan işlenir (§7.3). */
   park: () => void;
@@ -188,6 +203,8 @@ interface SessionStore {
   acceptPooledTariff: () => void;
   dismissSuggestedTariff: () => void;
   confirmDetails: () => void;
+  /** Park formu açıkken uygulama arka plana geçti: kayıt sessizce onaylanır (bkz. uygulaması). */
+  confirmOnLeave: () => void;
   /** §7.6 Arabamı Bul bir sheet fazıdır: active ↔ finding. */
   startFinding: () => void;
   stopFinding: () => void;
@@ -202,6 +219,17 @@ interface SessionStore {
   finish: () => void;
   /** Geçmişten tek kaydı siler (fotoğrafıyla birlikte). */
   deleteEndedSession: (id: string) => void;
+  /**
+   * Ayar değişti (uyarı eşiği, dil) ya da uygulama öne geldi: süren oturumun uyarıları
+   * güncel hâliyle yeniden kurulur. İzin sorulmaz.
+   */
+  resyncAlerts: () => void;
+  /**
+   * Ayarlar > Veri "her şeyi sil": oturum sürüyorsa uyarıları, alarmı, kilit ekranı kartını
+   * ve widget'ı da kapatır. Eskiden yalnız bellek sıfırlanıyordu ve silinmiş bir park için
+   * alarm çalmaya, Live Activity saymaya devam ediyordu.
+   */
+  resetAll: () => void;
 }
 
 // Repo import'u fonksiyon içinde: testler saf mantığa native sqlite olmadan dokunur.
@@ -255,11 +283,21 @@ function refreshActivityIfLive(): void {
  * kimliğinden türetilmiş kısa bir özettir, iki farklı otoparktaki gönderimi
  * birbirine bağlamaya yetmez.
  */
-function submitToPool(session: ParkSession, spotId: string | null, source: TariffSource): void {
+function submitToPool(session: ParkSession, source: TariffSource): void {
   // Cevap verilmeden hiçbir şey gitmez (5.1.5 konum rızası); kapatan da göndermez.
   const settings = useSettingsStore.getState();
   if (!settings.tariffPoolAsked || !settings.tariffPoolEnabled) return;
-  if (!session.tariff || !spotId || session.latitude === null || session.longitude === null) return;
+  if (!session.tariff || session.latitude === null || session.longitude === null) return;
+  // Değiştirilmeden kabul edilmiş öneri havuzdan gelmiştir: geri göndermek aynı sayıyı
+  // "yeni bir sürücü" diye bir daha sayar ve yanlış bir giriş kendi kendini büyütürdü.
+  if (source === 'pool') return;
+  // Kimlik SON konumdan çözülür. Park anında çözülen kimlik iki yerde boş ya da yanlış
+  // kalıyordu: rıza tam tarife sorusunda verildiği için ilk gönderim hiç gitmiyordu, pin
+  // komşu otoparktan taşınınca da fiyat komşuya yazılıyordu.
+  const spot = resolveSpotId(
+    { latitude: session.latitude, longitude: session.longitude },
+    useDiscoveryStore.getState().pois,
+  );
   let salt = '';
   try {
     salt = repo().readSetting('poolSalt') ?? '';
@@ -271,12 +309,34 @@ function submitToPool(session: ParkSession, spotId: string | null, source: Tarif
     return; // Tuz okunamıyorsa gönderme: sayaç şişer.
   }
   void submitTariff({
-    spotId,
-    name: session.placeName,
-    coords: { latitude: session.latitude, longitude: session.longitude },
+    spotId: spot.id,
+    // Yalnız otoparkın OSM adı gider: ters geocoder'ın verdiği ad kapı numaralı bir sokak
+    // adresi olabiliyor ve rıza metni "sana ait bir şey gitmez" diyor.
+    name: spot.name,
+    // ~110 m hücre: panel otoparkı haritada bulur, evin kapısını değil.
+    coords: {
+      latitude: Math.round(session.latitude * 1000) / 1000,
+      longitude: Math.round(session.longitude * 1000) / 1000,
+    },
     tariff: session.tariff,
     source,
-    submitter: submitterHash(salt, spotId),
+    submitter: submitterHash(salt, spot.id),
+  });
+}
+
+/** Havuz önerisini (rıza varsa) bu konum için sorar; cevap gelince park formunda çip belirir. */
+function askPool(sessionId: string, coords: { latitude: number; longitude: number }): void {
+  const settings = useSettingsStore.getState();
+  if (!settings.tariffPoolAsked || !settings.tariffPoolEnabled) return;
+  const spot = resolveSpotId(coords, useDiscoveryStore.getState().pois);
+  useSessionStore.setState({ spotId: spot.id });
+  void fetchPooledTariff(spot.id, settings.currency).then((pooled) => {
+    const live = useSessionStore.getState();
+    if (!live.session || live.session.id !== sessionId || live.phase !== 'parking') return;
+    // Kullanıcı bu arada kendi tarifesini girdiyse öneri araya girmez; bu arada konum yine
+    // değiştiyse cevap eski otoparkındır.
+    if (live.session.tariff || live.spotId !== spot.id) return;
+    useSessionStore.setState({ pooledTariff: pooled });
   });
 }
 
@@ -284,24 +344,65 @@ function submitToPool(session: ParkSession, spotId: string | null, source: Tarif
  * Dilim uyarılarını oturumun güncel haline göre yeniden kurar.
  * Tarife yoksa uyarı da yoktur — bu yüzden izin de İSTENMEZ (bağlamsal izin kuralı).
  */
+interface AlertSyncOptions {
+  /** İzin sorulabilir mi (yalnız kullanıcının kendi eylemi sonrası). */
+  prompt?: boolean;
+  /** Uyarı anı geçmiş artışlar için hemen uyarı (yalnız kullanıcı bir şey değiştirince). */
+  catchUp?: boolean;
+  /** Yazım sırasında (tarife formu, dakika kutusu) her tuşta yeniden kurmamak için. */
+  debounce?: boolean;
+}
+
+const ALERT_DEBOUNCE_MS = 600;
+let pendingAlertSync: { timer: ReturnType<typeof setTimeout>; prompt: boolean; catchUp: boolean } | null = null;
+
+function dropPendingAlertSync(): void {
+  if (pendingAlertSync) clearTimeout(pendingAlertSync.timer);
+  pendingAlertSync = null;
+}
+
+/** Oturumda kurulacak bir uyarı kaynağı var mı: tarife dilimleri ya da hatırlatıcı. */
+function hasAlertSource(session: ParkSession | null): boolean {
+  return session !== null && session.endedAtMs === null && (session.tariff !== null || session.reminder !== null);
+}
+
 function syncAlerts(
   session: ParkSession | null,
-  prompt: boolean,
+  options: AlertSyncOptions,
   set: (partial: Partial<SessionStore>) => void,
 ): void {
   // Uyarı kaynağı: tarife dilimleri VEYA basit süre hatırlatıcısı. İkisi de yoksa
   // kurulacak bir şey yok → izin de istenmez (bağlamsal izin kuralı).
-  if (!session || session.endedAtMs !== null || (!session.tariff && session.reminder === null)) {
+  if (!session || !hasAlertSource(session)) {
+    dropPendingAlertSync();
     /* Tepsi YALNIZ oturum gerçekten bittiyse temizlenir. Bu dal sürmekte olan bir
        parkta da çalışıyor (tarife ve hatırlatıcı yoksa kurulacak uyarı yok); orada
        tepsiyi silmek Android'in kalıcı park kartını da düşürürdü. */
     void cancelSessionAlerts({ dismissDelivered: session === null || session.endedAtMs !== null });
     return;
   }
-  const threshold = useSettingsStore.getState().warnThresholdMin;
-  void scheduleSessionAlerts(session, threshold, { prompt }).then((permission) => {
-    set({ notificationState: permission === 'granted' ? 'granted' : 'denied' });
-  });
+  // Bekleyen bir yazım turu varsa onun izin/telafi isteği kaybolmaz.
+  const prompt = (pendingAlertSync?.prompt ?? false) || options.prompt === true;
+  const catchUp = (pendingAlertSync?.catchUp ?? false) || options.catchUp === true;
+  dropPendingAlertSync();
+  const run = () => {
+    pendingAlertSync = null;
+    // Tur koştuğunda oturumun GÜNCEL hâli kurulur; bu arada bitmiş ya da değişmişse hiçbir şey.
+    const live = useSessionStore.getState().session;
+    if (!live || !hasAlertSource(live) || live.id !== session.id) return;
+    const threshold = useSettingsStore.getState().warnThresholdMin;
+    void scheduleSessionAlerts(live, threshold, { prompt, catchUp }).then((permission) => {
+      if (permission !== null) set({ notificationState: permission });
+    });
+  };
+  if (options.debounce) pendingAlertSync = { timer: setTimeout(run, ALERT_DEBOUNCE_MS), prompt, catchUp };
+  else run();
+}
+
+/** Oturum sürüyorsa (aktif ya da Arabamı Bul) kullanıcının eylemi bağlamında izin sorulabilir. */
+function liveSession(): boolean {
+  const phase = useSessionStore.getState().phase;
+  return phase === 'active' || phase === 'finding';
 }
 
 export const useSessionStore = create<SessionStore>((set, get) => ({
@@ -320,6 +421,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   ocrState: 'idle',
   ocrSchedule: null,
   ocrPartial: false,
+  ocrDraft: null,
   pickingLocation: null,
   pickedCenter: null,
   reopenAfterPick: null,
@@ -347,14 +449,21 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     // Onaylanmamış kayıt: kullanıcı formu bitirmeden çıkmış. Çok eskiyse terk
     // edilmiştir — sessizce silinir, yoksa bir daha hiç açılmayan bir sayaç
     // olarak geri geliyor. Yeniyse form kaldığı yerden açılır.
+    // Konumu ya da fotoğrafı olan kayıt GERÇEK bir parktır: silinmez, onaylanmış sayılır.
+    // "Park Ettim"e basıp telefonu kilitleyen kullanıcının havalimanı parkı 12 saat sonra
+    // "terk edilmiş" diye fotoğrafıyla birlikte siliniyordu.
     if (active && !active.confirmed && Date.now() - active.recordedAtMs > ABANDONED_AFTER_MS) {
-      try {
-        if (active.photoUri) deleteSpotPhoto(active.photoUri);
-        repo().deleteSession(active.id);
-      } catch {
-        /* silinemezse aşağıdaki dal onu forma alır */
+      if (active.latitude !== null || active.photoUri !== null) {
+        active = { ...active, confirmed: true };
+        persist(active);
+      } else {
+        try {
+          repo().deleteSession(active.id);
+        } catch {
+          /* silinemezse aşağıdaki dal onu forma alır */
+        }
+        active = null;
       }
-      active = null;
     }
 
     // Aktif oturum yoksa hayalet alarm, hayalet kilit ekranı kartı ve hayalet widget
@@ -381,12 +490,15 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     );
     if (active) {
       // Soğuk açılışta uyarıları tazele ama izin sorma — kullanıcı app'i yeni açtı.
-      syncAlerts(active, false, set);
+      syncAlerts(active, {}, set);
       // Widget/Live Activity'yi gerçek duruma getir: app yeniden açıldığında (veya
       // ilk widget yerleştirildiğinde) paylaşılan kutu boşsa widget "park edilmemiş"
       // kalıyordu. `start` idempotent (mevcut LA'yı kapatıp yeniden kurar) ve
       // paylaşılan kutuya da yazar — bu yüzden refresh değil start.
-      syncLiveActivity('start');
+      // Onaylanmamış kayıt (form yarıda kaldı) kilit ekranına çıkmaz: form aşağı çekilip
+      // silinirse sayan bir hayalet kart kalıyordu.
+      if (active.confirmed) syncLiveActivity('start');
+      else clearSessionSurfaces();
     } else {
       // Oturum yokken de kutuyu tazele: widget dil metinlerini ve aylık
       // tasarrufu buradan alır, aksi halde ilk kurulumda İngilizce kalır.
@@ -425,11 +537,19 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       spotId: null,
       tariffSource: 'manual',
       locationPinnedByUser: false,
+      // Önceki parkın "pano okunamadı" satırı yeni parkın sorusunda görünüyordu.
+      ocrState: 'idle',
+      ocrSchedule: null,
+      ocrPartial: false,
+      ocrDraft: null,
+      cameraState: 'idle',
+      notificationState: 'idle',
     });
     trackParkStarted('manual');
 
-    // Konum yakalama kaydı BLOKLAMAZ; sonuç geldiğinde oturuma işlenir.
-    void captureCurrentPlace().then((outcome) => {
+    // Konum yakalama kaydı BLOKLAMAZ; sonuç geldiğinde oturuma işlenir. Yalnız dokunma anının
+    // çevresinde ÖLÇÜLMÜŞ düzeltme kabul edilir (parkFixWindow); koordinat ad çözülmeden yazılır.
+    void captureCurrentPlace({ window: parkFixWindow(session.recordedAtMs), withName: false }).then((outcome) => {
       const current = get().session;
       if (!current || current.id !== session.id) return; // oturum bitmiş/değişmiş
       // Kullanıcı bu arada konumu kendi belirlediyse geciken GPS onu EZMEZ.
@@ -442,10 +562,24 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         ...current,
         latitude: outcome.place.latitude,
         longitude: outcome.place.longitude,
-        placeName: outcome.place.placeName,
         accuracyM: outcome.place.accuracyM,
       };
       persist(next);
+      // Kayıt Done'dan sonra konumlandıysa kilit ekranı ve uyarı başlıkları da güncellenir.
+      refreshActivityIfLive();
+      if (liveSession()) syncAlerts(next, {}, set);
+      // Ad ayrıca çözülür: yavaş bir ters geocoding sırasında app kapanırsa koordinat da
+      // kayboluyordu. Konum bu arada değiştiyse ad eskisinindir, yazılmaz.
+      void placeNameAt(outcome.place).then((placeName) => {
+        const live = get().session;
+        if (!placeName || !live || live.id !== next.id) return;
+        if (live.latitude !== next.latitude || live.longitude !== next.longitude) return;
+        const named = { ...live, placeName };
+        persist(named);
+        set({ session: named });
+        refreshActivityIfLive();
+        if (liveSession()) syncAlerts(named, {}, set);
+      });
 
       let remembered: Tariff | null = null;
       let rememberedFloor: string | null = null;
@@ -468,18 +602,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       // Ağ beklenmez — cevap gelirse soru ekranında bir çip daha belirir, gelmezse hiçbir şey.
       // Sorgu da otopark kimliğini (dolayısıyla kaba konumu) taşır: rıza verilmeden
       // bu da yapılmaz. Kapatan kullanıcı ne gönderir ne öneri görür.
-      const poolSettings = useSettingsStore.getState();
-      if (!poolSettings.tariffPoolAsked || !poolSettings.tariffPoolEnabled) return;
-      const spot = resolveSpotId(outcome.place, useDiscoveryStore.getState().pois);
-      set({ spotId: spot.id });
-      const currency = useSettingsStore.getState().currency;
-      void fetchPooledTariff(spot.id, currency).then((pooled) => {
-        const live = get().session;
-        if (!live || live.id !== session.id || get().phase !== 'parking') return;
-        // Kullanıcı bu arada kendi tarifesini girdiyse öneri araya girmez.
-        if (live.tariff) return;
-        set({ pooledTariff: pooled });
-      });
+      askPool(session.id, outcome.place);
     });
   },
 
@@ -509,7 +632,9 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     // Elle girilen tarife öneriyi geçersiz kılar: kullanıcı panoyu okumuş demektir.
     set({ session: next, suggestedTariff: null, pooledTariff: null, tariffSource: 'manual' });
     refreshActivityIfLive();
-    syncAlerts(next, false, set); // izin, kullanıcı Done'a basınca istenir
+    // Park formunda izin "Bitti"de istenir; oturum sürerken tarifeyi giren kullanıcıya
+    // tam o an sorulur — eskiden hiç sorulmuyor, uyarılar da hiç kurulmuyordu.
+    syncAlerts(next, { prompt: liveSession(), catchUp: true, debounce: true }, set);
   },
 
   setBackdateMinutes: (minutes) => {
@@ -522,7 +647,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     persist(next);
     set({ session: next });
     refreshActivityIfLive();
-    syncAlerts(next, false, set); // sınırlar kaydı → uyarılar yeniden kurulur
+    syncAlerts(next, { prompt: liveSession(), catchUp: true }, set); // sınırlar kaydı → uyarılar yeniden kurulur
   },
 
   setReminder: (reminder) => {
@@ -531,7 +656,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const next = { ...session, reminder };
     persist(next);
     set({ session: next });
-    syncAlerts(next, false, set);
+    syncAlerts(next, { prompt: liveSession(), catchUp: true, debounce: true }, set);
   },
 
   capturePhoto: () => {
@@ -548,6 +673,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       const next = { ...current, photoUri: outcome.uri };
       persist(next);
       set({ session: next, cameraState: 'ok' });
+      // Yeniden çekilen fotoğraf yeni bir dosyadır; eskisi yetim kalmasın.
+      if (current.photoUri && current.photoUri !== outcome.uri) deleteSpotPhoto(current.photoUri);
     });
   },
 
@@ -574,12 +701,19 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     } catch {
       /* silinemezse bellek durumu yine sıfırlanır */
     }
+    dropPendingAlertSync();
     void cancelSessionAlerts({ dismissDelivered: true });
+    clearSessionSurfaces();
     set({
       phase: 'idle',
       session: null,
       suggestedTariff: null,
+      pooledTariff: null,
+      spotId: null,
       ocrState: 'idle',
+      ocrSchedule: null,
+      ocrPartial: false,
+      ocrDraft: null,
       locationState: 'idle',
       locationPinnedByUser: false,
     });
@@ -617,22 +751,36 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         return;
       }
       trackTariffScan(outcome.partial ? 'partial' : 'ok');
-
-      const next = { ...current, tariff: outcome.tariff, tariffSchedule: outcome.schedule };
-      persist(next);
+      // Oturuma yazılmaz: önce okunan dilimler gösterilir (OcrDraft).
       set({
-        session: next,
         ocrState: 'idle',
-        ocrSchedule: outcome.schedule,
-        ocrPartial: outcome.partial,
-        tariffSource: 'ocr',
-        pooledTariff: null,
-        suggestedTariff: null,
-        externalTariffVersion: get().externalTariffVersion + 1,
+        // Kamera sonradan açıldıysa eski "kamera kapalı" satırı kalkar.
+        cameraState: 'idle',
+        ocrDraft: { tariff: outcome.tariff, schedule: outcome.schedule, partial: outcome.partial },
       });
-      syncAlerts(next, false, set);
     });
   },
+
+  confirmOcrDraft: () => {
+    const { session, ocrDraft } = get();
+    if (!session || !ocrDraft) return;
+    const next = { ...session, tariff: ocrDraft.tariff, tariffSchedule: ocrDraft.schedule };
+    persist(next);
+    set({
+      session: next,
+      ocrDraft: null,
+      ocrSchedule: ocrDraft.schedule,
+      ocrPartial: ocrDraft.partial,
+      tariffSource: 'ocr',
+      pooledTariff: null,
+      suggestedTariff: null,
+      externalTariffVersion: get().externalTariffVersion + 1,
+    });
+    refreshActivityIfLive();
+    syncAlerts(next, { prompt: liveSession(), catchUp: true }, set);
+  },
+
+  discardOcrDraft: () => set({ ocrDraft: null }),
 
   setParkLocation: ({ latitude, longitude, placeName }) => {
     const { session, phase } = get();
@@ -660,8 +808,11 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       suggestedTariff: phase === 'parking' ? remembered : get().suggestedTariff,
       locationPinnedByUser: true,
       locationEditSeq: get().locationEditSeq + 1,
+      // Eski konumun havuz önerisi yeni otoparkın değildir.
+      ...(phase === 'parking' ? { pooledTariff: null, spotId: null } : null),
     });
     refreshActivityIfLive();
+    if (phase === 'parking' && !next.tariff) askPool(next.id, { latitude, longitude });
   },
 
   useMyLocationForPark: () => {
@@ -692,6 +843,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         locationPinnedByUser: true,
         locationEditSeq: get().locationEditSeq + 1,
       });
+      refreshActivityIfLive();
+      if (liveSession()) syncAlerts(next, {}, set);
     });
   },
 
@@ -744,7 +897,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const next = { ...session, tariff: suggestedTariff };
     persist(next);
     set({ session: next, suggestedTariff: null, externalTariffVersion: externalTariffVersion + 1 });
-    syncAlerts(next, false, set);
+    syncAlerts(next, { prompt: liveSession(), catchUp: true }, set);
   },
 
   dismissSuggestedTariff: () => set({ suggestedTariff: null }),
@@ -765,7 +918,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       tariffSource: 'pool',
       externalTariffVersion: externalTariffVersion + 1,
     });
-    syncAlerts(next, false, set);
+    syncAlerts(next, { prompt: liveSession(), catchUp: true }, set);
   },
 
   confirmDetails: () => {
@@ -774,9 +927,27 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const next = { ...session, confirmed: true };
     persist(next);
     set({ phase: 'active', session: next });
-    submitToPool(next, get().spotId, get().tariffSource);
+    submitToPool(next, get().tariffSource);
     // Kullanıcı hatırlatıcısını burada onaylamış olur → izin tam bu anda istenir.
-    syncAlerts(get().session, true, set);
+    syncAlerts(get().session, { prompt: true, catchUp: true }, set);
+    syncLiveActivity('start');
+  },
+
+  /**
+   * 2 saniye kuralı "kayıt anında biter, gerisi opsiyonel" der. Soruları cevaplamadan telefonu
+   * kilitleyen kullanıcının parkı aktif sayılmıyordu: kilit ekranı kartı gelmiyor, hatırlatıcı
+   * kurulmuyor, 12 saat sonra kayıt siliniyordu. Arka plana geçişte kayıt sessizce onaylanır;
+   * izin SORULMAZ (arka planda pencere açılamaz). Kilit ekranı kartı arka planda kurulamazsa
+   * ön plana dönüşte kurulur (resumeLiveActivity).
+   */
+  confirmOnLeave: () => {
+    const { phase, session } = get();
+    if (phase !== 'parking' || !session) return;
+    const next = { ...session, confirmed: true };
+    persist(next);
+    set({ phase: 'active', session: next });
+    submitToPool(next, get().tariffSource);
+    syncAlerts(next, {}, set);
     syncLiveActivity('start');
   },
 
@@ -813,8 +984,10 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     } catch {
       /* depo yoksa bellek durumu yine doğru; sonraki açılışta süpürme devreye girer */
     }
-    set({ phase: 'ended', session: next });
-    // Park bitti: gelecektekiler iptal, tepsiye düşmüş uyarılar da silinir.
+    set({ phase: 'ended', session: next, ocrDraft: null });
+    // Park bitti: gelecektekiler iptal, tepsiye düşmüş uyarılar da silinir. Bekleyen bir
+    // yazım turu da düşer — bitişten sonra kurulup hayalet uyarı bırakıyordu.
+    dropPendingAlertSync();
     void cancelSessionAlerts({ dismissDelivered: true });
     syncLiveActivity('end');
 
@@ -834,7 +1007,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const next = { ...session, endedAtMs: null };
     persist(next);
     set({ phase: 'active', session: next });
-    syncAlerts(next, false, set); // Undo → uyarılar geri kurulur
+    // Undo → uyarılar geri kurulur; kutlama ekranı açıkken zamanı geçen uyarı hemen gelir.
+    syncAlerts(next, { catchUp: true }, set);
     // endSession aktiviteyi kapatmıştı; geri alınca kilit ekranı da geri gelir.
     syncLiveActivity('start');
   },
@@ -865,6 +1039,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       suggestedTariff: null,
       notificationState: 'idle',
       locationPinnedByUser: false,
+      ocrDraft: null,
     });
     void cancelSessionAlerts({ dismissDelivered: true });
   },
@@ -877,5 +1052,38 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     } catch {
       // Silinemezse liste bir sonraki açılışta kaydı yine gösterir.
     }
+  },
+
+  resyncAlerts: () => {
+    const { phase, session } = get();
+    if ((phase !== 'active' && phase !== 'finding') || !session) return;
+    syncAlerts(session, {}, set);
+    refreshActivityIfLive();
+  },
+
+  resetAll: () => {
+    dropPendingAlertSync();
+    void cancelSessionAlerts({ dismissDelivered: true });
+    clearSessionSurfaces();
+    set({
+      phase: 'idle',
+      session: null,
+      suggestedTariff: null,
+      suggestedFloor: null,
+      pooledTariff: null,
+      spotId: null,
+      tariffSource: 'manual',
+      locationState: 'idle',
+      notificationState: 'idle',
+      cameraState: 'idle',
+      ocrState: 'idle',
+      ocrSchedule: null,
+      ocrPartial: false,
+      ocrDraft: null,
+      pickingLocation: null,
+      pickedCenter: null,
+      reopenAfterPick: null,
+      locationPinnedByUser: false,
+    });
   },
 }));

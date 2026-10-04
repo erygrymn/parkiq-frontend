@@ -19,6 +19,14 @@ export interface LiveActivityPayload {
   heroLabel?: string | null;
   /** Alt satır ("Şimdi ₺150 · Sonra ₺300") — dile çevrilmiş halde gelir. */
   footerText?: string | null;
+  /**
+   * Sonraki sınır GEÇİLDİKTEN sonraki hâl (tariffMath'ten). App arka plandayken sınır geçince
+   * kart bunu gösterir; yoksa eski fiyatta donuyordu.
+   */
+  afterBoundaryAtMs?: number | null;
+  afterBarTone?: string | null;
+  afterHeroLabel?: string | null;
+  afterFooterText?: string | null;
 }
 
 export interface WidgetPayload {
@@ -29,6 +37,13 @@ export interface WidgetPayload {
   barTone?: string | null;
   heroLabel?: string | null;
   footerText?: string | null;
+  /** Ton bu andan sonra amber (sınıra eşik kadar kala). */
+  warnAtMs?: number | null;
+  afterBoundaryAtMs?: number | null;
+  afterBarTone?: string | null;
+  afterHeroLabel?: string | null;
+  afterFooterText?: string | null;
+  afterWarnAtMs?: number | null;
   monthlySavedText?: string | null;
   /** Widget'ın gösterdiği dile çevrilmiş etiketler (extension'ın sözlüğü yok). */
   strings?: Record<string, string>;

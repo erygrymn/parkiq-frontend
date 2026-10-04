@@ -66,7 +66,7 @@ export function FilterSheet({ visible, onClose }: { visible: boolean; onClose: (
       <View style={{ gap: spacing.s8 }}>
         <Overline>{t('parkLocation')}</Overline>
         <SearchBar
-          onPick={(result) => pinTo(result.coords)}
+          onPick={(result) => pinTo(result.coords, true)}
           // Sondaki buton haritadan alan seçer: popup çekilir, kullanıcı haritayı
           // kaydırır, onaylayınca buraya geri döner. Kendi konumu alttaki butonda.
           trailingSymbol="mappin.and.ellipse"

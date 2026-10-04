@@ -122,7 +122,11 @@ export function sanitizeTiers(raw: TariffTier[]): TariffTier[] {
 function baseDayTiers(tariff: Tariff, elapsedMin: number, lookaheadHours: number): TariffTier[] {
   if (tariff.type === 'tiered') return sanitizeTiers(tariff.tiers ?? []);
   if (tariff.type === 'hourly' && tariff.price != null && tariff.price > 0) {
-    const hoursNeeded = Math.floor(elapsedMin / 60) + lookaheadHours;
+    // Günlük tavan varsa günün TAMAMI şablondur: gün 24 saatte tavanla kapanır ve sonraki
+    // gün bu şablonla tekrar başlar. Yalnız birkaç saatlik pencere açılınca 4. saatten
+    // 24. saate kadar tek bir dilim kalıyordu.
+    const hoursNeeded =
+      tariff.dailyMax != null && tariff.dailyMax > 0 ? DAY_MIN / 60 : Math.floor(elapsedMin / 60) + lookaheadHours;
     const tiers: TariffTier[] = [];
     for (let h = 1; h <= hoursNeeded; h++) {
       tiers.push({ endMin: h * 60, cumulativePrice: tariff.price * h });
@@ -150,7 +154,10 @@ function expandTiers(tariff: Tariff, elapsedMin: number, lookaheadHours = 3): Ta
     .map((t) => ({ endMin: t.endMin, cumulativePrice: Math.min(t.cumulativePrice, cap) }));
   day.push({ endMin: DAY_MIN, cumulativePrice: cap });
 
-  const daysNeeded = Math.floor(elapsedMin / DAY_MIN) + 1;
+  // İçinde bulunulan gün + bir sonraki: 24. saatteki devir de bir FİYAT ARTIŞIDIR ve
+  // "sonraki sınır" olarak görünmeli. Yalnız bugün açılınca 23:50'de sonraki sınır
+  // yoktu — uyarı da geri sayım da kuruluyordu, sonra fiyat sessizce bir gün daha artıyordu.
+  const daysNeeded = Math.floor(elapsedMin / DAY_MIN) + 2;
   const out: TariffTier[] = [];
   for (let d = 0; d < daysNeeded; d++) {
     for (const tier of day) {
@@ -282,11 +289,23 @@ export function computeTariffState(
   const nowPrice = beyondAll
     ? tiers[tiers.length - 1].cumulativePrice
     : tiers[effectiveIndex].cumulativePrice;
-  const nextTier = beyondAll ? null : tiers[effectiveIndex + 1] ?? null;
 
   // Sınır alanları yalnız gerçek bir FİYAT ARTIŞINI işaret eder: son dilimde/ötesinde
   // null — tüketici (local notification) fiyatı değişmeyen sınıra uyarı kurmasın.
-  const nextBoundaryMin = nextTier === null ? null : tiers[effectiveIndex].endMin;
+  // Fiyatı aynı kalan dilimler atlanır: [60:₺50, 120:₺50, 180:₺90] tarifesinde 50. dakikada
+  // "₺100 yerine ₺50" değil, "120. dakikada ₺50 → ₺90" doğrudur. Eskiden bir sonraki dilim
+  // ne olursa olsun "sonraki" sayılıyordu ve kart "₺50 yerine ₺50 öde" diyordu.
+  let boundaryIndex = -1;
+  if (!beyondAll) {
+    for (let i = effectiveIndex; i < tiers.length - 1; i++) {
+      if (tiers[i + 1].cumulativePrice > nowPrice) {
+        boundaryIndex = i;
+        break;
+      }
+    }
+  }
+  const nextTier = boundaryIndex === -1 ? null : tiers[boundaryIndex + 1];
+  const nextBoundaryMin = boundaryIndex === -1 ? null : tiers[boundaryIndex].endMin;
   const minutesToBoundary = nextBoundaryMin === null ? null : nextBoundaryMin - elapsedMin;
 
   const approaching = minutesToBoundary !== null && minutesToBoundary <= warnThresholdMin;
@@ -377,8 +396,15 @@ export function computeExitSummary(tariff: Tariff | null, parkStartMs: number, e
 
   const state = computeTariffState(tariff, parkStartMs, exitMs);
   if (state.mode !== 'tiered' || state.nowPrice === null) return { paid: null, saved: null };
+  // Kazanç yalnız HEMEN sonraki dilim daha pahalıysa gerçektir: aynı fiyatlı bir dilimden
+  // önce çıkmak hiçbir şey kazandırmaz (çıkış 60. dakikada da 110. dakikada da aynı ödüyor).
+  // `state.nextPrice` sonraki FİYAT ARTIŞIDIR, araya aynı fiyatlı dilim girebilir; o yüzden
+  // burada bitişik dilime bakılır.
+  const tiers = expandTiers(tariff, state.elapsedMin);
+  const index = tiers.findIndex((tier) => state.elapsedMin < tier.endMin);
+  const following = index === -1 ? null : (tiers[index + 1] ?? null);
   return {
     paid: state.nowPrice,
-    saved: state.nextPrice === null ? 0 : Math.max(0, state.nextPrice - state.nowPrice),
+    saved: following === null ? 0 : Math.max(0, following.cumulativePrice - state.nowPrice),
   };
 }

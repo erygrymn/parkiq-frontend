@@ -46,5 +46,13 @@ struct ParkIQAttributes: ActivityAttributes {
     let heroLabel: String?
     /// Alt satır, dile çevrilmiş ("Şimdi ₺150 · Sonra ₺300").
     let footerText: String?
+    /// SONRAKİ SINIR GEÇİLDİKTEN sonraki hal — RN tariffMath'ten hesaplayıp gönderir.
+    /// App arka plandayken sınır geçilince kart eski fiyatta donuyordu ("Sonraki dilim ₺100"
+    /// yazarken ₺100 çoktan başlamıştı). İçerik sınırda bayatlar (staleDate) ve görünüm
+    /// tarihe bakıp bu hâli seçer; hesap yine yalnız RN'dedir.
+    let afterBoundaryAt: Date?
+    let afterBarTone: String?
+    let afterHeroLabel: String?
+    let afterFooterText: String?
   }
 }

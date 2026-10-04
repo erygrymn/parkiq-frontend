@@ -11,8 +11,8 @@ export const enGB: Partial<Record<CopyKey, string>> = {
   noResults: 'No places found.',
   filterCovered: 'Multi-storey',
   poiError: 'Could not load nearby car parks — check your connection',
+  poiSearching: 'Looking for car parks here',
   proFeatureFilter: 'Filter car parks by charger, cover and distance',
-  goProUpsell: 'Scan boards, get guided back, filter car parks',
   onbBody1:
     'One tap marks where you left the car. Floor, photo and note are optional — add them only when the car park is confusing.',
   onbBody3:

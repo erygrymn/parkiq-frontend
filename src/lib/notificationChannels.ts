@@ -29,7 +29,6 @@ let ready = false;
  */
 export async function ensureChannels(): Promise<void> {
   if (!isAndroid || ready) return;
-  ready = true;
   try {
     // Dilim uyarısı: başlık çubuğunda görünür (HIGH) ama sessiz — iOS'taki
     // `sound: false` + timeSensitive davranışının karşılığı.
@@ -65,6 +64,9 @@ export async function ensureChannels(): Promise<void> {
       showBadge: false,
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     });
+    // Hazır, kanallar GERÇEKTEN kurulunca: önce işaretlemek ilk kalıcı kartı varsayılan
+    // (yüksek önemli, titreşimli) kanala düşürüyordu; başarısız kurulum da bir daha denenmiyordu.
+    ready = true;
   } catch {
     // Kanal kurulamazsa bildirimler varsayılan kanala düşer: sessiz ama çalışır.
   }

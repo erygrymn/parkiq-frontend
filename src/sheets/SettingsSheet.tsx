@@ -5,7 +5,7 @@ import * as Notifications from 'expo-notifications';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useState } from 'react';
-import { Linking, Pressable, Switch, Text, View } from 'react-native';
+import { Linking, Platform, Pressable, Switch, Text, View } from 'react-native';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { Icon } from '../components/Icon';
 import { PageSheet, Section } from '../components/PageSheet';
@@ -14,7 +14,7 @@ import { ProBadge } from '../components/ProBadge';
 import { openAppSettings, StatusLine } from '../components/StatusLine';
 import { Caption } from '../components/Typography';
 import { trackPaywallShown } from '../lib/analytics';
-import { deleteSpotPhoto } from '../lib/photo';
+import { deleteAllSpotPhotos } from '../lib/photo';
 import { LOCALES, LOCALE_NAMES, t } from '../localization';
 import type { Locale } from '../localization';
 import { useIsPremium, usePremiumStore } from '../state/premiumStore';
@@ -37,12 +37,21 @@ const TERMS_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stde
 const PRIVACY_URL = 'https://www.twiceapps.co/privacy';
 const SUPPORT_EMAIL = 'info@twiceapps.co';
 /** Doğrudan yorum yazma sayfası — sistem penceresi kotaya takılabilir. */
-const REVIEW_URL = 'https://apps.apple.com/app/id6756688254?action=write-review';
+const REVIEW_URL =
+  Platform.OS === 'android'
+    ? 'https://play.google.com/store/apps/details?id=com.twiceapps.parkiq'
+    : 'https://apps.apple.com/app/id6756688254?action=write-review';
 
-/** iOS abonelik yönetimi sistem sayfası — iptal/değiştirme oradan yapılır. */
+/** Abonelik yönetimi sistem sayfası — iptal/değiştirme oradan yapılır. */
 function openSubscriptionSettings(): void {
-  void Linking.openURL('itms-apps://apps.apple.com/account/subscriptions');
+  void Linking.openURL(
+    Platform.OS === 'android'
+      ? 'https://play.google.com/store/account/subscriptions?package=com.twiceapps.parkiq'
+      : 'itms-apps://apps.apple.com/account/subscriptions',
+  );
 }
+
+const EXPORT_NAME = 'parkiq-export.json';
 
 /** Cihaz-yerel veriyi JSON olarak paylaşır; sunucuya hiçbir şey gitmez. */
 function exportData(): void {
@@ -51,13 +60,16 @@ function exportData(): void {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const repo = require('../db/sessionRepo') as typeof import('../db/sessionRepo');
       const payload = JSON.stringify({ sessions: repo.listEndedSessions() }, null, 2);
-      const file = new File(Paths.document, 'parkiq-export.json');
+      // Önbellekte yazılır ve paylaşımdan sonra silinir: Belgeler'de kalan dosya tüm geçmişi
+      // (koordinat ve notlarla) iCloud yedeğine taşıyordu ve "her şeyi sil" ona dokunmuyordu.
+      const file = new File(Paths.cache, EXPORT_NAME);
       if (file.exists) file.delete();
       file.create();
       file.write(payload);
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(file.uri, { mimeType: 'application/json', UTI: 'public.json' });
       }
+      if (file.exists) file.delete();
     } catch {
       // Dışa aktarma başarısızsa sessizce geç.
     }
@@ -125,9 +137,16 @@ function SettingRow({
  * İzinlerin GERÇEK durumu. Store'daki 'idle' başlangıç değeri hiç sorulmamış izni "açık" gibi
  * okutuyordu; burada sistemden okunur.
  */
-function usePermissions(visible: boolean): { location: boolean | null; notifications: boolean | null } {
+function usePermissions(visible: boolean): {
+  location: boolean | null;
+  notifications: boolean | null;
+  /** Bildirim izni sorulabilir mi — sorulmamış izin için Ayarlar'da anahtar YOK. */
+  canAskNotifications: boolean;
+  requestNotifications: () => void;
+} {
   const [location, setLocation] = useState<boolean | null>(null);
   const [notifications, setNotifications] = useState<boolean | null>(null);
+  const [canAskNotifications, setCanAsk] = useState(false);
   useEffect(() => {
     if (!visible) return;
     let cancelled = false;
@@ -140,7 +159,9 @@ function usePermissions(visible: boolean): { location: boolean | null; notificat
       });
     void Notifications.getPermissionsAsync()
       .then((p) => {
-        if (!cancelled) setNotifications(p.granted);
+        if (cancelled) return;
+        setNotifications(p.granted);
+        setCanAsk(!p.granted && p.canAskAgain);
       })
       .catch(() => {
         if (!cancelled) setNotifications(null);
@@ -149,23 +170,35 @@ function usePermissions(visible: boolean): { location: boolean | null; notificat
       cancelled = true;
     };
   }, [visible]);
-  return { location, notifications };
+  const requestNotifications = () => {
+    void Notifications.requestPermissionsAsync()
+      .then((p) => {
+        setNotifications(p.granted);
+        setCanAsk(!p.granted && p.canAskAgain);
+        // İzin geldiyse süren oturumun uyarıları şimdi kurulur.
+        if (p.granted) useSessionStore.getState().resyncAlerts();
+      })
+      .catch(() => undefined);
+  };
+  return { location, notifications, canAskNotifications, requestNotifications };
 }
 
 export function SettingsSheet({
   visible,
   onClose,
+  onDismissed,
   onOpenPaywall,
 }: {
   visible: boolean;
   onClose: () => void;
+  onDismissed?: () => void;
   onOpenPaywall: () => void;
 }) {
   const { colors } = useTheme();
   const isPremium = useIsPremium();
   const devUnlock = usePremiumStore((s) => s.devUnlock);
   const setDevUnlock = usePremiumStore((s) => s.setDevUnlock);
-  const { themeMode, locale, currency, warnThresholdMin, tariffPoolEnabled, clockFormat, units } =
+  const { themeMode, locale, currency, warnThresholdMin, tariffPoolEnabled, tariffPoolAsked, clockFormat, units } =
     useSettingsStore();
   const {
     setThemeMode,
@@ -180,24 +213,25 @@ export function SettingsSheet({
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const deleteAll = () => {
+    // Önce süren oturumun uyarıları, alarmı, kilit ekranı kartı ve widget'ı kapanır: yalnız
+    // bellek sıfırlandığında silinmiş bir park için alarm çalmaya devam ediyordu.
+    useSessionStore.getState().resetAll();
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const repo = require('../db/sessionRepo') as typeof import('../db/sessionRepo');
-      // Fotoğraflar dosya sisteminde yaşıyor: tablo silinince onlar yetim kalıyordu.
-      for (const uri of repo.listAllPhotoUris()) deleteSpotPhoto(uri);
-      repo.deleteEverything();
-      useSessionStore.setState({
-        phase: 'idle',
-        session: null,
-        suggestedTariff: null,
-        locationState: 'idle',
-        notificationState: 'idle',
-      });
-      useSettingsStore.getState().resetToDefaults();
-      onClose();
+      repo.deleteAllData();
     } catch {
-      // Silme başarısızsa mevcut durum korunur.
+      // Silinemezse kayıtlar bir sonraki açılışta yine görünür.
     }
+    // Fotoğraflar dosya sisteminde yaşıyor: tablo silinince onlar yetim kalıyordu.
+    deleteAllSpotPhotos();
+    try {
+      const leftover = new File(Paths.document, EXPORT_NAME);
+      if (leftover.exists) leftover.delete();
+    } catch {
+      /* eski sürümün dışa aktarması yoksa sorun değil */
+    }
+    onClose();
   };
 
   const openPaywall = () => {
@@ -215,7 +249,7 @@ export function SettingsSheet({
   );
 
   return (
-    <PageSheet visible={visible} title={t('settings')} onClose={onClose}>
+    <PageSheet visible={visible} title={t('settings')} onClose={onClose} onDismissed={onDismissed}>
       <Section title={t('preferences')}>
         <View style={{ borderTopWidth: 1, borderTopColor: colors.gridline }}>
           <SelectRow<ThemeMode>
@@ -287,14 +321,23 @@ export function SettingsSheet({
       {(permissions.location !== true || permissions.notifications !== true) && (
         <Section title={t('permissions')}>
           {permissions.location !== true && <StatusLine label={t('locationOff')} onPress={openAppSettings} />}
-          {permissions.notifications !== true && <StatusLine label={t('notificationsOff')} onPress={openAppSettings} />}
+          {permissions.notifications !== true && (
+            <StatusLine
+              label={t('notificationsOff')}
+              onPress={permissions.canAskNotifications ? permissions.requestNotifications : openAppSettings}
+            />
+          )}
         </Section>
       )}
 
       <Section title={t('data')}>
         <View style={{ borderTopWidth: 1, borderTopColor: colors.gridline }}>
           {/* Havuz alışverişi çift yönlü: kapatan hem göndermez hem öneri görmez. */}
-          <SettingRow label={t('tariffPool')} trailing={switchControl(tariffPoolEnabled, setTariffPool)} />
+          {/* Sorulmamış rıza AÇIK görünmez: önceden işaretli bir onay kutusu rıza değildir. */}
+          <SettingRow
+            label={t('tariffPool')}
+            trailing={switchControl(tariffPoolAsked && tariffPoolEnabled, setTariffPool)}
+          />
           <Caption style={{ paddingBottom: spacing.s12 }}>{t('tariffPoolHint')}</Caption>
           <SettingRow label={t('exportData')} onPress={exportData} />
           <SettingRow label={t('deleteAllData')} tone="warn" onPress={() => setConfirmDeleteOpen(true)} />

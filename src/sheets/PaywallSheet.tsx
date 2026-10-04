@@ -55,7 +55,7 @@ const CTA_TEMPLATE: Record<PlanPeriod, 'continueYearly' | 'continueMonthly' | 'c
   lifetime: 'continueLifetime',
 };
 
-/** Karo sırası: aylık çapa, yıllık ortada ve varsayılan, ömür boyu sağda. */
+/** Karo sırası bir fiyat merdivenidir: aylık çapa, yıllık ortada, ömür boyu sağda ve varsayılan. */
 const PLAN_ORDER: Record<PlanPeriod, number> = { monthly: 0, yearly: 1, lifetime: 2 };
 
 /**
@@ -137,19 +137,27 @@ function PlanTile({
       }}
     >
       {badge && (
-        <View
-          style={{
-            position: 'absolute',
-            top: -10,
-            alignSelf: 'center',
-            paddingHorizontal: spacing.s8,
-            paddingVertical: 2,
-            borderRadius: radius.rFull,
-            // Rozet indirimi söylüyor, yani parayı: mürekkep değil accent.
-            backgroundColor: colors.accentFill,
-          }}
-        >
-          <Text style={{ fontSize: 10, fontWeight: '800', letterSpacing: 0.6, color: lightColors.card }}>{badge}</Text>
+        <View style={{ position: 'absolute', top: -10, left: spacing.s4, right: spacing.s4, alignItems: 'center' }}>
+          <View
+            style={{
+              maxWidth: '100%',
+              paddingHorizontal: spacing.s8,
+              paddingVertical: 2,
+              borderRadius: radius.rFull,
+              // Rozet parayı söylüyor: mürekkep değil accent.
+              backgroundColor: colors.accentFill,
+            }}
+          >
+            {/* Bazı dillerde rozet karodan uzun ("PIÙ CONVENIENTE"): taşmak yerine küçülür. */}
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+              style={{ fontSize: 10, fontWeight: '800', letterSpacing: 0.6, color: lightColors.card }}
+            >
+              {badge}
+            </Text>
+          </View>
         </View>
       )}
       <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: '600', color: selected ? colors.ink : colors.textSecondary }}>
@@ -243,6 +251,7 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
   const selectedIsSubscription = selected !== null && selected.period !== 'lifetime';
   const busy = purchaseState !== 'idle';
   const saving = savingPercent(plans);
+  const hasLifetime = plans.some((p) => p.period === 'lifetime');
 
   return (
     <Modal
@@ -352,7 +361,15 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
                     key={plan.id}
                     plan={plan}
                     selected={plan.id === selectedPlanId}
-                    badge={plan.period === 'yearly' && saving ? t('planSave', { percent: saving }) : null}
+                    badge={
+                      // Tek rozet, öne çıkan plana: iki rozet dikkati böler. Ömür boyu yoksa yıllığın
+                      // aylığa göre tasarrufu söylenir.
+                      plan.period === 'lifetime'
+                        ? t('planBestValue')
+                        : plan.period === 'yearly' && saving && !hasLifetime
+                          ? t('planSave', { percent: saving })
+                          : null
+                    }
                     onPress={() => {
                       if (plan.id === selectedPlanId) return;
                       hapticSelect();
@@ -382,6 +399,8 @@ export function PaywallSheet({ visible, onClose }: { visible: boolean; onClose: 
           }}
         >
           {notice === 'failed' && <Caption color={colors.warnText}>{t('purchaseFailed')}</Caption>}
+          {notice === 'pending' && <Caption>{t('purchasePending')}</Caption>}
+          {notice === 'restoreFailed' && <Caption color={colors.warnText}>{t('restoreFailed')}</Caption>}
           {notice === 'restored' && <Caption color={colors.accentText}>{t('restoredTitle')}</Caption>}
           {notice === 'none' && (
             <View style={{ gap: 2 }}>

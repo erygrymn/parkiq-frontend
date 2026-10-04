@@ -458,3 +458,65 @@ describe('günlük tavan', () => {
     expect(at(24 * 60 * 3).beyondSchedule).toBe(false);
   });
 });
+
+describe('sonraki sınır = sonraki FİYAT ARTIŞI (2026-10-03 denetimi)', () => {
+  const plateau: Tariff = {
+    type: 'tiered',
+    currency: 'TRY',
+    tiers: [
+      { endMin: 60, cumulativePrice: 50 },
+      { endMin: 120, cumulativePrice: 50 },
+      { endMin: 180, cumulativePrice: 90 },
+    ],
+  };
+
+  it('aynı fiyatlı dilim atlanır: 50. dakikada sınır 120, sonraki ₺90', () => {
+    const s = computeTariffState(plateau, 0, 50 * 60_000);
+    expect(s.nextBoundaryMin).toBe(120);
+    expect(s.nextPrice).toBe(90);
+    // "₺50 yerine ₺50" amberi yok: artışa 70 dk var.
+    expect(s.barTone).toBe('green');
+  });
+
+  it('aynı fiyatlı dilimden önce çıkmak tasarruf sayılmaz', () => {
+    expect(computeExitSummary(plateau, 0, 50 * 60_000).saved).toBe(0);
+    expect(computeExitSummary(plateau, 0, 110 * 60_000).saved).toBe(40);
+  });
+
+  it('bildirim listesiyle aynı sınırı söyler', () => {
+    const [first] = listUpcomingBoundaries(plateau, 0, 50 * 60_000, 1);
+    expect(first.atMs).toBe(computeTariffState(plateau, 0, 50 * 60_000).nextBoundaryAtMs);
+  });
+});
+
+describe('günlük tavanda gün devri de bir sınırdır', () => {
+  const capped: Tariff = {
+    type: 'tiered',
+    currency: 'TRY',
+    tiers: [
+      { endMin: 60, cumulativePrice: 50 },
+      { endMin: 180, cumulativePrice: 120 },
+    ],
+    dailyMax: 200,
+  };
+
+  it('23:50de sonraki sınır 24. saat, sonraki fiyat tavan + ilk dilim', () => {
+    const s = computeTariffState(capped, 0, (23 * 60 + 50) * 60_000);
+    expect(s.nowPrice).toBe(200);
+    expect(s.nextBoundaryMin).toBe(24 * 60);
+    expect(s.nextPrice).toBe(250);
+  });
+
+  it('gün devri için uyarı kurulur', () => {
+    const boundaries = listUpcomingBoundaries(capped, 0, 23 * 60 * 60_000, 1);
+    expect(boundaries[0]?.atMs).toBe(24 * 60 * 60_000);
+  });
+
+  it('saatlik + tavan: tavana değdikten sonra sonraki artış ertesi gün', () => {
+    const hourly: Tariff = { type: 'hourly', currency: 'TRY', price: 40, dailyMax: 200 };
+    const s = computeTariffState(hourly, 0, 250 * 60_000);
+    expect(s.nowPrice).toBe(200);
+    expect(s.nextBoundaryMin).toBe(24 * 60);
+    expect(s.nextPrice).toBe(240);
+  });
+});

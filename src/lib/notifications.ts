@@ -30,7 +30,12 @@ Notifications.setNotificationHandler({
   },
 });
 
-export type NotificationPermission = 'granted' | 'denied';
+/**
+ * 'undetermined': hiç sorulmadı. 'denied'den AYRI tutulur: sorulmamış izni "kapalı" diye
+ * okumak kullanıcıyı Ayarlar'a yolluyordu, oysa iOS orada uygulama bir kez sormadan bildirim
+ * anahtarı göstermiyor — çıkmaz bir yol.
+ */
+export type NotificationPermission = 'granted' | 'denied' | 'undetermined';
 
 /**
  * Kurulan sistem alarmlarının kimlikleri (SQLite `settings`).
@@ -73,7 +78,8 @@ export async function ensureNotificationPermission(prompt: boolean): Promise<Not
   try {
     const current = await Notifications.getPermissionsAsync();
     if (current.granted) return 'granted';
-    if (!prompt || !current.canAskAgain) return 'denied';
+    if (!current.canAskAgain) return 'denied';
+    if (!prompt) return current.status === 'denied' ? 'denied' : 'undetermined';
     const asked = await Notifications.requestPermissionsAsync();
     return asked.granted ? 'granted' : 'denied';
   } catch {
@@ -91,9 +97,32 @@ export async function ensureNotificationPermission(prompt: boolean): Promise<Not
  * kurulurken (tarife değişimi) açılırsa Android'deki kalıcı park kartını da
  * silerdi, oysa oturum sürüyor.
  */
+/**
+ * Zamanlama turları SIRAYLA koşar ve her tur bir kuşak numarası taşır.
+ *
+ * Tarife formu her tuş vuruşunda yeniden zamanlıyordu ve turlar üst üste biniyordu: her biri
+ * "önce hepsini sil, sonra kur" dediği için iki turun kurduğu bildirimler birlikte hayatta
+ * kalıyordu ("20" yazan kullanıcıya hem 2 hem 20 dakika kala alarm). Bitiş anında hâlâ
+ * süren bir tur da iptalden SONRA kurup hayalet uyarı bırakıyordu. Artık yeni tur ya da
+ * iptal eski turun kuşağını geçersiz kılar; eski tur ilk fırsatta durur.
+ */
+let generation = 0;
+let queue: Promise<unknown> = Promise.resolve();
+
+function enqueue<T>(task: () => Promise<T>): Promise<T> {
+  const run = queue.then(task, task);
+  queue = run.catch(() => undefined);
+  return run;
+}
+
 export async function cancelSessionAlerts(
   options: { dismissDelivered?: boolean } = {},
 ): Promise<void> {
+  generation += 1;
+  await enqueue(() => clearScheduled(options));
+}
+
+async function clearScheduled(options: { dismissDelivered?: boolean } = {}): Promise<void> {
   try {
     await Notifications.cancelAllScheduledNotificationsAsync();
   } catch {
@@ -169,18 +198,51 @@ async function scheduleAt(
  * Oturumun tüm gelecek dilim uyarılarını + unutulmuş oturum hatırlatıcısını kurar.
  * Önce mevcut tüm zamanlamaları temizler (tarife değişince yeniden kurulur).
  */
-export async function scheduleSessionAlerts(
+export function scheduleSessionAlerts(
   session: ParkSession,
   warnThresholdMin: number,
-  options: { prompt: boolean } = { prompt: true },
-): Promise<NotificationPermission> {
+  options: { prompt: boolean; catchUp?: boolean } = { prompt: true },
+): Promise<NotificationPermission | null> {
+  const ticket = ++generation;
+  return enqueue(() => scheduleRound(ticket, session, warnThresholdMin, options));
+}
+
+/** Uyarı anı geçmiş ama artışa en az bu kadar varsa uyarı hemen verilir (bkz. catchUp). */
+const CATCH_UP_MIN = 2;
+const CATCH_UP_DELAY_MS = 3000;
+
+/** null: tur, daha yeni bir tur ya da iptal tarafından geçersiz kılındı. */
+async function scheduleRound(
+  ticket: number,
+  session: ParkSession,
+  warnThresholdMin: number,
+  options: { prompt: boolean; catchUp?: boolean },
+): Promise<NotificationPermission | null> {
+  const stale = () => ticket !== generation;
+  if (stale()) return null;
   // Kanallar zamanlamadan ÖNCE var olmalı: sonradan kurulan kanal, önceden
   // zamanlanmış bildirimi taşımaz (Android onu varsayılana atar ve sessizleşir).
   await ensureChannels();
-  await cancelSessionAlerts();
+  await clearScheduled();
+  if (stale()) return null;
 
   const permission = await ensureNotificationPermission(options.prompt);
+  if (stale()) return null;
   if (permission !== 'granted') return permission;
+
+  /**
+   * Uyarı anı çoktan geçmişse: eşik dilimden uzunsa (15 dk eşik, 15 dk bedava ilk dilim)
+   * ya da park geriye tarihlendiyse ilk artışın uyarısı hiç kurulmuyordu. Kullanıcı bir şey
+   * değiştirdiğinde (catchUp) uyarı birkaç saniye içinde, KALAN gerçek dakikayla verilir.
+   * Soğuk açılıştaki yeniden kurulumda verilmez: aynı uyarı her açılışta tekrar çalardı.
+   */
+  const fireAt = (warnAtMs: number, boundaryAtMs: number): { atMs: number; minutes: number } | null => {
+    const now = Date.now();
+    if (warnAtMs > now) return { atMs: warnAtMs, minutes: Math.round((boundaryAtMs - warnAtMs) / 60_000) };
+    const remaining = Math.floor((boundaryAtMs - now) / 60_000);
+    if (!options.catchUp || remaining < CATCH_UP_MIN) return null;
+    return { atMs: now + CATCH_UP_DELAY_MS, minutes: remaining };
+  };
 
   const locale = getLocale();
   const title = session.placeName ?? undefined;
@@ -194,17 +256,20 @@ export async function scheduleSessionAlerts(
       ? []
       : listUpcomingBoundaries(session.tariff, session.startedAtMs, Date.now(), MAX_TIER_ALERTS);
     for (const boundary of boundaries) {
+      if (stale()) return null;
+      const when = fireAt(boundary.atMs - warnThresholdMin * 60_000, boundary.atMs);
+      if (!when) continue;
       const currency = session.tariff?.currency ?? 'TRY';
       // Copy §5.9 formülünden: para diliyle konuşur, ünlem yok.
       const body = t('tierAlert', {
         tier: boundary.tierIndex + 1,
-        minutes: warnThresholdMin,
+        minutes: when.minutes,
         now: formatMoney(boundary.currentPrice, currency, locale),
         next: formatMoney(boundary.nextPrice, currency, locale),
       });
       // Fiyat artışı uyarısı ürünün asıl sözü: Odak modunda yutulursa para kaybı olur.
       // Ses kullanıcının seçimidir (hatırlatıcı türü), zaman duyarlılık değildir.
-      await scheduleAt(boundary.atMs - warnThresholdMin * 60_000, title, body, { timeSensitive: true });
+      await scheduleAt(when.atMs, title, body, { timeSensitive: true });
     }
 
     // Kullanıcının kurduğu hatırlatıcı. Süre neye göre sayılıyorsa zamanlar
@@ -212,6 +277,7 @@ export async function scheduleSessionAlerts(
     const reminder = session.reminder;
     if (reminder) {
       const loud = reminder.kind !== 'notification';
+      if (stale()) return null;
       if (reminder.anchor === 'afterPark') {
         await scheduleAt(
           session.startedAtMs + reminder.minutes * 60_000,
@@ -226,12 +292,15 @@ export async function scheduleSessionAlerts(
         const upcoming = listUpcomingBoundaries(session.tariff, session.startedAtMs, Date.now(), wanted);
         const currency = session.tariff?.currency ?? 'TRY';
         for (const boundary of upcoming) {
+          if (stale()) return null;
+          const when = fireAt(boundary.atMs - reminder.minutes * 60_000, boundary.atMs);
+          if (!when) continue;
           await scheduleAt(
-            boundary.atMs - reminder.minutes * 60_000,
+            when.atMs,
             title,
             t('tierAlert', {
               tier: boundary.tierIndex + 1,
-              minutes: reminder.minutes,
+              minutes: when.minutes,
               now: formatMoney(boundary.currentPrice, currency, locale),
               next: formatMoney(boundary.nextPrice, currency, locale),
             }),
@@ -242,6 +311,7 @@ export async function scheduleSessionAlerts(
     }
 
     // Unutulan oturum: 24 saat sonra nazik hatırlatma (§8.4).
+    if (stale()) return null;
     await scheduleAt(
       session.startedAtMs + FORGOTTEN_SESSION_MS,
       title,

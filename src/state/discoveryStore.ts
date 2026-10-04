@@ -43,8 +43,8 @@ interface DiscoveryStore {
   selectPoi: (id: string | null) => void;
   setFilter: (filter: PoiFilter) => void;
   load: (center: Coords, force?: boolean) => void;
-  /** Sabit koordinata git + orada otopark ara (liste satırı, POI seçimi). */
-  pinTo: (center: Coords) => void;
+  /** Sabit koordinata git + orada otopark ara (liste satırı, POI seçimi). `force`: arama. */
+  pinTo: (center: Coords, force?: boolean) => void;
   /** Arama sonucuna git: pin + oranın otoparkları + panel yarı açık. */
   pinToSearch: (center: Coords) => void;
   /** Harita elle kaydırıldı: yeni merkezin otoparklarını getir. */
@@ -85,9 +85,9 @@ export const useDiscoveryStore = create<DiscoveryStore>((set, get) => ({
     if (center) get().load(center, true);
   },
 
-  pinTo: (center) => {
+  pinTo: (center, force = false) => {
     set({ pinTarget: center, pinToken: get().pinToken + 1 });
-    get().load(center);
+    get().load(center, force);
   },
 
   pinToSearch: (center) => {
@@ -103,7 +103,12 @@ export const useDiscoveryStore = create<DiscoveryStore>((set, get) => ({
    * bu yüzden haritayı bir semte kaydırınca orası boş kalıyordu.
    */
   panTo: (center) => {
-    get().load(center);
+    const { center: previous, pois } = get();
+    // Yakın kaydırma eldeki sonuçlarla zaten kaplı (sorgu yarıçapı 1 km).
+    if (previous && distanceMeters(previous, center) < REFRESH_DISTANCE_M && pois.length > 0) return;
+    // Elle kaydırma EN SON niyettir: süren bir sorgu (açılıştaki konum sorgusu gibi) varsa
+    // iptal edilip buraya sorulur. Normal `load` sürende vazgeçiyordu ve kaydırılan yer boş kalıyordu.
+    get().load(center, true);
   },
 
   requestFollow: () => set({ followToken: get().followToken + 1 }),
@@ -111,20 +116,35 @@ export const useDiscoveryStore = create<DiscoveryStore>((set, get) => ({
   load: (center, force = false) => {
     const { center: previous, state } = get();
     if (state === 'loading' && !force) return;
-    if (previous && distanceMeters(previous, center) < REFRESH_DISTANCE_M && get().pois.length > 0) {
+    // `force` (arama) yakın mesafe atlamasını da geçer: mesafeler yeni merkeze göre yeniden
+    // hesaplanmalı, aranan yerin çevresi en yakından sıralanmalı.
+    if (!force && previous && distanceMeters(previous, center) < REFRESH_DISTANCE_M && get().pois.length > 0) {
       return;
     }
 
     inFlight?.abort();
-    inFlight = new AbortController();
+    const controller = new AbortController();
+    inFlight = controller;
     set({ state: 'loading' });
 
-    void fetchNearbyParking(center, get().radiusM, inFlight.signal).then((pois) => {
+    void fetchNearbyParking(center, get().radiusM, controller.signal).then((pois) => {
+      // Yerine yenisi başlatılmış (iptal edilmiş) istek sonuç yazmaz: iptalin `null`ı
+      // 'error' diye yazılıyordu ve yeni sorgu sürerken "yüklenemedi" satırı çıkıyordu.
+      if (inFlight !== controller) return;
+      inFlight = null;
       if (pois === null) {
         set({ state: 'error' });
         return;
       }
-      set({ state: 'ready', pois, center });
+      // Seçili otopark yeni sonuçlarda yoksa seçim düşer: kart sebepsiz kaybolup sonra
+      // kendiliğinden geri gelmesin.
+      const selected = get().selectedPoiId;
+      set({
+        state: 'ready',
+        pois,
+        center,
+        ...(selected !== null && !pois.some((poi) => poi.id === selected) ? { selectedPoiId: null } : null),
+      });
     });
   },
 

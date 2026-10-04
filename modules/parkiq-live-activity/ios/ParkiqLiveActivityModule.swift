@@ -24,7 +24,10 @@ public class ParkiqLiveActivityModule: Module {
     /// söndürüp yeniden yakardı; çağıran taraf buna bakıp karar verir.
     Function("isRunning") { () -> Bool in
       if #available(iOS 16.2, *) {
-        return !Activity<ParkIQAttributes>.activities.isEmpty
+        // iOS 8 saatte bitirdiği aktiviteyi kilit ekranında 4 saate kadar .ended olarak
+        // tutuyor ve listede gösteriyor. Onu "çalışıyor" saymak ön plana dönüşte yeniden
+        // kurmak yerine bitmiş aktiviteyi güncellemeye çalışmak demekti (etkisiz).
+        return Activity<ParkIQAttributes>.activities.contains(where: Self.isLive)
       }
       return false
     }
@@ -53,7 +56,7 @@ public class ParkiqLiveActivityModule: Module {
 
     AsyncFunction("update") { (payload: [String: Any]) in
       guard #available(iOS 16.2, *), let state = Self.contentState(from: payload) else { return }
-      for activity in Activity<ParkIQAttributes>.activities {
+      for activity in Activity<ParkIQAttributes>.activities where Self.isLive(activity) {
         await activity.update(.init(state: state, staleDate: Self.staleDate(from: payload)))
       }
     }
@@ -94,6 +97,18 @@ public class ParkiqLiveActivityModule: Module {
       defaults.set(payload["barTone"] as? String, forKey: "barTone")
       defaults.set(payload["heroLabel"] as? String, forKey: "heroLabel")
       defaults.set(payload["footerText"] as? String, forKey: "footerText")
+      // Zaman çizelgesi girişleri: amber anı, sınırdan sonraki hal ve onun amber anı.
+      // Widget bunları kendi saatinde seçer; app çalışmasa da metin sınırda değişir.
+      for key in ["warnAtMs", "afterBoundaryAtMs", "afterWarnAtMs"] {
+        if let value = payload[key] as? Double {
+          defaults.set(value, forKey: key)
+        } else {
+          defaults.removeObject(forKey: key)
+        }
+      }
+      defaults.set(payload["afterBarTone"] as? String, forKey: "afterBarTone")
+      defaults.set(payload["afterHeroLabel"] as? String, forKey: "afterHeroLabel")
+      defaults.set(payload["afterFooterText"] as? String, forKey: "afterFooterText")
       defaults.set(payload["monthlySavedText"] as? String, forKey: "monthlySavedText")
 
       // Widget'ın sözlüğü yoktur: gördüğü her etiket dile çevrilmiş halde
@@ -128,8 +143,19 @@ public class ParkiqLiveActivityModule: Module {
       nextPriceText: payload["nextPriceText"] as? String,
       finalStampText: payload["finalStampText"] as? String,
       heroLabel: payload["heroLabel"] as? String,
-      footerText: payload["footerText"] as? String
+      footerText: payload["footerText"] as? String,
+      afterBoundaryAt: (payload["afterBoundaryAtMs"] as? Double).map {
+        Date(timeIntervalSince1970: $0 / 1000)
+      },
+      afterBarTone: payload["afterBarTone"] as? String,
+      afterHeroLabel: payload["afterHeroLabel"] as? String,
+      afterFooterText: payload["afterFooterText"] as? String
     )
+  }
+
+  @available(iOS 16.2, *)
+  private static func isLive(_ activity: Activity<ParkIQAttributes>) -> Bool {
+    activity.activityState == .active || activity.activityState == .stale
   }
 
   @available(iOS 16.2, *)

@@ -34,21 +34,28 @@ import { SessionDetail } from './SessionDetail';
 const STAGGER_MAX = 8;
 
 interface DayGroup {
+  /** Takvim günü (yıl dahil) — geçmiş sınırsız, "3 Eki" her yıl yeniden gelir. */
+  key: string;
   label: string;
   sessions: ParkSession[];
 }
 
 function groupByDay(sessions: ParkSession[], nowMs: number, locale: string): DayGroup[] {
   const groups: DayGroup[] = [];
+  const thisYear = new Date(nowMs).getFullYear();
   for (const s of sessions) {
+    const day = new Date(s.startedAtMs);
+    const key = `${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`;
     const label = isSameDay(s.startedAtMs, nowMs)
       ? t('today')
       : isSameDay(s.startedAtMs, nowMs - 86_400_000)
         ? t('yesterday')
-        : formatDateShort(s.startedAtMs, locale);
+        : day.getFullYear() === thisYear
+          ? formatDateShort(s.startedAtMs, locale)
+          : `${formatDateShort(s.startedAtMs, locale)} ${day.getFullYear()}`;
     const last = groups[groups.length - 1];
-    if (last && last.label === label) last.sessions.push(s);
-    else groups.push({ label, sessions: [s] });
+    if (last && last.key === key) last.sessions.push(s);
+    else groups.push({ key, label, sessions: [s] });
   }
   return groups;
 }
@@ -165,6 +172,10 @@ export function HistoryScene({ onOpenPaywall }: { onOpenPaywall: () => void }) {
   }, [sessions, setHistorySpots]);
 
   const stats = useMemo(() => computeStats(sessions), [sessions]);
+  const thisMonth = useMemo(
+    () => (stats.savedCurrency ? (monthlySavings(sessions, Date.now(), 1, stats.savedCurrency)[0] ?? null) : null),
+    [sessions, stats.savedCurrency],
+  );
   const groups = useMemo(() => groupByDay(sessions, Date.now(), locale), [sessions, locale]);
   const selected = selectedId ? sessions.find((s) => s.id === selectedId) : undefined;
 
@@ -229,21 +240,25 @@ export function HistoryScene({ onOpenPaywall }: { onOpenPaywall: () => void }) {
       {sessions.length > 0 && (
         <View>
           <StatTiles stats={stats} />
-          <MonthlySavingsChart buckets={monthlySavings(sessions, Date.now())} currency={stats.savedCurrency} />
+          <MonthlySavingsChart
+            buckets={monthlySavings(sessions, Date.now(), 6, stats.savedCurrency)}
+            currency={stats.savedCurrency}
+          />
         </View>
       )}
 
-      {/* §9 aylık özet kartı — geçmişin viral bacağı */}
-      {stats.totalSaved !== null && stats.totalSaved > 0 && (
+      {/* §9 aylık özet kartı — geçmişin viral bacağı. BU AYIN rakamları: eskiden ömür boyu
+          toplam "bu ay" diye paylaşılıyor, "Süre" kutusuna ortalama süre yazılıyordu. */}
+      {thisMonth !== null && thisMonth.saved > 0 && stats.savedCurrency !== null && (
         <GhostButton
           label={t('shareMonth')}
           onPress={() => {
             trackShareCard('month');
             setShareData({
               placeName: null,
-              durationMs: stats.avgDurationMs ?? 0,
-              paid: stats.totalPaid,
-              saved: stats.totalSaved,
+              durationMs: thisMonth.durationMs,
+              paid: thisMonth.paid,
+              saved: thisMonth.saved,
               currency: stats.savedCurrency,
               tariffState: null,
             });
@@ -282,7 +297,7 @@ export function HistoryScene({ onOpenPaywall }: { onOpenPaywall: () => void }) {
         <EmptyState />
       ) : (
         groups.map((group) => (
-          <View key={group.label}>
+          <View key={group.key}>
             <Overline style={{ marginBottom: spacing.s4 }}>{group.label}</Overline>
             <View style={{ borderTopWidth: 1, borderTopColor: colors.gridline }}>
               {group.sessions.map((s) => {

@@ -1,10 +1,11 @@
 import type { UpdateStatus } from '@twiceapps/react-native';
 import { useEffect, useState } from 'react';
-import { Linking, Text, View } from 'react-native';
+import { Linking, Platform, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PrimaryCta } from '../components/Buttons';
 import { Body } from '../components/Typography';
-import { isAnalyticsEnabled } from '../lib/analytics';
+import { getStoreUrl, isAnalyticsEnabled } from '../lib/analytics';
+import { APP_STORE_URL, PLAY_STORE_URL } from '../config';
 import { t } from '../localization';
 import { useTheme } from '../theme';
 import { spacing, typeScale } from '../theme/tokens';
@@ -54,12 +55,23 @@ export function ForceUpdateScreen() {
   const insets = useSafeAreaInsets();
 
   const openStore = () => {
-    void versionCheck()?.check()
-      .then((status: UpdateStatus) => {
-        const url = versionCheck()?.storeUrl(status);
-        if (url) void Linking.openURL(url);
-      })
-      .catch(() => undefined);
+    // Kaçışı olmayan bir ekranın tek düğmesi HER ZAMAN bir yere gitmeli: çevrimdışıyken ya da
+    // panelde mağaza kimliği yokken SDK boş adres veriyordu ve düğme hiçbir şey yapmıyordu.
+    const fallback = getStoreUrl(
+      Platform.OS === 'android' ? 'android' : 'ios',
+      Platform.OS === 'android' ? PLAY_STORE_URL : APP_STORE_URL,
+    );
+    const open = (url: string | null | undefined) => {
+      const platformUrl =
+        url && (Platform.OS === 'android' ? url.includes('play.google') : url.includes('apple.com')) ? url : fallback;
+      void Linking.openURL(platformUrl);
+    };
+    const check = versionCheck()?.check();
+    if (!check) {
+      open(null);
+      return;
+    }
+    void check.then((status: UpdateStatus) => open(versionCheck()?.storeUrl(status))).catch(() => open(null));
   };
 
   return (

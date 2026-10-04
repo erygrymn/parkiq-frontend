@@ -40,8 +40,6 @@ interface SettingsStore {
   onboardingSeen: boolean;
   completeOnboarding: () => void;
   resetOnboarding: () => void;
-  /** Her şeyi sil sonrası tercihleri cihaz varsayılanına döndürür. */
-  resetToDefaults: () => void;
   /**
    * Tarife havuzu: girilen tarife diğer sürücülere önerilsin mi.
    *
@@ -143,7 +141,7 @@ function applyFormats(
   setDistanceUnit(unitPref === 'device' ? device.unit : unitPref);
 }
 
-export const useSettingsStore = create<SettingsStore>((set) => ({
+export const useSettingsStore = create<SettingsStore>((set, get) => ({
   themeMode: 'system',
   locale: 'en',
   currency: 'TRY',
@@ -173,27 +171,6 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     if (!__DEV__) return;
     write('onboardingSeen', '0');
     set({ onboardingSeen: false });
-  },
-
-  /**
-   * Ayarlar > Veri "her şeyi sil" sonrası: tercihler cihaz varsayılanlarına
-   * döner ve onboarding yeniden gösterilir. Kopya "uygulama sıfırlanır" diyor;
-   * ayarların sessizce kalması o sözü tutmamak olurdu.
-   */
-  resetToDefaults: () => {
-    const device = detectDeviceDefaults();
-    applyFormats('device', 'device', device);
-    set({
-      clockFormat: 'device',
-      units: 'device',
-      onboardingSeen: false,
-      themeMode: 'system',
-      locale: device.locale,
-      currency: device.currency,
-      warnThresholdMin: DEFAULT_WARN_THRESHOLD_MIN,
-      tariffPoolEnabled: true,
-      tariffPoolAsked: false,
-    });
   },
 
   hydrate: () => {
@@ -256,17 +233,22 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   setLocalePref: (locale) => {
     write('locale', locale);
     setLocale(locale); // t() modül seviyesinde okur; ağaç locale key'iyle tazelenir
-    // Widget'ın etiketleri App Group kutusunda yaşar — dil değişince yeniden yaz.
+    set({ locale });
+    // Widget'ın etiketleri App Group kutusunda, kilit ekranı kartının metinleri ve kurulu
+    // uyarıların gövdesi zamanlandıkları dilde yaşar — dil değişince hepsi yeniden yazılır.
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const la = require('../lib/liveActivity') as typeof import('../lib/liveActivity');
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const session = (require('./sessionStore') as typeof import('./sessionStore')).useSessionStore.getState().session;
-      la.syncWidget(session);
+      const sessions = (require('./sessionStore') as typeof import('./sessionStore')).useSessionStore.getState();
+      if (sessions.phase === 'active' || sessions.phase === 'finding') {
+        sessions.resyncAlerts();
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const la = require('../lib/liveActivity') as typeof import('../lib/liveActivity');
+        la.syncWidget(sessions.session, get().warnThresholdMin);
+      }
     } catch {
       /* native modül yoksa (Expo Go) sessizce geç */
     }
-    set({ locale });
   },
 
   setCurrency: (currency) => {
@@ -277,5 +259,13 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   setWarnThreshold: (warnThresholdMin) => {
     write('warnThresholdMin', String(warnThresholdMin));
     set({ warnThresholdMin });
+    // Kurulu uyarılar eski eşikle zamanlanmıştı: kart 15 dakika kala ambere dönerken
+    // bildirim hâlâ 5 dakika kala geliyordu.
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      (require('./sessionStore') as typeof import('./sessionStore')).useSessionStore.getState().resyncAlerts();
+    } catch {
+      /* oturum katmanı yoksa yapılacak bir şey yok */
+    }
   },
 }));

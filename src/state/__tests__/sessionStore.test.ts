@@ -168,3 +168,38 @@ describe('onaylanmamış oturum', () => {
     expect(useSessionStore.getState().phase).toBe('parking');
   });
 });
+
+// Tarama sonucu önce gösterilir: eğik çekilmiş panoda satırlar kayabiliyor ve okunan tarife
+// onaysız uygulanınca sayacı sessizce yanlış yönetiyordu.
+describe('tarama onayı', () => {
+  const draft = {
+    tariff: { type: 'tiered' as const, currency: 'TRY', tiers: [{ endMin: 60, cumulativePrice: 50 }] },
+    schedule: null,
+    partial: true,
+  };
+
+  it('onaylanınca tarife oturuma yazılır, kaynak OCR olur ve form tazelenir', () => {
+    useSessionStore.setState({ phase: 'parking', session: { ...baseSession }, ocrDraft: draft, externalTariffVersion: 2 });
+    useSessionStore.getState().confirmOcrDraft();
+    const s = useSessionStore.getState();
+    expect(s.session?.tariff).toEqual(draft.tariff);
+    expect(s.tariffSource).toBe('ocr');
+    expect(s.ocrPartial).toBe(true);
+    expect(s.ocrDraft).toBeNull();
+    expect(s.externalTariffVersion).toBe(3);
+  });
+
+  it('vazgeçilince oturum tarifesi değişmez', () => {
+    const tariff = { type: 'flat' as const, currency: 'TRY', price: 80 };
+    useSessionStore.setState({ phase: 'parking', session: { ...baseSession, tariff }, ocrDraft: draft });
+    useSessionStore.getState().discardOcrDraft();
+    expect(useSessionStore.getState().session?.tariff).toEqual(tariff);
+    expect(useSessionStore.getState().ocrDraft).toBeNull();
+  });
+
+  it('bekleyen tarama yeni parka taşınmaz', () => {
+    useSessionStore.setState({ phase: 'idle', session: null, hydrated: true, ocrDraft: draft });
+    useSessionStore.getState().park();
+    expect(useSessionStore.getState().ocrDraft).toBeNull();
+  });
+});

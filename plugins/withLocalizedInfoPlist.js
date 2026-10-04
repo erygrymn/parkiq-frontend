@@ -1,10 +1,10 @@
-const fs = require('fs');
-const path = require('path');
-const { withDangerousMod } = require('expo/config-plugins');
-
 // İzin diyalogları uygulamanın ilk temasıdır ve Info.plist'teki metin her zaman
-// İngilizce. iOS bu metinleri `<dil>.lproj/InfoPlist.strings` dosyalarından
-// yerelleştirir; prebuild o klasörleri üretmediği için burada yazıyoruz.
+// İngilizce. iOS bu metinleri `<dil>.lproj/InfoPlist.strings` dosyalarından yerelleştirir.
+//
+// Dosyaları Expo'nun kendi `locales` mekanizması yazar: `ios/<proje>/Supporting/<dil>.lproj`
+// altına koyar VE Xcode projesine kaynak olarak ekler. Eskiden bu eklenti dosyaları
+// `ios/<dil>.lproj`'a elle yazıyordu ama projeye eklemiyordu — paketlenmiyorlardı ve izin
+// pencereleri her dilde İngilizce çıkıyordu. Burada yalnız metinler config'e verilir.
 //
 // Yalnız çevirisi OLAN diller yazılır: eksik bir dosya iOS'u Info.plist'teki
 // İngilizce karşılığa düşürür, yarım çeviri göstermez.
@@ -127,25 +127,18 @@ const STRINGS = {
   },
 };
 
+/** Expo değerleri tırnak içine kaçışsız yazar; tırnak ve ters bölü burada kaçırılır. */
 function escape(value) {
   return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
 module.exports = function withLocalizedInfoPlist(config) {
-  return withDangerousMod(config, [
-    'ios',
-    (cfg) => {
-      const projectRoot = cfg.modRequest.platformProjectRoot;
-      for (const [locale, entries] of Object.entries(STRINGS)) {
-        const dir = path.join(projectRoot, `${locale}.lproj`);
-        fs.mkdirSync(dir, { recursive: true });
-        const body = Object.entries(entries)
-          .map(([key, value]) => `"${key}" = "${escape(value)}";`)
-          .join('\n');
-        // UTF-8 kabul edilir; BOM yazmıyoruz çünkü Xcode onu metnin parçası sayabiliyor.
-        fs.writeFileSync(path.join(dir, 'InfoPlist.strings'), `${body}\n`, 'utf8');
-      }
-      return cfg;
-    },
-  ]);
+  const locales = { ...(config.locales ?? {}) };
+  for (const [lang, entries] of Object.entries(STRINGS)) {
+    const ios = {};
+    for (const [key, value] of Object.entries(entries)) ios[key] = escape(value);
+    // `ios` altında: Android tarafı bu anahtarları strings.xml'e yazmasın.
+    locales[lang] = { ...(typeof locales[lang] === 'object' ? locales[lang] : {}), ios };
+  }
+  return { ...config, locales };
 };

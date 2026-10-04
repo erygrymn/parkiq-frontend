@@ -121,6 +121,46 @@ Bağlayıcı olduğunda claude.ai bağlayıcı ayarlarından yetkilendirilmesi g
 - Kabul: `professional-app-design` döngüsü ekran başına en az bir tur (kullanıcı ekran görüntüsü
   sağlar), design.md DON'T listesi taraması, dark mode ve Dynamic Type XL kontrolü.
 
+### Denetim turu (2026-10-03) ✅ kod · ⏳ cihaz doğrulaması
+- [x] AR yeniden: GPS füzyonu (örnek ağırlıklı katı dönüşüm + pusula sapması tahmini), kare kare
+      yumuşatma, sürekli yükseklik/ölçek, kararlı zemin seçimi, hedefe kilitli disk yolu, oklüzyon ve
+      kişi segmentasyonu kaldırıldı, "limited"dan dönüş, kamera izni/başarısızlık haritaya döner.
+- [x] AR HUD: yön cümlesi (sola/sağa/arkana dön, telefonu kaldır), mesafeli kenar kapsülü, VIO
+      mesafesi, yakında foto, giriş haritayı karartıp kamerayı ilk karede açar.
+- [x] Arabamı Bul: panel açık kademede başlar (kompakta düşüyordu), AR girişi başlık satırında,
+      kamera kullanıcıyı takip eder (koşul hiç geçmiyordu), canlı doğruluk paneli titretmez,
+      kalibrasyon cümlesi.
+- [x] Tarife: sonraki sınır = sonraki fiyat ARTIŞI; günlük tavanda 24. saat devri; OCR'da "MAKS HIZ"
+      tavan sayılmıyor, peni okunuyor, "N SAATTEN SONRA HER SAAT", "VE ÜZERİ", "TO/İLA", ondalık
+      süre, "N SAATLİK", günlük ücret her gün; boş editör satırı ₺0 dilim üretmiyor.
+- [x] Kilit ekranı/widget sınırdan sonraki hâli gösterir; bitmiş LA "çalışıyor" sayılmaz.
+- [x] Uyarılar: sıralı kuşaklı zamanlama (yığılma/hayalet yok), izin bağlamında, geçmiş uyarı
+      anında telafi, eşik/dil değişince yeniden kurulum.
+- [x] Veri: tüm-sil uyarı/alarm/LA'yı kapatır ve tercihleri korur; foto yolu konteyner değişimine
+      dayanıklı; paylaşım kartında kapı numaralı adres yok; havuz kimliği son konumdan, kabul edilen
+      öneri geri gönderilmez, rıza anahtarı sorulmadan açık görünmez.
+- [x] Paywall başlığı kaldırılmış oto-algılamayı satmıyor (18 dil); izin metinleri gerçekten paketleniyor.
+- [x] Arabamı Bul'da kaydedilen foto ana kartta; WhatsApp paylaşımı tek metin öğesi; harita elle
+      kaydırılınca o bölgenin otoparkları yüklenir ("Looking for parking here" hapı).
+- [x] Ana ekran kısayolu (faza göre "I Parked" / "Find My Car", `modules/parkiq-quick-actions`).
+- [x] Zayıf GPS'te fotoğraf daveti kat sorusunun en üstünde (§7.3).
+- [x] OCR onay görünümü: okunan tarife onaysız oturuma yazılmaz (§7.4).
+- [x] Arabamı Bul "ortala" karesi: elle kaydırınca çıkar, takibi geri açar (§7.6).
+- [x] AR belirsizlik halkası: yakında "araba bu dairenin içinde" (§7.7).
+- [x] Satın alma: Ayarlar → Pro artık paywall'u açıyor (iki modal aynı anda sunulamıyordu), satın
+      alma sonrası "Pro'da" satırı kalkıyor, onay bekleyen ödeme "başarısız" demiyor ve onay
+      gelince kendiliğinden açılıyor, okunamayan yetki ödeme yapanı kilitlemiyor.
+- [x] Park kaydı: arka plana geçişte aktif sayılır, eski düzeltme arabanın yeri olmaz; bildirim ve
+      konum izni Ayarlar'dan sonradan verilince hemen devreye girer; izinsiz harita ülkede açılır.
+- [x] Tarama 12 dilde pano okur; kamera izni kapalıyken yol gösterir; kabul edilen öneri çipi
+      seçili kalır; havuz rızası tuş vuruşunda değil İleri'de sorulur.
+- Cihazda kontrol: (1) AR'da işaret durduğunda zıplamıyor mu, 30–50 m yürüyünce yönü düzeliyor mu
+  (2) Arabamı Bul açık kademede açılıyor mu (3) kilitliyken sınır geçince LA metni değişiyor mu
+  (4) izin pencereleri Türkçe mi (prebuild sonrası `ios/ParkIQ/Supporting/tr.lproj`)
+  (5) ikona uzun basınca kısayol görünüyor mu; kapalı app'te "I Parked" kaydı başlatıyor mu
+  (6) AR'da yakına gelince halka görünüyor mu (yukarıdan bakınca), yarıçap makul mü
+  (7) eğik bir panoyu tarayınca onay görünümündeki satırlar panoyla aynı mı.
+
 ### Faz 5 — Doğrulama (kullanıcıda)
 - [ ] 120 fps: sheet sürükleme, kutlama, AR HUD; Xcode Instruments Core Animation.
 - [ ] Isı: aktif oturum 10 dk, AR 10 dk (pause davranışı); Energy Log.
@@ -145,6 +185,7 @@ Bağlayıcı olduğunda claude.ai bağlayıcı ayarlarından yetkilendirilmesi g
 
 **7.4 Tarife + OCR** · [x] tiered/flat/hourly · [x] Vision OCR (premium) · [x] hata düşüşleri
 · [ ] satır ekleme `LinearTransition` · [ ] OCR sonucu stagger · [x] editör `BottomSheetModal`
+· [x] OCR onay görünümü
 
 **7.5 Aktif oturum** · [x] sayaç · [x] tarife çubuğu · [x] para kutusu · [x] amber · [x] tarifesiz mod
 · [x] aksiyonlar · [x] >24 sa · [x] cold start · [x] sayaç ayrı bileşen · [x] knob `withTiming`

@@ -68,6 +68,59 @@ private func liveRange(_ from: Date?, _ to: Date?) -> ClosedRange<Date>? {
   return from...to
 }
 
+// MARK: - Dilim yüzü
+
+/// Bir anda gösterilecek dilim hâli. Sınır geçildiyse RN'in önceden hesaplayıp gönderdiği
+/// "sonraki" hâl seçilir; o da geçildiyse etiket ve para satırı düşer, yalnız süre akar —
+/// geçmiş bir sınırı "sonraki dilim" diye göstermek yalan olurdu. Swift hesap yapmaz,
+/// yalnız tarih karşılaştırır (kural 1).
+struct TierFace {
+  let tierStartedAt: Date?
+  let boundaryAt: Date?
+  let tone: String
+  let heroLabel: String?
+  let footerText: String?
+
+  static func pick(
+    at now: Date,
+    tierStartedAt: Date?,
+    boundaryAt: Date?,
+    tone: String,
+    heroLabel: String?,
+    footerText: String?,
+    afterBoundaryAt: Date?,
+    afterTone: String?,
+    afterHeroLabel: String?,
+    afterFooterText: String?
+  ) -> TierFace {
+    guard let boundary = boundaryAt, now >= boundary else {
+      return TierFace(
+        tierStartedAt: tierStartedAt, boundaryAt: boundaryAt, tone: tone, heroLabel: heroLabel, footerText: footerText)
+    }
+    let afterKnown = afterHeroLabel != nil || afterFooterText != nil || afterBoundaryAt != nil
+    if afterKnown, afterBoundaryAt.map({ now < $0 }) ?? true {
+      return TierFace(
+        tierStartedAt: boundary, boundaryAt: afterBoundaryAt, tone: afterTone ?? tone,
+        heroLabel: afterHeroLabel, footerText: afterFooterText)
+    }
+    return TierFace(tierStartedAt: nil, boundaryAt: nil, tone: afterTone ?? tone, heroLabel: nil, footerText: nil)
+  }
+
+  static func live(_ state: ParkIQAttributes.ContentState, at now: Date = .now) -> TierFace {
+    pick(
+      at: now,
+      tierStartedAt: state.tierStartedAt,
+      boundaryAt: state.nextBoundaryAt,
+      tone: state.barTone,
+      heroLabel: state.heroLabel,
+      footerText: state.footerText,
+      afterBoundaryAt: state.afterBoundaryAt,
+      afterTone: state.afterBarTone,
+      afterHeroLabel: state.afterHeroLabel,
+      afterFooterText: state.afterFooterText)
+  }
+}
+
 // MARK: - Marka glyph'i
 
 private struct BrandGlyph: View {
@@ -187,6 +240,7 @@ private struct LiveActivityView: View {
       .padding(16)
       .background(Palette.green)
     } else {
+      let face = TierFace.live(state)
       VStack(alignment: .leading, spacing: 10) {
         // Marka + yer + ikincil geçen süre. Hero geri sayım olduğunda "ne kadardır
         // parktayım" sorusunu cevaplayan tek yer burasıdır.
@@ -201,17 +255,17 @@ private struct LiveActivityView: View {
         // §8.1 hero: sonraki fiyat artışına kalan süre — sistemin kendi kendine doğru
         // tutabildiği tek gösterge, o yüzden en büyük yeri o alır.
         VStack(alignment: .leading, spacing: 2) {
-          if let label = state.heroLabel {
+          if let label = face.heroLabel {
             Overline(text: label)
           }
-          HeroTimer(startedAt: state.startedAt, boundary: state.nextBoundaryAt, tone: state.barTone)
+          HeroTimer(startedAt: state.startedAt, boundary: face.boundaryAt, tone: face.tone)
         }
 
-        if let range = liveRange(state.tierStartedAt, state.nextBoundaryAt) {
-          TariffProgress(range: range, tone: state.barTone)
+        if let range = liveRange(face.tierStartedAt, face.boundaryAt) {
+          TariffProgress(range: range, tone: face.tone)
         }
 
-        if let footer = state.footerText {
+        if let footer = face.footerText {
           Text(footer)
             .font(.system(size: 13, weight: .heavy))
             .monospacedDigit()
@@ -238,9 +292,10 @@ struct ParkIQLiveActivity: Widget {
         .activityBackgroundTint(Palette.card)
         .activitySystemActionForegroundColor(.white)
     } dynamicIsland: { context in
+      let face = TierFace.live(context.state)
       // Genişletilmiş ada kendi bölgelerini kullanır: tüm kartı .center'a
       // sıkıştırmak metinleri kırpıyordu.
-      DynamicIsland {
+      return DynamicIsland {
         DynamicIslandExpandedRegion(.leading) {
           HStack(spacing: 6) {
             BrandGlyph()
@@ -251,18 +306,18 @@ struct ParkIQLiveActivity: Widget {
         DynamicIslandExpandedRegion(.trailing) {
           HeroTimer(
             startedAt: context.state.startedAt,
-            boundary: context.state.nextBoundaryAt,
-            tone: context.state.barTone,
+            boundary: face.boundaryAt,
+            tone: face.tone,
             size: 20
           )
           .padding(.trailing, 4)
         }
         DynamicIslandExpandedRegion(.bottom) {
           VStack(alignment: .leading, spacing: 8) {
-            if let range = liveRange(context.state.tierStartedAt, context.state.nextBoundaryAt) {
-              TariffProgress(range: range, tone: context.state.barTone)
+            if let range = liveRange(face.tierStartedAt, face.boundaryAt) {
+              TariffProgress(range: range, tone: face.tone)
             }
-            if let footer = context.state.footerText {
+            if let footer = face.footerText {
               Text(footer)
                 .font(.system(size: 13, weight: .heavy))
                 .monospacedDigit()
@@ -278,8 +333,8 @@ struct ParkIQLiveActivity: Widget {
       } compactTrailing: {
         HeroTimer(
           startedAt: context.state.startedAt,
-          boundary: context.state.nextBoundaryAt,
-          tone: context.state.barTone,
+          boundary: face.boundaryAt,
+          tone: face.tone,
           size: 13
         )
         .frame(maxWidth: 56)
@@ -301,6 +356,13 @@ struct ParkIQWidgetEntry: TimelineEntry {
   let barTone: String
   let heroLabel: String?
   let footerText: String?
+  /// Bu andan sonra ton amber olur (sınıra eşik kadar kala) — RN hesaplar.
+  let warnAt: Date?
+  let afterBoundaryAt: Date?
+  let afterBarTone: String?
+  let afterHeroLabel: String?
+  let afterFooterText: String?
+  let afterWarnAt: Date?
   let monthlySavedText: String?
   /// Dile çevrilmiş etiketler (App Group kutusundan).
   let noSessionText: String
@@ -317,32 +379,72 @@ struct ParkIQWidgetProvider: TimelineProvider {
   }
 
   func getTimeline(in context: Context, completion: @escaping (Timeline<ParkIQWidgetEntry>) -> Void) {
-    let current = entry()
-    // Fiyat artışı biliniyorsa tam o anda tazelen: "Sonra ₺100" satırı bir dakika bile
-    // yanlış kalmasın. Sayaçlar zaten kendi kendine akar, bu yalnız metinler için.
-    let next = current.nextBoundaryAt.map { max($0, Date().addingTimeInterval(60)) }
-      ?? Date().addingTimeInterval(900)
-    completion(Timeline(entries: [current], policy: .after(next)))
+    let now = Date()
+    let current = entry(at: now)
+    // Her hâl değişimi önceden bir giriş olur: amber anı, fiyat artışı, sonraki hâlin amber
+    // anı. App hiç çalışmasa da "Sonra ₺100" satırı sınırda değişir. Eskiden yalnız sınırda
+    // yeniden okunuyordu — aynı eski değerleri — ve sınır geçtikten sonra dakikada bir
+    // yenilenip yenileme bütçesini tüketiyordu.
+    let moments = [current.warnAt, current.nextBoundaryAt, current.afterWarnAt, current.afterBoundaryAt]
+      .compactMap { $0 }
+      .filter { $0 > now }
+      .sorted()
+    let entries = [current] + moments.map { entry(at: $0) }
+    // Bilinen son hâlden sonra bilgi yok: RN'in yeni veri yazmasını beklerken seyrek yenile.
+    let refresh = moments.last.map { $0.addingTimeInterval(60) } ?? now.addingTimeInterval(1800)
+    completion(Timeline(entries: entries, policy: .after(refresh)))
   }
 
-  private func entry() -> ParkIQWidgetEntry {
+  private func entry(at date: Date = Date()) -> ParkIQWidgetEntry {
     let defaults = Shared.defaults
     let started = defaults?.object(forKey: "startedAtMs") as? Double
     let boundary = defaults?.object(forKey: "nextBoundaryAtMs") as? Double
+    let date1970 = { (key: String) -> Date? in
+      (defaults?.object(forKey: key) as? Double).map { Date(timeIntervalSince1970: $0 / 1000) }
+    }
     return ParkIQWidgetEntry(
-      date: Date(),
+      date: date,
       startedAt: started.map { Date(timeIntervalSince1970: $0 / 1000) },
       placeName: defaults?.string(forKey: "placeName"),
       nextBoundaryAt: boundary.map { Date(timeIntervalSince1970: $0 / 1000) },
       barTone: defaults?.string(forKey: "barTone") ?? "green",
       heroLabel: defaults?.string(forKey: "heroLabel"),
       footerText: defaults?.string(forKey: "footerText"),
+      warnAt: date1970("warnAtMs"),
+      afterBoundaryAt: date1970("afterBoundaryAtMs"),
+      afterBarTone: defaults?.string(forKey: "afterBarTone"),
+      afterHeroLabel: defaults?.string(forKey: "afterHeroLabel"),
+      afterFooterText: defaults?.string(forKey: "afterFooterText"),
+      afterWarnAt: date1970("afterWarnAtMs"),
       monthlySavedText: defaults?.string(forKey: "monthlySavedText"),
       noSessionText: Shared.text("wNoSession", "No active session"),
       savedLabel: Shared.text("wSavedLabel", "SAVED THIS MONTH"),
       parkTitle: Shared.text("wParkTitle", "Park"),
       parkHint: Shared.text("wParkHint", "Tap to save your spot")
     )
+  }
+}
+
+extension ParkIQWidgetEntry {
+  /// Girişin tarihinde geçerli yüz; amber anı geldiyse ton amber (RN'in verdiği anla).
+  var face: TierFace {
+    let picked = TierFace.pick(
+      at: date,
+      tierStartedAt: nil,
+      boundaryAt: nextBoundaryAt,
+      tone: barTone,
+      heroLabel: heroLabel,
+      footerText: footerText,
+      afterBoundaryAt: afterBoundaryAt,
+      afterTone: afterBarTone,
+      afterHeroLabel: afterHeroLabel,
+      afterFooterText: afterFooterText)
+    let inAfter = nextBoundaryAt.map { date >= $0 } ?? false
+    let warn = inAfter ? afterWarnAt : warnAt
+    guard let warn, date >= warn, picked.boundaryAt.map({ date < $0 }) ?? false else { return picked }
+    return TierFace(
+      tierStartedAt: picked.tierStartedAt, boundaryAt: picked.boundaryAt, tone: "amber-approaching",
+      heroLabel: picked.heroLabel, footerText: picked.footerText)
   }
 }
 
@@ -363,11 +465,12 @@ struct ParkIQWidgetView: View {
 
       if let started = entry.startedAt {
         // Aynı hiyerarşi kilit ekranı kartıyla: etiket → büyük sayaç → para satırı.
-        if let label = entry.heroLabel {
+        let face = entry.face
+        if let label = face.heroLabel {
           Overline(text: label)
         }
-        HeroTimer(startedAt: started, boundary: entry.nextBoundaryAt, tone: entry.barTone, size: 34)
-        if let footer = entry.footerText {
+        HeroTimer(startedAt: started, boundary: face.boundaryAt, tone: face.tone, size: 34)
+        if let footer = face.footerText {
           Text(footer)
             .font(.system(size: 12, weight: .heavy))
             .monospacedDigit()
@@ -460,13 +563,14 @@ struct ParkIQLockView: View {
       case .accessoryRectangular:
         VStack(alignment: .leading, spacing: 1) {
           if entry.startedAt != nil {
-            Text((entry.heroLabel ?? entry.placeName ?? "").uppercased())
+            let face = entry.face
+            Text((face.heroLabel ?? entry.placeName ?? "").uppercased())
               .font(.system(size: 11, weight: .heavy))
               .tracking(1.2)
               .lineLimit(1)
               .widgetAccentable()
             // Kilit ekranında renk sistemindir: sayaç kendi rengini dayatmaz.
-            if let range = liveRange(.now, entry.nextBoundaryAt) {
+            if let range = liveRange(.now, face.boundaryAt) {
               Text(timerInterval: range, countsDown: true)
                 .font(.system(size: 22, weight: .black))
                 .monospacedDigit()
@@ -479,7 +583,7 @@ struct ParkIQLockView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
             }
-            if let footer = entry.footerText {
+            if let footer = face.footerText {
               Text(footer)
                 .font(.system(size: 12, weight: .semibold))
                 .monospacedDigit()

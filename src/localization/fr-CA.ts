@@ -18,13 +18,11 @@ export const frCA: Partial<Record<CopyKey, string>> = {
   parkedWord: 'STATIONNÉE',
   simpleReminder: 'Vous êtes stationné depuis {duration}.',
   proFeatureFilter: 'Filtrez les stationnements par borne, intérieur et distance',
-  proFeaturePool: "Tarifs suggérés par d'autres conducteurs",
+  proFeaturePool: 'Tarifs suggérés en un seul geste',
 
 
 
 
-  goProUpsell: 'Scannez les panneaux, retrouvez la voiture, filtrez les stationnements',
-  purchaseDoneBody: 'Scan des panneaux, boussole et guidage AR, détection auto et filtres de stationnement sont actifs.',
   unitsImperial: 'Pieds et milles',
   poiError: 'Impossible de charger les stationnements à proximité — vérifiez votre connexion',
   stillParkedShort: 'Toujours stationné ? Ce stationnement a commencé hier.',

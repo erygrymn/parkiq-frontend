@@ -17,7 +17,7 @@ export interface SharePayload {
   n?: string;
   /** floor */
   f?: string;
-  /** parked at (epoch ms) */
+  /** paylaşım anı (epoch ms) — sayfa linki 24 saat sonra pasifleştirir */
   t: number;
   /**
    * Mağaza linki. Sayfanın CTA'sı bunu kullanır; böylece App ID ya da kampanya
@@ -65,7 +65,9 @@ export function buildShareUrl(session: ParkSession): string | null {
     // Koordinatı 5 haneye yuvarla (~1m): link kısalır, hassasiyet yeter.
     a: Number(session.latitude.toFixed(5)),
     o: Number(session.longitude.toFixed(5)),
-    t: session.startedAtMs,
+    // Süre PAYLAŞIMDAN sayılır: park anından saymak, ikinci gününde paylaşılan bir havalimanı
+    // parkının linkini alıcıya "süresi dolmuş" gösteriyordu.
+    t: Date.now(),
   };
   if (session.placeName) payload.n = session.placeName;
   if (session.floor) payload.f = session.floor;
@@ -80,8 +82,13 @@ export async function shareParkedLocation(session: ParkSession, message: string)
   const url = buildShareUrl(session);
   if (!url) return;
   try {
-    await Share.share({ message: `${message} ${url}`, url });
-    trackLocationShared(); // ana viral döngü — kaç kez tetiklendiği ölçülür
+    /* TEK öğe: link metnin İÇİNDE. iOS'ta metin ve ayrı bir URL öğesi birlikte verilince
+       WhatsApp ikisini birden gönderemiyordu — sohbet seçilip "Gönder"e basılıyor ve hiçbir
+       şey gitmiyordu. Metindeki linki her uygulama tanır, önizlemesini de kendisi çıkarır.
+       Android zaten yalnız metni gönderiyordu. */
+    const result = await Share.share({ message: `${message}\n${url}` });
+    // Ana viral döngü: yalnız GERÇEKTEN paylaşılan sayılır. Kapatılan sayfa da sayılıyordu.
+    if (result.action === Share.sharedAction) trackLocationShared();
   } catch {
     // Kullanıcı paylaşım sayfasını kapattıysa sessizce geç.
   }

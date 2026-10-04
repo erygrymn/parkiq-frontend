@@ -18,7 +18,7 @@ Pod::Spec.new do |s|
   s.static_framework = true
 
   s.dependency 'ExpoModulesCore'
-  s.frameworks = 'ARKit', 'RealityKit', 'CoreLocation'
+  s.frameworks = 'ARKit', 'RealityKit', 'CoreLocation', 'AVFoundation'
 
   s.source_files = "**/*.{h,m,swift}"
   # Monolit yüz dokusu (app ikonu, 512px). Static framework: ana bundle'a kopyalanır.

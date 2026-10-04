@@ -35,6 +35,28 @@ const PAYWALL_COUNT_KEY = 'celebrationPaywallCount';
  */
 const CELEBRATION_STEPS = [1, 3, 7];
 
+/**
+ * Bir park bitişinin kararları — park başına BİR KEZ verilir. Kutlama kapağı Geri Al +
+ * yeniden bitir ile ikinci kez kurulunca sayaçlar aynı park için tekrar ilerliyordu: 1./3.
+ * paywall anı atlanabiliyordu.
+ */
+const decisions = new Map<string, { paywall: boolean; review: boolean }>();
+
+export function celebrationMoments(
+  sessionId: string,
+  saved: boolean,
+  isPremium: boolean,
+): { paywall: boolean; review: boolean } {
+  const cached = decisions.get(sessionId);
+  if (cached) return cached;
+  const paywall = saved && shouldShowCelebrationPaywall(isPremium);
+  // Paywall ile yorum isteği aynı anda gösterilmez.
+  const review = !paywall && shouldAskForReview();
+  const decision = { paywall, review };
+  decisions.set(sessionId, decision);
+  return decision;
+}
+
 export function shouldShowCelebrationPaywall(isPremium: boolean): boolean {
   if (isPremium) return false;
   const seen = readCount(PAYWALL_COUNT_KEY) + 1;
@@ -48,6 +70,8 @@ const REVIEW_ASKED_KEY = 'reviewAsked';
 const REVIEW_DECLINED_KEY = 'reviewDeclined';
 
 const REVIEW_SEEN_KEY = 'reviewPromptSeen';
+/** Sırası gelmiş ama gösterilemeden kapak kapanmış istek — bir sonraki bitişe taşınır. */
+const REVIEW_PENDING_KEY = 'reviewPending';
 
 /**
  * Hangi park bitişlerinde sorulur. İlki şart: kullanıcı arabasını yeni bulmuş,
@@ -70,7 +94,19 @@ export function shouldAskForReview(): boolean {
   if (readCount(REVIEW_ASKED_KEY) !== 0 || readCount(REVIEW_DECLINED_KEY) !== 0) return false;
   const seen = readCount(REVIEW_SEEN_KEY) + 1;
   writeCount(REVIEW_SEEN_KEY, seen);
-  return REVIEW_STEPS.includes(seen);
+  return REVIEW_STEPS.includes(seen) || readCount(REVIEW_PENDING_KEY) !== 0;
+}
+
+/**
+ * İstek ekranda göründü. Kullanıcı kapağı 2,5 saniyeden önce "Tamam"la kapatınca sıradaki
+ * istek SESSİZCE yanıyordu (ilk ve en değerli an); artık gösterilene kadar bekler.
+ */
+export function markReviewPromptShown(): void {
+  writeCount(REVIEW_PENDING_KEY, 0);
+}
+
+export function deferReviewPrompt(): void {
+  writeCount(REVIEW_PENDING_KEY, 1);
 }
 
 export function markReviewDeclined(): void {

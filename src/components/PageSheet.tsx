@@ -15,16 +15,25 @@ export function PageSheet({
   visible,
   title,
   onClose,
+  onDismissed,
   children,
 }: {
   visible: boolean;
   title: string;
   onClose: () => void;
+  /** iOS: kapanma animasyonu BİTTİĞİNDE. Ardından başka bir modal açacaksan buradan aç. */
+  onDismissed?: () => void;
   children: ReactNode;
 }) {
   const { colors, scheme } = useTheme();
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+      onDismiss={onDismissed}
+    >
       {/* RN Modal ayrı bir pencere: içindeki ConfirmSheet'in kendi portal sağlayıcısı olmalı. */}
       <BottomSheetModalProvider>
       <View style={{ flex: 1, backgroundColor: scheme === 'dark' ? colors.card : colors.bg }}>

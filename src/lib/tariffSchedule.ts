@@ -129,5 +129,24 @@ export function selectSchedule(
     return { lines: [...preamble, ...applicable.lines], kind: applicable.kind, priceColumn: 0 };
   }
 
+  // SATIR düzeni: her satır kendi saat penceresini taşır — "8:00-20:00 30分 200円" /
+  // "20:00-8:00 60分 100円" (Japon ve Kore panolarında yaygın). Etiket sözcüğü yok; iki satır
+  // birbirinin devamı sanılınca gece ücreti gündüz tarifesinin ikinci dilimi oluyordu. Şu anki
+  // pencerenin satırları ve penceresiz satırlar (günlük tavan gibi) kalır.
+  const windows = normalized.map((line) =>
+    /\d/.test(line.replace(/\d{1,2}[:.]\d{2}/g, '')) ? timeWindow(line) : null,
+  );
+  const distinct = new Set(windows.flatMap((w) => (w ? [`${w.start}-${w.end}`] : [])));
+  if (distinct.size >= 2) {
+    const current = windows.find((w) => w !== null && appliesAt('day', at, w));
+    if (current) {
+      const kept = lines.filter((_, i) => {
+        const w = windows[i];
+        return w === null || (w.start === current.start && w.end === current.end);
+      });
+      return { lines: kept, kind: current.start <= current.end ? 'day' : 'night', priceColumn: 0 };
+    }
+  }
+
   return { lines, kind: null, priceColumn: 0 };
 }

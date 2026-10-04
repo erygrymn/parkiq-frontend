@@ -18,6 +18,7 @@ import { Platform } from 'react-native';
  * `location.north.circle` pusuladır, o yüzden `explore`.
  */
 const MATERIAL = {
+  arkit: ['material', 'view-in-ar'],
   'bolt.fill': ['material', 'bolt'],
   camera: ['material', 'photo-camera'],
   'camera.viewfinder': ['material', 'document-scanner'],

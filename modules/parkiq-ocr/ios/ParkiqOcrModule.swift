@@ -7,6 +7,49 @@ import UIKit
 // Otopark bodrumunda sinyal olmadan da tarife panosu okunabilsin diye böyle.
 
 public class ParkiqOcrModule: Module {
+  /// Bölgenin pano dili: kullanıcının telefonu İngilizce olsa da Tokyo'daki pano Japoncadır.
+  private static let regionLanguage: [String: String] = [
+    "TR": "tr-TR", "DE": "de-DE", "AT": "de-DE", "CH": "de-DE", "FR": "fr-FR", "BE": "fr-FR",
+    "ES": "es-ES", "MX": "es-ES", "IT": "it-IT", "NL": "nl-NL", "SE": "sv-SE", "PT": "pt-BR",
+    "BR": "pt-BR", "JP": "ja-JP", "KR": "ko-KR", "TW": "zh-Hant", "HK": "zh-Hant", "MO": "zh-Hant",
+    "CN": "zh-Hans",
+  ]
+
+  /**
+   * Tanıma dilleri: önce kullanıcının dilleri, sonra bulunduğu bölgenin dili, sonra İngilizce
+   * ve Türkçe. Japonca, Korece ve Çince karakterler yalnız o dil listede varsa tanınıyor; liste
+   * sabit tr/en iken o panolar hiç okunmuyordu. Liste kısa tutulur: her ek dil doğruluğu düşürür.
+   */
+  static func recognitionLanguages(supported: [String]) -> [String] {
+    var wanted = Locale.preferredLanguages
+    if let region = Locale.current.region?.identifier, let language = regionLanguage[region] {
+      wanted.append(language)
+    }
+    wanted += ["en-US", "tr-TR"]
+    var result: [String] = []
+    for identifier in wanted {
+      guard let match = visionLanguage(for: identifier, supported: supported), !result.contains(match) else {
+        continue
+      }
+      result.append(match)
+      if result.count == 4 { break }
+    }
+    return result
+  }
+
+  /// "pt-PT" → "pt-BR", "zh-Hant-TW" → "zh-Hant", "en-GB" → "en-US": dil eşleşir, bölge eşleşmese de.
+  private static func visionLanguage(for identifier: String, supported: [String]) -> String? {
+    if supported.contains(identifier) { return identifier }
+    let parts = identifier.split(separator: "-").map(String.init)
+    guard let language = parts.first else { return nil }
+    if language == "zh" {
+      let traditional = parts.contains("Hant") || parts.contains("TW") || parts.contains("HK") || parts.contains("MO")
+      let script = traditional ? "zh-Hant" : "zh-Hans"
+      return supported.contains(script) ? script : nil
+    }
+    return supported.first { $0 == language || $0.hasPrefix(language + "-") }
+  }
+
   public func definition() -> ModuleDefinition {
     Name("ParkiqOcr")
 
@@ -48,11 +91,10 @@ public class ParkiqOcrModule: Module {
       // Fiyat/rakam okurken dil düzeltmesi zarar verir (50 → "SO" gibi).
       request.usesLanguageCorrection = false
 
-      // Türkçe destekleniyorsa ekle; desteklenmiyorsa varsayılan dil seti kullanılır.
       // Örnek üstündeki sorgu, isteğin KENDİ seviyesi ve revizyonu için yanıt verir —
       // tip üstündeki karşılığı iOS 15'te bırakıldı ve revizyonu elle yazmayı gerektiriyordu.
       if let supported = try? request.supportedRecognitionLanguages() {
-        let preferred = ["tr-TR", "en-US"].filter { supported.contains($0) }
+        let preferred = ParkiqOcrModule.recognitionLanguages(supported: supported)
         if !preferred.isEmpty {
           request.recognitionLanguages = preferred
         }

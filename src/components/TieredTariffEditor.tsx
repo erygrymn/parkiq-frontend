@@ -30,7 +30,10 @@ function endMinOf(row: DraftRow): number {
 }
 
 function toTiers(rows: DraftRow[]): TariffTier[] {
+  // Boş alan bir dilim DEĞİLDİR: `Number('')` 0 verir ve yalnız ikinci satırı dolduran
+  // kullanıcı "₺100 yerine ₺0 öde" görüyordu.
   const parsed = rows
+    .filter((row) => row.amount.trim() !== '' && row.price.trim() !== '')
     .map((row) => ({ endMin: endMinOf(row), cumulativePrice: Number(row.price.replace(',', '.')) }))
     .filter((tier) => Number.isFinite(tier.endMin) && Number.isFinite(tier.cumulativePrice));
   return sanitizeTiers(parsed);
@@ -96,7 +99,7 @@ export function TieredTariffEditor({
       {rows.map((row, index) => {
         // Bu dilim önceki dilimin bittiği yerde başlar.
         const previousEnd = index === 0 ? 0 : endMinOf(rows[index - 1]);
-        const start = formatRangeStart(Number.isFinite(previousEnd) ? previousEnd : 0, row.unit);
+        const start = formatRangeStart(Number.isFinite(previousEnd) ? previousEnd : 0, row.unit, ` ${t('unitMinShort')}`);
 
         return (
           <View key={index} style={{ flexDirection: 'row', gap: spacing.s8, alignItems: 'center' }}>

@@ -172,7 +172,9 @@ export function applyFilter(
   radiusM?: number,
 ): ParkingPoi[] {
   let out = pois;
-  if (filter === 'charging') out = out.filter((p) => p.kind === 'charging');
+  // Şarjlı otoparklar da dahil: OSM'de şarj bilgisi olan otopark ⚡ ile gösteriliyordu ama
+  // filtre onu gizleyip yalnız tek başına duran şarj istasyonlarını bırakıyordu.
+  if (filter === 'charging') out = out.filter((p) => p.hasCharging);
   else if (filter === 'covered') out = out.filter((p) => p.kind === 'parking' && p.covered === true);
   if (radiusM != null) out = out.filter((p) => p.distanceM <= radiusM);
   return out;

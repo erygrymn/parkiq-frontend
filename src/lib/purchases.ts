@@ -31,6 +31,7 @@ interface PurchasesModule {
   purchasePackage(pkg: unknown): Promise<unknown>;
   restorePurchases(): Promise<unknown>;
   getCustomerInfo(): Promise<unknown>;
+  addCustomerInfoUpdateListener(listener: (info: unknown) => void): void;
 }
 
 let purchases: PurchasesModule | null = null;
@@ -49,11 +50,20 @@ let configured = false;
 function ensureConfigured(): boolean {
   if (!isPurchasesAvailable || !purchases) return false;
   if (!configured) {
-    purchases.configure({ apiKey: REVENUECAT_KEY });
+    // Yapılandırma patlarsa paywall sonsuz iskelette kalıyordu; artık "planlar yüklenemedi"
+    // satırına ve Tekrar dene'ye düşer.
+    try {
+      purchases.configure({ apiKey: REVENUECAT_KEY });
+    } catch {
+      return false;
+    }
     configured = true;
   }
   return true;
 }
+
+/** RevenueCat PAYMENT_PENDING_ERROR: ödeme onay bekliyor (Satın Almayı Sor, banka doğrulaması). */
+const PAYMENT_PENDING_CODE = '20';
 
 // RevenueCat tiplerini burada dar tutuyoruz: SDK sürümü değişse de kırılmasın.
 interface RcPackage {
@@ -162,7 +172,7 @@ export async function loadPlans(): Promise<PurchasePlan[] | null> {
         introLabel: introLabelOf(pkg),
       });
     }
-    // Sıra design.md §7.10: Yearly (varsayılan seçili) → Monthly → Lifetime
+    // Görünür sıra ve varsayılan seçim paywall'ın işi (PLAN_ORDER, premiumStore.openPlans).
     const order: PlanPeriod[] = ['yearly', 'monthly', 'lifetime'];
     return plans.sort((a, b) => order.indexOf(a.period) - order.indexOf(b.period));
   } catch {
@@ -193,73 +203,134 @@ function hasPremium(info: unknown): boolean {
  * SON ödeme anı: gerçek satın almada bu an istektir, geri yüklemede geçmişte kalmış bir tarihtir.
  */
 const RESTORE_SLACK_MS = 60_000;
-export function wasRestored(info: unknown, startedAtMs: number): boolean {
+
+interface RcCustomerInfoDates {
+  /** Yanıtın SUNUCU saati — cihaz saati ileri/geri olsa da güvenilir referans. */
+  requestDate?: string;
+  allPurchaseDatesMillis?: Record<string, number | null>;
+  allPurchaseDates?: Record<string, string | null>;
+}
+
+export function wasRestored(info: unknown, startedAtMs: number, productId?: string): boolean {
   const ent = activeEntitlement(info);
   if (!ent) return false;
-  const paidAt = ent.latestPurchaseDateMillis ?? (ent.latestPurchaseDate ? Date.parse(ent.latestPurchaseDate) : NaN);
+  const dates = info as RcCustomerInfoDates;
+  // Önce ALINAN ürünün kendi ödeme anı: yetki eski bir üründen (ömür boyu) geliyor olabilir ve
+  // o ürünün tarihi, yeni ödenmiş bir yıllık aboneliği "geri yükleme" gösteriyordu.
+  let paidAt = NaN;
+  if (productId) {
+    const millis = dates.allPurchaseDatesMillis?.[productId];
+    const iso = dates.allPurchaseDates?.[productId];
+    paidAt = typeof millis === 'number' ? millis : iso ? Date.parse(iso) : NaN;
+  }
+  if (!Number.isFinite(paidAt)) {
+    paidAt = ent.latestPurchaseDateMillis ?? (ent.latestPurchaseDate ? Date.parse(ent.latestPurchaseDate) : NaN);
+  }
   if (!Number.isFinite(paidAt)) return false;
-  return paidAt < startedAtMs - RESTORE_SLACK_MS;
+  // Referans sunucu saatinden türer: cihaz saati bir dakikadan fazla ileriyse gerçek satın alma
+  // "geri yükleme" sayılıyor, gelir olayı atılmıyor ve PRO damgası yerine "Geri yüklendi" çıkıyordu.
+  const serverNow = dates.requestDate ? Date.parse(dates.requestDate) : NaN;
+  const reference = Number.isFinite(serverNow) ? serverNow - Math.max(0, Date.now() - startedAtMs) : startedAtMs;
+  return paidAt < reference - RESTORE_SLACK_MS;
+}
+
+/** Analitik sonucu DEĞİŞTİREMEZ: olay atılamazsa ödenmiş satın alma yine başarılıdır. */
+function safely(track: () => void): void {
+  try {
+    track();
+  } catch {
+    /* olay kaybolur, satın alma kaybolmaz */
+  }
 }
 
 /**
  * Satın alma; kullanıcı iptal ederse `canceled` döner (hata gösterilmez).
  * Ödeme alınmadan eski hak geri geldiyse `restored` — gelir olayı ATILMAZ.
+ * Ödeme onay bekliyorsa `pending`: "başarısız" demek yanlıştı, onay gelince yetki
+ * `onEntitlementChange` dinleyicisiyle kendiliğinden açılır.
  */
 export async function purchasePlan(
   planId: string,
-): Promise<'purchased' | 'restored' | 'canceled' | 'failed'> {
+): Promise<'purchased' | 'restored' | 'pending' | 'canceled' | 'failed'> {
   if (!ensureConfigured() || !purchases) return 'failed';
+  let pkg: RcPackage | undefined;
+  let info: unknown;
+  let startedAtMs = 0;
   try {
     const offerings = (await purchases.getOfferings()) as {
       current?: { availablePackages?: RcPackage[] };
     };
-    const pkg = (offerings.current?.availablePackages ?? []).find((p) => p.identifier === planId);
+    pkg = (offerings.current?.availablePackages ?? []).find((p) => p.identifier === planId);
     if (!pkg) return 'failed';
-    const startedAtMs = Date.now();
+    startedAtMs = Date.now();
     const result = await purchases.purchasePackage(pkg);
-    const info = (result as { customerInfo?: unknown }).customerInfo;
-    if (!hasPremium(info)) return 'failed';
+    info = (result as { customerInfo?: unknown }).customerInfo;
+  } catch (error) {
+    const failure = error as { userCancelled?: boolean; code?: string | number };
+    if (failure.userCancelled) return 'canceled';
+    return String(failure.code) === PAYMENT_PENDING_CODE ? 'pending' : 'failed';
+  }
+  if (!hasPremium(info)) return 'failed';
 
-    if (wasRestored(info, startedAtMs)) {
-      trackRestore();
-      return 'restored';
-    }
+  if (wasRestored(info, startedAtMs, pkg.product?.identifier)) {
+    safely(trackRestore);
+    return 'restored';
+  }
 
-    // Gelir RevenueCat'te yaşar ama Twice panosunda da görünmeli (CLAUDE.md).
-    // Deneme başlangıcı gelir SAYILMAZ; tipli yardımcı onu ayrı işaretler.
-    const period = periodOf(pkg);
-    const product = pkg.product;
-    if (period && product) {
+  // Gelir RevenueCat'te yaşar ama Twice panosunda da görünmeli (CLAUDE.md).
+  // Deneme başlangıcı gelir SAYILMAZ; tipli yardımcı onu ayrı işaretler.
+  const period = periodOf(pkg);
+  const product = pkg.product;
+  if (period && product) {
+    safely(() =>
       trackPurchase({
         productId: product.identifier ?? pkg.identifier,
         price: product.price ?? 0,
         currency: product.currencyCode ?? 'USD',
         period,
         isTrial: introLabelOf(pkg) !== null,
-      });
-    }
-    return 'purchased';
-  } catch (error) {
-    return (error as { userCancelled?: boolean }).userCancelled ? 'canceled' : 'failed';
+      }),
+    );
   }
+  return 'purchased';
 }
 
 export async function restorePurchases(): Promise<'restored' | 'none' | 'failed'> {
   if (!ensureConfigured() || !purchases) return 'failed';
+  let info: unknown;
   try {
-    if (!hasPremium(await purchases.restorePurchases())) return 'none';
-    trackRestore();
-    return 'restored';
+    info = await purchases.restorePurchases();
   } catch {
     return 'failed';
   }
+  if (!hasPremium(info)) return 'none';
+  safely(trackRestore);
+  return 'restored';
 }
 
-export async function fetchEntitlement(): Promise<boolean> {
-  if (!ensureConfigured() || !purchases) return false;
+/**
+ * Yetki mağazada ne durumda: true/false, okunamadıysa null. Okuma hatası "yetki yok" sayılınca
+ * ön plana dönüşteki tek bir ağ hatası ödeme yapmış kullanıcıyı kilitliyordu.
+ */
+export async function fetchEntitlement(): Promise<boolean | null> {
+  if (!ensureConfigured() || !purchases) return null;
   try {
     return hasPremium(await purchases.getCustomerInfo());
   } catch {
-    return false;
+    return null;
+  }
+}
+
+/**
+ * Yetki değişikliklerini dinler. Onay bekleyen satın alma dakikalar sonra tamamlanır ve
+ * RevenueCat bunu yalnız bu dinleyiciyle bildirir; dinleyici yokken ödeme yapmış kullanıcı bir
+ * sonraki ön plana dönüşe kadar kilitli kalıyordu. İptal ve iade de buradan gelir.
+ */
+export function onEntitlementChange(listener: (active: boolean) => void): void {
+  if (!ensureConfigured() || !purchases) return;
+  try {
+    purchases.addCustomerInfoUpdateListener((info) => listener(hasPremium(info)));
+  } catch {
+    /* dinleyici kurulamazsa ön plana dönüş tazelemesi yine çalışır */
   }
 }

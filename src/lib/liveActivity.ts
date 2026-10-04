@@ -9,7 +9,7 @@ import {
 import { formatDurationStamp, formatMoney } from './format';
 import { monthlySavings } from './monthlyStats';
 import { hideOngoingSession, showOngoingSession } from './ongoingNotification';
-import { computeExitSummary, computeTariffState } from './tariffMath';
+import { computeExitSummary, computeTariffState, DEFAULT_WARN_THRESHOLD_MIN } from './tariffMath';
 import { getLocale, t } from '../localization';
 import type { ParkSession } from '../state/sessionStore';
 
@@ -40,7 +40,26 @@ function widgetStrings(): Record<string, string> {
   };
 }
 
-function buildPayload(session: ParkSession, warnThresholdMin: number): LiveActivityPayload {
+interface SessionView extends LiveActivityPayload {
+  /** Widget zaman çizelgesi için: amber anları. */
+  warnAtMs: number | null;
+  afterWarnAtMs: number | null;
+}
+
+/** Kilit ekranı metinleri bir dilim hâlinden — şimdiki ve sınırdan sonraki için aynı kural. */
+function faceTexts(state: ReturnType<typeof computeTariffState>): { heroLabel: string; footerText: string | null } {
+  const locale = getLocale();
+  const money = (value: number | null) =>
+    value !== null && state.currency ? formatMoney(value, state.currency, locale) : null;
+  const nowPriceText = money(state.nowPrice);
+  const nextPriceText = money(state.nextPrice);
+  return {
+    heroLabel: nextPriceText ? t('laNextTier', { price: nextPriceText }) : t('laParked'),
+    footerText: nowPriceText && nextPriceText ? t('laNowNext', { now: nowPriceText, next: nextPriceText }) : null,
+  };
+}
+
+function buildPayload(session: ParkSession, warnThresholdMin: number): SessionView {
   const locale = getLocale();
   const state = computeTariffState(session.tariff, session.startedAtMs, Date.now(), warnThresholdMin);
   const currency = state.currency;
@@ -49,6 +68,14 @@ function buildPayload(session: ParkSession, warnThresholdMin: number): LiveActiv
 
   const nowPriceText = money(state.nowPrice);
   const nextPriceText = money(state.nextPrice);
+  // Sınırdan bir saniye sonrasının hâli: app o an arka planda olsa da kart ve widget onu
+  // gösterir. Hesap burada, tariffMath'te; Swift yalnız tarihe bakıp seçer (§8 kural 1).
+  const after =
+    state.nextBoundaryAtMs !== null
+      ? computeTariffState(session.tariff, session.startedAtMs, state.nextBoundaryAtMs + 1000, warnThresholdMin)
+      : null;
+  const afterTexts = after ? faceTexts(after) : null;
+  const warnAt = (boundaryMs: number | null) => (boundaryMs === null ? null : boundaryMs - warnThresholdMin * 60_000);
   // Çubuk artık donmuş bir yüzde değil, bir ZAMAN ARALIĞI: SwiftUI içinde bulunulan
   // dilimin başından sınırına kadar kendi kendine doldurur. App arka planda hiç
   // çalışmasa bile kilit ekranındaki dolum doğru kalır (§8 kural 3).
@@ -70,6 +97,12 @@ function buildPayload(session: ParkSession, warnThresholdMin: number): LiveActiv
       nowPriceText && nextPriceText
         ? t('laNowNext', { now: nowPriceText, next: nextPriceText })
         : null,
+    afterBoundaryAtMs: after?.nextBoundaryAtMs ?? null,
+    afterBarTone: after?.barTone ?? null,
+    afterHeroLabel: afterTexts?.heroLabel ?? null,
+    afterFooterText: afterTexts?.footerText ?? null,
+    warnAtMs: warnAt(state.nextBoundaryAtMs),
+    afterWarnAtMs: warnAt(after?.nextBoundaryAtMs ?? null),
   };
 }
 
@@ -79,11 +112,13 @@ function monthlySavedText(): string | null {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const repo = require('../db/sessionRepo') as typeof import('../db/sessionRepo');
     const sessions = repo.listEndedSessions();
-    const buckets = monthlySavings(sessions, Date.now(), 1);
+    // En son oturumun para birimi; toplam yalnız o birimdeki oturumlardan.
+    const currency = sessions.find((s) => s.tariff?.currency)?.tariff?.currency;
+    if (!currency) return null;
+    const buckets = monthlySavings(sessions, Date.now(), 1, currency);
     const current = buckets[buckets.length - 1];
     if (!current || current.saved <= 0) return null;
-    const currency = sessions.find((s) => s.tariff?.currency)?.tariff?.currency;
-    return currency ? formatMoney(current.saved, currency, getLocale()) : null;
+    return formatMoney(current.saved, currency, getLocale());
   } catch {
     return null;
   }
@@ -94,16 +129,22 @@ function monthlySavedText(): string | null {
  * ve yerine aylık tasarruf yazılır. Dil metinleri her yazımda tazelenir —
  * kullanıcı dili değiştirdiğinde widget da değişsin diye.
  */
-export function syncWidget(session: ParkSession | null, warnThresholdMin = 15): void {
+export function syncWidget(session: ParkSession | null, warnThresholdMin = DEFAULT_WARN_THRESHOLD_MIN): void {
   const view = session ? buildPayload(session, warnThresholdMin) : null;
   setWidgetData({
     startedAtMs: view?.startedAtMs ?? null,
     placeName: view?.placeName ?? null,
-    // Widget de geri sayımı kendi çizer; kutu yalnız metinleri taşır.
+    // Widget de geri sayımı kendi çizer; kutu yalnız metinleri ve hâl değişim anlarını taşır.
     nextBoundaryAtMs: view?.nextBoundaryAtMs ?? null,
     barTone: view?.barTone ?? null,
     heroLabel: view?.heroLabel ?? null,
     footerText: view?.footerText ?? null,
+    warnAtMs: view?.warnAtMs ?? null,
+    afterBoundaryAtMs: view?.afterBoundaryAtMs ?? null,
+    afterBarTone: view?.afterBarTone ?? null,
+    afterHeroLabel: view?.afterHeroLabel ?? null,
+    afterFooterText: view?.afterFooterText ?? null,
+    afterWarnAtMs: view?.afterWarnAtMs ?? null,
     monthlySavedText: session ? null : monthlySavedText(),
     strings: widgetStrings(),
   });

@@ -82,16 +82,16 @@ describe('applyFilter', () => {
   const pois: ParkingPoi[] = [
     { id: 'a', kind: 'parking', name: null, latitude: 0, longitude: 0, covered: true, hasCharging: false, distanceM: 10 },
     { id: 'b', kind: 'parking', name: null, latitude: 0, longitude: 0, covered: false, hasCharging: false, distanceM: 20 },
-    { id: 'c', kind: 'parking', name: null, latitude: 0, longitude: 0, covered: null, hasCharging: false, distanceM: 30 },
-    { id: 'd', kind: 'charging', name: null, latitude: 0, longitude: 0, covered: null, hasCharging: false, distanceM: 40 },
+    { id: 'c', kind: 'parking', name: null, latitude: 0, longitude: 0, covered: null, hasCharging: true, distanceM: 30 },
+    { id: 'd', kind: 'charging', name: null, latitude: 0, longitude: 0, covered: null, hasCharging: true, distanceM: 40 },
   ];
 
   it('all → hepsi', () => {
     expect(applyFilter(pois, 'all')).toHaveLength(4);
   });
 
-  it('charging → yalnız şarj', () => {
-    expect(applyFilter(pois, 'charging').map((p) => p.id)).toEqual(['d']);
+  it('charging → şarj istasyonları ve şarjlı otoparklar', () => {
+    expect(applyFilter(pois, 'charging').map((p) => p.id)).toEqual(['c', 'd']);
   });
 
   it('covered → yalnız kapalılığı KESİN olanlar (bilinmeyen dahil değil)', () => {

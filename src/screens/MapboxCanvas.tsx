@@ -1,9 +1,12 @@
 import Mapbox, { Camera, CircleLayer, LineLayer, LocationPuck, MapView, MarkerView, ShapeSource, SymbolLayer } from '@rnmapbox/maps';
 import * as Location from 'expo-location';
+import { getLocales } from 'expo-localization';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
+  FadeIn,
+  FadeOut,
   interpolate,
   runOnJS,
   useAnimatedReaction,
@@ -17,7 +20,7 @@ import { SPRING } from '../theme/motion';
 import { CarPin } from '../components/CarPin';
 import { MAPBOX_PUBLIC_TOKEN, MAPBOX_STYLE_URL_DARK, MAPBOX_STYLE_URL_LIGHT } from '../config';
 import { distanceMeters, formatDistance } from '../lib/geo';
-import { getLocale } from '../localization';
+import { getLocale, t } from '../localization';
 import { hapticSelect } from '../lib/haptics';
 import { buildMapStyle } from '../lib/mapStyle';
 import { applyFilter, type PoiKind } from '../lib/parkingPoi';
@@ -27,7 +30,7 @@ import { useUiStore } from '../state/uiStore';
 import { CROSSFADE_MS } from '../theme/motion';
 import { sheetIndex, sheetTop } from '../theme/sheetMotion';
 import { useTheme } from '../theme';
-import { lightColors, spacing } from '../theme/tokens';
+import { glass, lightColors, radius, spacing } from '../theme/tokens';
 
 // Gerçek harita katmanı — YALNIZ native build'de yüklenir (MapCanvas koruması).
 // Expo Go bu dosyayı hiç require etmez.
@@ -49,6 +52,40 @@ Mapbox.setTelemetryEnabled(false);
 const PAN_SETTLE_MS = 700;
 
 const DEFAULT_ZOOM = 15.5;
+
+/**
+ * Konum yokken (izin reddi) kameranın açılış noktası: cihaz bölgesinin ülkesi. Eskiden (0,0)
+ * okyanusunda 15.5 yakınlıkta açılıyordu — izni vermeyen kullanıcının tek yolu olan "haritadan
+ * pin bırak", önce okyanustan kendi şehrine kaydırmak demekti.
+ */
+const REGION_VIEW: Record<string, { center: [number, number]; zoom: number }> = {
+  TR: { center: [35.2, 39.0], zoom: 5 },
+  US: { center: [-98.5, 39.8], zoom: 3.3 },
+  GB: { center: [-2.5, 54.0], zoom: 4.8 },
+  DE: { center: [10.4, 51.1], zoom: 5 },
+  FR: { center: [2.4, 46.6], zoom: 5 },
+  ES: { center: [-3.7, 40.2], zoom: 5 },
+  IT: { center: [12.6, 42.5], zoom: 5 },
+  NL: { center: [5.3, 52.2], zoom: 6.5 },
+  SE: { center: [16.0, 62.0], zoom: 4 },
+  JP: { center: [138.3, 36.2], zoom: 4.5 },
+  KR: { center: [127.8, 36.4], zoom: 6 },
+  TW: { center: [121.0, 23.7], zoom: 6.5 },
+  BR: { center: [-51.9, -14.2], zoom: 3.3 },
+  PT: { center: [-8.2, 39.6], zoom: 5.8 },
+  MX: { center: [-102.5, 23.6], zoom: 4 },
+  CA: { center: [-96.8, 56.1], zoom: 3 },
+  AU: { center: [134.5, -25.7], zoom: 3.3 },
+};
+
+function regionView(): { center: [number, number]; zoom: number } {
+  try {
+    const region = getLocales()[0]?.regionCode ?? '';
+    return REGION_VIEW[region] ?? { center: [10, 30], zoom: 1.5 };
+  } catch {
+    return { center: [10, 30], zoom: 1.5 };
+  }
+}
 
 /** §4 POI pini: otopark ink, şarj yeşil; beyaz ring; seçiliyken 1.25× SPRING (§3). */
 function PoiPin({ kind, selected }: { kind: PoiKind; selected?: boolean }) {
@@ -101,6 +138,7 @@ export function MapboxCanvas() {
   const selectPoi = useDiscoveryStore((s) => s.selectPoi);
   const pickingLocation = useSessionStore((s) => s.pickingLocation);
   const radiusM = useDiscoveryStore((s) => s.radiusM);
+  const discoveryState = useDiscoveryStore((s) => s.state);
   const visiblePois = applyFilter(pois, filter, radiusM);
   const cameraRef = useRef<Camera>(null);
   const insets = useSafeAreaInsets();
@@ -113,6 +151,7 @@ export function MapboxCanvas() {
   const active = phase !== 'idle';
   const finding = phase === 'finding';
   const userFix = useUiStore((s) => s.userFix);
+  const arOpen = useUiStore((s) => s.arOpen);
   const historyOpen = useUiStore((s) => s.historyOpen);
   const historySpots = useUiStore((s) => s.historySpots);
   const historySelectedId = useUiStore((s) => s.historySelectedId);
@@ -145,13 +184,26 @@ export function MapboxCanvas() {
   hasCarRef.current = carCoords !== null && active;
   carCoordsRef.current = carCoords;
 
+  /* İzin sonradan (Ayarlar'dan) verildiğinde konum akışı hiç kurulmuyordu: harita, liste ve
+     "konumuma dön" uygulama yeniden başlayana kadar ölü kalıyordu. Akış kurulamadıysa ön plana
+     her dönüşte yeniden denenir; ilk denemeden sonra izin yalnız OKUNUR, pencere açılmaz. */
+  const [locationAttempt, setLocationAttempt] = useState(0);
+  const watchingRef = useRef(false);
+  const initialView = useMemo(() => {
+    const view = regionView();
+    return { centerCoordinate: view.center, zoomLevel: view.zoom };
+  }, []);
+
   // Konumu KENDİMİZ dinleriz. `followUserLocation` + kontrollü zoom çakışınca
   // takip kilitleniyordu; imperatif setCamera ile tam kontrol sağlanır.
   useEffect(() => {
     let sub: Location.LocationSubscription | null = null;
     let cancelled = false;
     void (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
+      const { status } =
+        locationAttempt === 0
+          ? await Location.requestForegroundPermissionsAsync()
+          : await Location.getForegroundPermissionsAsync();
       if (status !== 'granted' || cancelled) return;
       // Açılışta dünya görünümü kalmasın: son bilinen konum varsa harita anında oraya oturur.
       try {
@@ -184,12 +236,18 @@ export function MapboxCanvas() {
           }
         },
       );
+      if (cancelled) {
+        sub.remove();
+        return;
+      }
+      watchingRef.current = true;
     })();
     return () => {
       cancelled = true;
       sub?.remove();
+      watchingRef.current = false;
     };
-  }, [load]);
+  }, [load, locationAttempt]);
 
   // Widget/Live Activity'den dönüşte harita boş kalıyordu: app arka plandayken
   // konum akışı askıya alınıyor, öne gelince kamera hiçbir komut almadığı için
@@ -198,6 +256,7 @@ export function MapboxCanvas() {
   useEffect(() => {
     const sub = AppState.addEventListener('change', (next) => {
       if (next !== 'active') return;
+      if (!watchingRef.current) setLocationAttempt((n) => n + 1);
       const car = hasCarRef.current ? carCoordsRef.current : null;
       const target = car ?? (followingRef.current ? userCoordsRef.current : null);
       if (!target) return;
@@ -243,12 +302,12 @@ export function MapboxCanvas() {
 
   /**
    * §7.6 finding: kamera kullanıcı + arabayı BİRLİKTE çerçeveler ve kullanıcı yürüdükçe
-   * çerçeveyi tazeler.
+   * çerçeveyi tazeler. Kullanıcı haritayı kendi elleriyle kaydırırsa (`findFollow`
+   * kapanır) karışılmaz; "ortala" düğmesi ya da paneli indirip kaldırmak takibi geri açar.
    *
-   * Önceden yalnız bir kez çerçeveleniyordu (`framedRef`): konum canlı akıyor, nokta
-   * ilerliyor ama kamera yerinde kaldığı için kullanıcı birkaç adımda kadrajdan çıkıyordu —
-   * "konumum güncellenmiyor" diye görünen şey buydu. Kullanıcı haritayı kendi elleriyle
-   * kaydırdıysa (`followingRef` kapanır) karışılmaz.
+   * Takip kendi bayrağını kullanır: `followingRef` aktif oturumda HER ZAMAN kapalı (kamera
+   * arabaya kilitli) olduğu için ona bakan eski koşul ilk çerçeveden sonra hiç geçmiyordu —
+   * "kamera takip etmiyor" düzeltmesi bu yüzden hiç çalışmamıştı.
    */
   /* Panel kademesi değişince çerçeve tazelenir: kullanıcı paneli indirip kaldırdığında
      harita yeni boşluğa göre yeniden ortalanır. Sürekli değil, kademe başına bir kez. */
@@ -260,15 +319,44 @@ export function MapboxCanvas() {
     },
   );
 
+  const findFollow = useUiStore((s) => s.findFollow);
   const firstFrameRef = useRef(false);
+  const framedStepRef = useRef(sheetStep);
   useEffect(() => {
     if (!finding) {
       firstFrameRef.current = false;
+      if (!useUiStore.getState().findFollow) useUiStore.getState().setFindFollow(true);
       return;
     }
-    if (!carCoords || !userFix) return;
+    if (framedStepRef.current !== sheetStep) {
+      framedStepRef.current = sheetStep;
+      // Paneli indirip kaldırmak da takibe döndürür (etki yeni değerle yeniden koşar).
+      if (!useUiStore.getState().findFollow) {
+        useUiStore.getState().setFindFollow(true);
+        return;
+      }
+    }
+    // AR açıkken harita kameranın arkasında: çerçevelemek boşuna iş. Kapanınca yeniden çerçeveler.
+    if (!carCoords || arOpen) return;
     const first = !firstFrameRef.current;
-    if (!first && !followingRef.current) return;
+    if (!first && !findFollow) return;
+    if (!userFix) {
+      // Konum yoksa (kapalı otopark, izin yok) "ortala" en azından arabaya döner.
+      if (first) return;
+      const top = sheetTop.value;
+      cameraRef.current?.setCamera({
+        centerCoordinate: carCoords,
+        zoomLevel: DEFAULT_ZOOM,
+        padding: {
+          paddingTop: insets.top + spacing.s40,
+          paddingBottom: top > 0 ? Math.round(windowHeight - top + spacing.s24) : 380,
+          paddingLeft: 64,
+          paddingRight: 64,
+        },
+        animationDuration: 400,
+      });
+      return;
+    }
     firstFrameRef.current = true;
     const lngs = [carCoords[0], userFix.longitude];
     const lats = [carCoords[1], userFix.latitude];
@@ -288,7 +376,7 @@ export function MapboxCanvas() {
     });
     // carCoords referansı bileşenlerine bağlanır
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [finding, sheetStep, carCoords?.[0], carCoords?.[1], userFix?.latitude, userFix?.longitude]);
+  }, [finding, sheetStep, arOpen, findFollow, carCoords?.[0], carCoords?.[1], userFix?.latitude, userFix?.longitude]);
 
   // §7.9 Geçmiş: noktalar tek ShapeSource (native daire katmanı), seçili olan gerçek araba pini.
   // Açılışta hepsi çerçevelenir, satır seçilince kamera o noktaya uçar; sheet %62'de olduğu
@@ -404,14 +492,23 @@ export function MapboxCanvas() {
             useSessionStore.getState().setPickedCenter({ latitude, longitude });
             return;
           }
-          /* Kullanıcı haritayı kendi kaydırdıysa oraya bakıyor demektir: o merkezin
-             otoparklarını getir. Önceden sorgu YALNIZ kullanıcının konumundan ve arama
-             sonucundan tetikleniyordu, bu yüzden haritayı bir semte kaydırmak orayı boş
-             bırakıyordu. Kamera bizim komutumuzla hareket ettiyse (takip, çerçeveleme)
-             karışılmaz — `followingRef` onu ayırır.
+          // Arabamı Bul'da haritayı elle kaydıran kullanıcı oraya bakıyor: çerçeveleme durur.
+          if (finding && state.gestures.isGestureActive) {
+            if (useUiStore.getState().findFollow) useUiStore.getState().setFindFollow(false);
+            return;
+          }
+          if (phase !== 'idle') return;
+          /* Kullanıcı haritayı kendi kaydırdıysa oraya bakıyor demektir: takip bırakılır ve el
+             çekilince o merkezin otoparkları getirilir.
+             Takip modu (açılıştaki varsayılan) elle kaydırmayı HİÇ fark etmiyordu: sorgu yalnız
+             `followingRef` kapalıyken atılıyordu, onu da yalnız arama kapatıyordu — kullanıcı
+             bir yeri görmek için önce adres yazmak zorundaydı. Üstüne bir sonraki GPS düzeltmesi
+             kamerayı kullanıcıya geri çekiyordu. Kamera bizim komutumuzla hareket ettiyse
+             (takip, çerçeveleme) jest yoktur, karışılmaz.
              Gecikme şart: kaydırma sırasında saniyede onlarca olay geliyor ve Overpass
              zaten yavaş; yalnız el çekildikten sonra tek sorgu atılır. */
-          if (followingRef.current || phase !== 'idle') return;
+          if (state.gestures.isGestureActive) followingRef.current = false;
+          if (followingRef.current) return;
           if (panTimer.current) clearTimeout(panTimer.current);
           panTimer.current = setTimeout(() => {
             useDiscoveryStore.getState().panTo({ latitude, longitude });
@@ -421,7 +518,7 @@ export function MapboxCanvas() {
       {/* Kamera YALNIZ ref üzerinden sürülür (yukarıdaki efektler). Kontrollü
           zoomLevel/centerCoordinate + followUserLocation birlikteyken takibi
           kilitliyordu; hepsi kaldırıldı. */}
-      <Camera ref={cameraRef} defaultSettings={{ zoomLevel: DEFAULT_ZOOM }} />
+      <Camera ref={cameraRef} defaultSettings={initialView} />
       <LocationPuck puckBearingEnabled puckBearing="heading" />
 
       {/* §7.9 geçmiş noktaları: mürekkep daire + beyaz ring; seçili olan aşağıda araba pini olarak. */}
@@ -506,6 +603,31 @@ export function MapboxCanvas() {
 
       {/* §7.5 uniform scrim: aktif oturumda sabit, keşifte sheet ile gelir — dikey vignette YASAK */}
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: colors.scrim }, scrimStyle]} />
+
+      {/* Kaydırılan yerin otoparkları sorulurken. Overpass birkaç saniye sürebiliyor; geri
+          bildirim olmayınca kullanıcı "yine gelmedi" sanıp haritayı yeniden kaydırıyordu — her
+          kaydırma sorguyu baştan başlatıyor. Cam değil düz dolgu: üstteki kareler cam bütçesini
+          (§4: ekranda ≤3 BlurView) kullanıyor. */}
+      {discoveryState === 'loading' && phase === 'idle' && !historyOpen && !pickingLocation && (
+        <Animated.View
+          entering={FadeIn.duration(CROSSFADE_MS)}
+          exiting={FadeOut.duration(CROSSFADE_MS)}
+          pointerEvents="none"
+          style={{ position: 'absolute', top: insets.top + spacing.s12, left: 0, right: 0, alignItems: 'center' }}
+        >
+          <View
+            style={{
+              height: 32,
+              paddingHorizontal: spacing.s12,
+              borderRadius: radius.rFull,
+              justifyContent: 'center',
+              backgroundColor: scheme === 'dark' ? glass.fallbackDark : glass.fallbackLight,
+            }}
+          >
+            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.ink }}>{t('poiSearching')}</Text>
+          </View>
+        </Animated.View>
+      )}
     </View>
   );
 }

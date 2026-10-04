@@ -1,7 +1,7 @@
 import { Text, View } from 'react-native';
 import { formatMoney } from '../lib/format';
 import { niceMax, type MonthBucket } from '../lib/monthlyStats';
-import { getLocale, t } from '../localization';
+import { getLocale, localeTag, t, upper, type Locale } from '../localization';
 import { useTheme } from '../theme';
 import { spacing } from '../theme/tokens';
 import { Overline } from './Typography';
@@ -15,9 +15,8 @@ const BAR_MAX_WIDTH = 24;
 
 function monthLabel(startMs: number, locale: string): string {
   try {
-    return new Intl.DateTimeFormat(locale === 'tr' ? 'tr-TR' : 'en-US', { month: 'short' })
-      .format(new Date(startMs))
-      .toUpperCase();
+    // Dilin kendi ay adı ve dile duyarlı büyük harf: "NİS"/"EKİ", "NIS"/"EKI" değil.
+    return upper(new Intl.DateTimeFormat(localeTag(locale as Locale), { month: 'short' }).format(new Date(startMs)));
   } catch {
     return '';
   }

@@ -1,7 +1,7 @@
 [
   {
     "productId": "com.twiceapps.parkiq.pro.monthly",
-    "price": "4.99",
+    "price": "1.99",
     "basePlanId": "monthly",
     "period": "P1M",
     "listings": {
@@ -21,7 +21,7 @@
   },
   {
     "productId": "com.twiceapps.parkiq.pro.yearly",
-    "price": "24.99",
+    "price": "9.99",
     "basePlanId": "yearly",
     "period": "P1Y",
     "listings": {

@@ -20,9 +20,10 @@ export function fromMinutes(endMin: number): { amount: string; unit: TierUnit } 
  * Başlangıç önceki dilimin bitişidir; birimler satır satır değişebildiği için
  * ("30 dk" sonra "3 sa") dönüşmeyen değer kendi birimiyle yazılır.
  */
-export function formatRangeStart(previousEndMin: number, unit: TierUnit): string {
+/** `minuteSuffix`: dilin dakika kısaltması (TR "dk", EN "min"); varsayılan TR. */
+export function formatRangeStart(previousEndMin: number, unit: TierUnit, minuteSuffix = 'dk'): string {
   if (previousEndMin <= 0) return '0';
   if (unit === 'min') return String(previousEndMin);
   if (previousEndMin % 60 === 0) return String(previousEndMin / 60);
-  return `${previousEndMin}dk`;
+  return `${previousEndMin}${minuteSuffix}`;
 }
